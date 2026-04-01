@@ -1,0 +1,194 @@
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { RouteProp, useRoute } from '@react-navigation/native';
+import { fetchMatch } from '../api/matches';
+import { submitPrediction } from '../api/predictions';
+import { Match, Prediction } from '../types';
+import { colors, spacing, fontSize, borderRadius } from '../theme';
+import { format } from 'date-fns';
+
+type RouteParams = { MatchDetail: { matchId: string } };
+
+export default function MatchDetailScreen() {
+  const route = useRoute<RouteProp<RouteParams, 'MatchDetail'>>();
+  const [match, setMatch] = useState<Match | null>(null);
+  const [prediction, setPrediction] = useState<Prediction | null>(null);
+  const [homeGoals, setHomeGoals] = useState(0);
+  const [awayGoals, setAwayGoals] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    loadMatch();
+  }, []);
+
+  const loadMatch = async () => {
+    try {
+      const data = await fetchMatch(route.params.matchId);
+      setMatch(data.match);
+      setPrediction(data.prediction);
+      if (data.prediction) {
+        setHomeGoals(data.prediction.homeGoals);
+        setAwayGoals(data.prediction.awayGoals);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!match) return;
+    setSubmitting(true);
+    try {
+      const pred = await submitPrediction(match._id, homeGoals, awayGoals);
+      setPrediction(pred);
+      Alert.alert('Prediction saved!');
+    } catch (err: any) {
+      Alert.alert('Error', err.response?.data?.error || 'Failed to save prediction');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const isLocked = match ? new Date() >= new Date(match.utcDate) : false;
+
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
+  if (!match) {
+    return (
+      <View style={styles.center}>
+        <Text>Match not found</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.matchHeader}>
+        <Text style={styles.stage}>{match.stage.replace(/_/g, ' ')}{match.group ? ` - Group ${match.group}` : ''}</Text>
+        <Text style={styles.date}>{format(new Date(match.utcDate), 'EEE, MMM d · HH:mm')}</Text>
+      </View>
+
+      <View style={styles.teams}>
+        <View style={styles.team}>
+          <Text style={styles.teamCode}>{match.homeTeam.code}</Text>
+          <Text style={styles.teamName}>{match.homeTeam.name}</Text>
+        </View>
+        <Text style={styles.vs}>
+          {match.result ? `${match.result.homeGoals} - ${match.result.awayGoals}` : 'vs'}
+        </Text>
+        <View style={styles.team}>
+          <Text style={styles.teamCode}>{match.awayTeam.code}</Text>
+          <Text style={styles.teamName}>{match.awayTeam.name}</Text>
+        </View>
+      </View>
+
+      {/* Prediction section */}
+      <View style={styles.predictionSection}>
+        <Text style={styles.sectionTitle}>
+          {isLocked ? 'Your Prediction' : 'Make Your Prediction'}
+        </Text>
+
+        {prediction?.points != null && (
+          <View style={styles.pointsBadge}>
+            <Text style={styles.pointsText}>+{prediction.points} pts</Text>
+          </View>
+        )}
+
+        <View style={styles.scoreInput}>
+          <View style={styles.scoreColumn}>
+            <Text style={styles.scoreLabel}>{match.homeTeam.code}</Text>
+            <View style={styles.stepper}>
+              <TouchableOpacity
+                style={styles.stepButton}
+                onPress={() => setHomeGoals(Math.max(0, homeGoals - 1))}
+                disabled={isLocked}
+              >
+                <Text style={styles.stepText}>−</Text>
+              </TouchableOpacity>
+              <Text style={styles.scoreValue}>{homeGoals}</Text>
+              <TouchableOpacity
+                style={styles.stepButton}
+                onPress={() => setHomeGoals(Math.min(15, homeGoals + 1))}
+                disabled={isLocked}
+              >
+                <Text style={styles.stepText}>+</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <Text style={styles.scoreDash}>–</Text>
+
+          <View style={styles.scoreColumn}>
+            <Text style={styles.scoreLabel}>{match.awayTeam.code}</Text>
+            <View style={styles.stepper}>
+              <TouchableOpacity
+                style={styles.stepButton}
+                onPress={() => setAwayGoals(Math.max(0, awayGoals - 1))}
+                disabled={isLocked}
+              >
+                <Text style={styles.stepText}>−</Text>
+              </TouchableOpacity>
+              <Text style={styles.scoreValue}>{awayGoals}</Text>
+              <TouchableOpacity
+                style={styles.stepButton}
+                onPress={() => setAwayGoals(Math.min(15, awayGoals + 1))}
+                disabled={isLocked}
+              >
+                <Text style={styles.stepText}>+</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
+        {!isLocked && (
+          <TouchableOpacity style={styles.submitButton} onPress={handleSubmit} disabled={submitting}>
+            {submitting ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.submitText}>{prediction ? 'Update Prediction' : 'Submit Prediction'}</Text>
+            )}
+          </TouchableOpacity>
+        )}
+
+        {isLocked && !prediction && (
+          <Text style={styles.lockedText}>Predictions are locked for this match.</Text>
+        )}
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  matchHeader: { alignItems: 'center', padding: spacing.lg, backgroundColor: colors.primary },
+  stage: { color: colors.accent, fontSize: fontSize.sm, fontWeight: '600', textTransform: 'uppercase' },
+  date: { color: 'rgba(255,255,255,0.7)', fontSize: fontSize.sm, marginTop: spacing.xs },
+  teams: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: spacing.xl, backgroundColor: colors.surface },
+  team: { flex: 1, alignItems: 'center' },
+  teamCode: { fontSize: fontSize.xxl, fontWeight: '800', color: colors.text },
+  teamName: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: spacing.xs, textAlign: 'center' },
+  vs: { fontSize: fontSize.xl, fontWeight: '700', color: colors.textSecondary, marginHorizontal: spacing.md },
+  predictionSection: { padding: spacing.lg },
+  sectionTitle: { fontSize: fontSize.lg, fontWeight: '700', color: colors.text, marginBottom: spacing.md },
+  pointsBadge: { backgroundColor: colors.success, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: borderRadius.full, alignSelf: 'flex-start', marginBottom: spacing.md },
+  pointsText: { color: '#fff', fontWeight: '700', fontSize: fontSize.sm },
+  scoreInput: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: spacing.lg },
+  scoreColumn: { alignItems: 'center', flex: 1 },
+  scoreLabel: { fontSize: fontSize.sm, fontWeight: '600', color: colors.textSecondary, marginBottom: spacing.sm },
+  stepper: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: borderRadius.md, borderWidth: 1, borderColor: colors.border },
+  stepButton: { padding: spacing.md, width: 48, alignItems: 'center' },
+  stepText: { fontSize: fontSize.xl, color: colors.primary, fontWeight: '600' },
+  scoreValue: { fontSize: fontSize.xxl, fontWeight: '800', paddingHorizontal: spacing.md, minWidth: 48, textAlign: 'center' },
+  scoreDash: { fontSize: fontSize.xl, color: colors.textLight, marginHorizontal: spacing.sm },
+  submitButton: { backgroundColor: colors.primary, paddingVertical: spacing.md, borderRadius: borderRadius.md, alignItems: 'center' },
+  submitText: { color: '#fff', fontSize: fontSize.md, fontWeight: '600' },
+  lockedText: { color: colors.textSecondary, textAlign: 'center', fontStyle: 'italic' },
+});
