@@ -10,7 +10,7 @@
       "type": "string"
     },
     {
-      "key": "token",
+      "key": "wc2026_token",
       "value": "",
       "type": "string"
     },
@@ -47,7 +47,7 @@
               "script": {
                 "exec": [
                   "const json = pm.response.json();",
-                  "if (json.token) { pm.collectionVariables.set('token', json.token); }"
+                  "if (json.token) { pm.collectionVariables.set('wc2026_token', json.token); }"
                 ],
                 "type": "text/javascript"
               }
@@ -71,7 +71,7 @@
               "script": {
                 "exec": [
                   "const json = pm.response.json();",
-                  "if (json.token) { pm.collectionVariables.set('token', json.token); }"
+                  "if (json.token) { pm.collectionVariables.set('wc2026_token', json.token); }"
                 ],
                 "type": "text/javascript"
               }
@@ -95,7 +95,7 @@
               "script": {
                 "exec": [
                   "const json = pm.response.json();",
-                  "if (json.token) { pm.collectionVariables.set('token', json.token); }"
+                  "if (json.token) { pm.collectionVariables.set('wc2026_token', json.token); }"
                 ],
                 "type": "text/javascript"
               }
@@ -119,7 +119,7 @@
               "script": {
                 "exec": [
                   "const json = pm.response.json();",
-                  "if (json.token) { pm.collectionVariables.set('token', json.token); }"
+                  "if (json.token) { pm.collectionVariables.set('wc2026_token', json.token); }"
                 ],
                 "type": "text/javascript"
               }
@@ -135,7 +135,7 @@
           "name": "Get Current User",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [{ "key": "Authorization", "value": "Bearer {{wc2026_token}}" }],
             "url": { "raw": "{{baseUrl}}/auth/me", "host": ["{{baseUrl}}"], "path": ["auth", "me"] }
           }
         }
@@ -148,7 +148,7 @@
           "name": "List Matches",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [{ "key": "Authorization", "value": "Bearer {{wc2026_token}}" }],
             "url": {
               "raw": "{{baseUrl}}/matches",
               "host": ["{{baseUrl}}"],
@@ -165,7 +165,7 @@
           "name": "Get Match Detail",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [{ "key": "Authorization", "value": "Bearer {{wc2026_token}}" }],
             "url": { "raw": "{{baseUrl}}/matches/{{matchId}}", "host": ["{{baseUrl}}"], "path": ["matches", "{{matchId}}"] }
           }
         }
@@ -179,7 +179,7 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Authorization", "value": "Bearer {{wc2026_token}}" },
               { "key": "Content-Type", "value": "application/json" }
             ],
             "url": { "raw": "{{baseUrl}}/predictions", "host": ["{{baseUrl}}"], "path": ["predictions"] },
@@ -193,7 +193,7 @@
           "name": "My Predictions",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [{ "key": "Authorization", "value": "Bearer {{wc2026_token}}" }],
             "url": {
               "raw": "{{baseUrl}}/predictions/mine",
               "host": ["{{baseUrl}}"],
@@ -208,7 +208,7 @@
           "name": "Predictions for Match",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [{ "key": "Authorization", "value": "Bearer {{wc2026_token}}" }],
             "url": {
               "raw": "{{baseUrl}}/predictions/match/{{matchId}}",
               "host": ["{{baseUrl}}"],
@@ -229,7 +229,7 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Authorization", "value": "Bearer {{wc2026_token}}" },
               { "key": "Content-Type", "value": "application/json" }
             ],
             "url": { "raw": "{{baseUrl}}/leagues", "host": ["{{baseUrl}}"], "path": ["leagues"] },
@@ -244,7 +244,7 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Authorization", "value": "Bearer {{wc2026_token}}" },
               { "key": "Content-Type", "value": "application/json" }
             ],
             "url": { "raw": "{{baseUrl}}/leagues/{{leagueId}}/admins", "host": ["{{baseUrl}}"], "path": ["leagues", "{{leagueId}}", "admins"] },
@@ -259,7 +259,7 @@
           "request": {
             "method": "DELETE",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              { "key": "Authorization", "value": "Bearer {{wc2026_token}}" }
             ],
             "url": { "raw": "{{baseUrl}}/leagues/{{leagueId}}/admins/{{memberUserId}}", "host": ["{{baseUrl}}"], "path": ["leagues", "{{leagueId}}", "admins", "{{memberUserId}}"] }
           }
@@ -269,7 +269,7 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Authorization", "value": "Bearer {{wc2026_token}}" },
               { "key": "Content-Type", "value": "application/json" }
             ],
             "url": { "raw": "{{baseUrl}}/leagues/join", "host": ["{{baseUrl}}"], "path": ["leagues", "join"] },
@@ -283,7 +283,7 @@
           "name": "My Leagues",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [{ "key": "Authorization", "value": "Bearer {{wc2026_token}}" }],
             "url": { "raw": "{{baseUrl}}/leagues", "host": ["{{baseUrl}}"], "path": ["leagues"] }
           }
         },
@@ -291,7 +291,7 @@
           "name": "Get League (with Leaderboard)",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [{ "key": "Authorization", "value": "Bearer {{wc2026_token}}" }],
             "url": { "raw": "{{baseUrl}}/leagues/{{leagueId}}", "host": ["{{baseUrl}}"], "path": ["leagues", "{{leagueId}}"] }
           }
         },
@@ -299,7 +299,7 @@
           "name": "Leave League",
           "request": {
             "method": "DELETE",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [{ "key": "Authorization", "value": "Bearer {{wc2026_token}}" }],
             "url": { "raw": "{{baseUrl}}/leagues/{{leagueId}}/leave", "host": ["{{baseUrl}}"], "path": ["leagues", "{{leagueId}}", "leave"] }
           }
         }

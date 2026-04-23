@@ -6,6 +6,11 @@ interface AuthResponse {
   user: User;
 }
 
+export async function loginWithPassword(email: string, password: string): Promise<AuthResponse> {
+  const { data } = await apiClient.post<AuthResponse>('/auth/login', { email, password });
+  return data;
+}
+
 export async function loginWithGoogle(idToken: string): Promise<AuthResponse> {
   const { data } = await apiClient.post<AuthResponse>('/auth/google', { idToken });
   return data;

@@ -12,8 +12,7 @@ import { fetchMatches } from '../api/matches';
 import { fetchMyPredictions, submitPrediction } from '../api/predictions';
 import { Match, Prediction } from '../types';
 import PredictionSheet from '../components/PredictionSheet';
-import Flag from '../components/ui/Flag';
-import Badge from '../components/ui/Badge';
+import MatchCard from '../components/MatchCard';
 import { colors, fonts } from '../theme';
 
 function getResult(pred: Prediction, match: Match): 'exact' | 'correct' | 'wrong' | null {
@@ -23,13 +22,6 @@ function getResult(pred: Prediction, match: Match): 'exact' | 'correct' | 'wrong
   const pOut = pred.homeGoals > pred.awayGoals ? 'h' : pred.homeGoals < pred.awayGoals ? 'a' : 'd';
   const aOut = homeGoals > awayGoals ? 'h' : homeGoals < awayGoals ? 'a' : 'd';
   return pOut === aOut ? 'correct' : 'wrong';
-}
-
-function formatDate(utcDate: string) {
-  return new Date(utcDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
-function formatTime(utcDate: string) {
-  return new Date(utcDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 }
 
 export default function PicksScreen() {
@@ -108,67 +100,16 @@ export default function PicksScreen() {
           {shown.map((m) => {
             const pred = predMap[m._id];
             const result = m.status === 'FINISHED' && pred ? getResult(pred, m) : null;
-            const borderColor =
-              result === 'exact'
-                ? 'rgba(0,168,126,0.35)'
-                : result === 'correct'
-                ? 'rgba(73,79,223,0.28)'
-                : colors.border;
             const isUpcoming = m.status === 'SCHEDULED' || m.status === 'LIVE';
 
             return (
-              <TouchableOpacity
+              <MatchCard
                 key={m._id}
-                style={[styles.matchCard, { borderColor }]}
-                onPress={() => isUpcoming && setSelectedMatch(m)}
-                disabled={!isUpcoming}
-              >
-                <View style={styles.matchHeader}>
-                  <Text style={styles.matchMeta}>
-                    {m.group ? `Group ${m.group}` : m.stage} · {formatDate(m.utcDate)}
-                    {isUpcoming ? ` · ${formatTime(m.utcDate)}` : ''}
-                  </Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    {result && <Badge result={result} />}
-                    {isUpcoming && !pred && (
-                      <Text style={styles.predictLink}>Predict →</Text>
-                    )}
-                    {isUpcoming && pred && (
-                      <Text style={styles.editLink}>✓ Edit</Text>
-                    )}
-                  </View>
-                </View>
-                <View style={styles.matchRow}>
-                  <View style={styles.teamSide}>
-                    <Flag code={m.homeTeam.code} size={26} />
-                    <Text style={styles.teamName}>{m.homeTeam.name}</Text>
-                  </View>
-                  <View style={styles.scoreCenter}>
-                    {m.status === 'FINISHED' && (
-                      <Text style={styles.scoreResult}>
-                        {m.result!.homeGoals} – {m.result!.awayGoals}
-                      </Text>
-                    )}
-                    {pred ? (
-                      <Text
-                        style={[
-                          styles.predScore,
-                          m.status === 'FINISHED' ? { color: colors.dim } : { color: colors.accent, fontWeight: '700' },
-                        ]}
-                      >
-                        {m.status === 'FINISHED' ? `pick: ` : ''}
-                        {pred.homeGoals}–{pred.awayGoals}
-                      </Text>
-                    ) : isUpcoming ? (
-                      <Text style={styles.vsText}>vs</Text>
-                    ) : null}
-                  </View>
-                  <View style={[styles.teamSide, styles.teamSideRight]}>
-                    <Text style={styles.teamName}>{m.awayTeam.name}</Text>
-                    <Flag code={m.awayTeam.code} size={26} />
-                  </View>
-                </View>
-              </TouchableOpacity>
+                match={m}
+                prediction={pred}
+                result={result}
+                onPress={isUpcoming ? () => setSelectedMatch(m) : undefined}
+              />
             );
           })}
         </View>
@@ -221,27 +162,6 @@ const styles = StyleSheet.create({
   tabActive: { backgroundColor: colors.accent },
   tabText: { color: colors.muted, fontSize: 13, fontWeight: '600', fontFamily: fonts.bodyMedium },
   tabTextActive: { color: '#fff' },
-
-  matchCard: {
-    backgroundColor: colors.card,
-    borderRadius: 18,
-    borderWidth: 1,
-    padding: 14,
-    paddingHorizontal: 16,
-  },
-  matchHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  matchMeta: { color: colors.dim, fontSize: 10, fontFamily: fonts.body },
-  predictLink: { color: colors.accent, fontSize: 11, fontWeight: '600' },
-  editLink: { color: colors.accent, fontSize: 11, fontWeight: '500' },
-
-  matchRow: { flexDirection: 'row', alignItems: 'center' },
-  teamSide: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 7 },
-  teamSideRight: { justifyContent: 'flex-end' },
-  teamName: { color: colors.text, fontSize: 15, fontFamily: fonts.displayBold },
-  scoreCenter: { alignItems: 'center', minWidth: 76, paddingHorizontal: 8 },
-  scoreResult: { color: colors.text, fontSize: 18, fontWeight: '700', fontFamily: fonts.bodyMedium },
-  predScore: { fontSize: 11, marginTop: 2 },
-  vsText: { color: colors.dim, fontSize: 14 },
 
   empty: { alignItems: 'center', paddingTop: 40 },
   emptyText: { color: colors.muted, fontSize: 14 },

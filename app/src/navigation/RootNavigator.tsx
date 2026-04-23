@@ -9,9 +9,13 @@ import { colors, fonts } from '../theme';
 
 import LoginScreen from '../screens/LoginScreen';
 import HomeScreen from '../screens/HomeScreen';
-import LeaderboardScreen from '../screens/LeaderboardScreen';
+import LeaguesScreen from '../screens/LeaguesScreen';
 import PicksScreen from '../screens/PicksScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import CreateLeagueScreen from '../screens/CreateLeagueScreen';
+import JoinLeagueScreen from '../screens/JoinLeagueScreen';
+import LeagueDetailScreen from '../screens/LeagueDetailScreen';
+import MatchDetailScreen from '../screens/MatchDetailScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -35,17 +39,33 @@ function MainTabs() {
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap = 'home';
           if (route.name === 'Home') iconName = focused ? 'home' : 'home-outline';
-          else if (route.name === 'Table') iconName = focused ? 'trophy' : 'trophy-outline';
-          else if (route.name === 'Picks') iconName = focused ? 'football' : 'football-outline';
+          else if (route.name === 'Leagues') iconName = focused ? 'people' : 'people-outline';
+          else if (route.name === 'Predictions') iconName = focused ? 'football' : 'football-outline';
           else if (route.name === 'Profile') iconName = focused ? 'person' : 'person-outline';
           return <Ionicons name={iconName} size={22} color={color} />;
         },
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Table" component={LeaderboardScreen} />
-      <Tab.Screen name="Picks" component={PicksScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{ title: 'Home', tabBarLabel: 'Home' }}
+      />
+      <Tab.Screen
+        name="Leagues"
+        component={LeaguesScreen}
+        options={{ title: 'Leagues', tabBarLabel: 'Leagues' }}
+      />
+      <Tab.Screen
+        name="Predictions"
+        component={PicksScreen}
+        options={{ title: 'Predictions', tabBarLabel: 'Predictions' }}
+      />
+      <Tab.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{ title: 'Profile', tabBarLabel: 'Profile' }}
+      />
     </Tab.Navigator>
   );
 }
@@ -69,7 +89,29 @@ export default function RootNavigator() {
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {user ? (
-          <Stack.Screen name="Main" component={MainTabs} />
+          <>
+            <Stack.Screen name="Main" component={MainTabs} />
+            <Stack.Screen
+              name="CreateLeague"
+              component={CreateLeagueScreen}
+              options={{ headerShown: true, title: 'Create League' }}
+            />
+            <Stack.Screen
+              name="JoinLeague"
+              component={JoinLeagueScreen}
+              options={{ headerShown: true, title: 'Join League' }}
+            />
+            <Stack.Screen
+              name="LeagueDetail"
+              component={LeagueDetailScreen}
+              options={{ headerShown: true, title: 'League' }}
+            />
+            <Stack.Screen
+              name="MatchDetail"
+              component={MatchDetailScreen}
+              options={{ headerShown: true, title: 'Match' }}
+            />
+          </>
         ) : (
           <Stack.Screen name="Login" component={LoginScreen} />
         )}

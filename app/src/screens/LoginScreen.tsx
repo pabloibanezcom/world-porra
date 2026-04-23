@@ -8,6 +8,7 @@ import {
   Animated,
   Image,
   ScrollView,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Google from 'expo-auth-session/providers/google';
@@ -19,31 +20,32 @@ WebBrowser.maybeCompleteAuthSession();
 
 const hasGoogleConfig = !!process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
 
-const POOL_NAME = 'Mundialines de Rivas';
-
-const FRIENDS = [
-  { initials: 'M', color: '#00a87e' },
-  { initials: 'S', color: '#e61e49' },
-  { initials: 'T', color: '#ec7e00' },
-];
-
 export default function LoginScreen() {
-  const signInDev = useAuthStore((s) => s.signInDev);
+  const signInWithPassword = useAuthStore((s) => s.signInWithPassword);
   const [isSigningIn, setIsSigningIn] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [email, setEmail] = React.useState('');
+  const [password, setPassword] = React.useState('');
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
   }, []);
 
-  const handleDevLogin = async () => {
+  const handlePasswordLogin = async () => {
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!normalizedEmail || !password) {
+      setError('Email and password are required.');
+      return;
+    }
+
     setIsSigningIn(true);
     setError(null);
     try {
-      await signInDev();
+      await signInWithPassword(normalizedEmail, password);
     } catch {
-      setError('Dev login failed. Is the API running?');
+      setError('Email/password login failed. Please check your credentials.');
     } finally {
       setIsSigningIn(false);
     }
@@ -75,52 +77,52 @@ export default function LoginScreen() {
           </View>
         </View>
 
-        {/* Pool card */}
-        <View style={styles.poolCard}>
-          <View style={styles.poolCardHeader}>
-            <View style={styles.poolIcon}>
-              <Text style={{ fontSize: 20 }}>👥</Text>
-            </View>
-            <View>
-              <Text style={styles.poolName}>{POOL_NAME}</Text>
-              <Text style={styles.poolSub}>Private pool · 8 friends</Text>
-            </View>
-          </View>
-          <View style={styles.poolStats}>
-            {[{ v: '48', l: 'Matches' }, { v: '8', l: 'Players' }, { v: 'Jun 11', l: 'Starts' }].map(({ v, l }) => (
-              <View key={l} style={styles.poolStat}>
-                <Text style={styles.poolStatValue}>{v}</Text>
-                <Text style={styles.poolStatLabel}>{l}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-
-        {/* Friend avatars */}
-        <View style={styles.friendsRow}>
-          <View style={styles.avatarStack}>
-            {FRIENDS.map((f, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.miniAvatar,
-                  { backgroundColor: f.color, marginLeft: i > 0 ? -6 : 0 },
-                ]}
-              >
-                <Text style={styles.miniAvatarText}>{f.initials}</Text>
-              </View>
-            ))}
-          </View>
-          <Text style={styles.friendsText}>
-            Marco, Sofía, Tomás{' '}
-            <Text style={{ color: colors.dim }}>+ 4 others joined</Text>
-          </Text>
-        </View>
-
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         {/* CTA */}
         <View style={styles.ctaSection}>
+          <View style={styles.formCard}>
+            <Text style={styles.formLabel}>Email</Text>
+            <TextInput
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="email-address"
+              placeholder="you@example.com"
+              placeholderTextColor={colors.dim}
+              style={styles.input}
+              value={email}
+              onChangeText={setEmail}
+            />
+            <Text style={styles.formLabel}>Password</Text>
+            <TextInput
+              autoCapitalize="none"
+              autoCorrect={false}
+              secureTextEntry
+              placeholder="Your password"
+              placeholderTextColor={colors.dim}
+              style={styles.input}
+              value={password}
+              onChangeText={setPassword}
+            />
+            <TouchableOpacity
+              style={[styles.passwordBtn, isSigningIn && styles.googleBtnDisabled]}
+              onPress={handlePasswordLogin}
+              disabled={isSigningIn}
+            >
+              {isSigningIn ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.passwordBtnText}>Continue with Email</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
           {hasGoogleConfig ? (
             <GoogleLoginButton isSigningIn={isSigningIn} setIsSigningIn={setIsSigningIn} setError={setError} />
           ) : (
@@ -132,12 +134,6 @@ export default function LoginScreen() {
             By continuing you agree to the pool rules.{'\n'}Your picks are visible to other members.
           </Text>
         </View>
-
-        {__DEV__ && (
-          <TouchableOpacity style={styles.devBtn} onPress={handleDevLogin} disabled={isSigningIn}>
-            <Text style={styles.devBtnText}>Dev Login (skip Google)</Text>
-          </TouchableOpacity>
-        )}
 
         <View style={styles.spacerBottom} />
       </ScrollView>
@@ -252,89 +248,6 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
 
-  poolCard: {
-    backgroundColor: colors.card,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 20,
-    marginBottom: 12,
-  },
-  poolCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 16,
-  },
-  poolIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: colors.accentDim,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  poolName: {
-    color: colors.text,
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  poolSub: {
-    color: colors.muted,
-    fontSize: 12,
-    marginTop: 1,
-  },
-  poolStats: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  poolStat: {
-    flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: 12,
-    padding: 10,
-    alignItems: 'center',
-  },
-  poolStatValue: {
-    color: colors.text,
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  poolStatLabel: {
-    color: colors.dim,
-    fontSize: 10,
-    marginTop: 1,
-  },
-
-  friendsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 28,
-    paddingLeft: 4,
-  },
-  avatarStack: {
-    flexDirection: 'row',
-  },
-  miniAvatar: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 2,
-    borderColor: colors.bg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  miniAvatarText: {
-    color: '#fff',
-    fontSize: 9,
-    fontWeight: '700',
-  },
-  friendsText: {
-    color: colors.muted,
-    fontSize: 12,
-  },
-
   error: {
     color: colors.danger,
     textAlign: 'center',
@@ -344,6 +257,57 @@ const styles = StyleSheet.create({
 
   ctaSection: {
     gap: 12,
+  },
+  formCard: {
+    backgroundColor: colors.card,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 16,
+    gap: 10,
+  },
+  formLabel: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  input: {
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: colors.text,
+    fontSize: 15,
+  },
+  passwordBtn: {
+    marginTop: 6,
+    minHeight: 52,
+    borderRadius: 9999,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 18,
+  },
+  passwordBtnText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.border,
+  },
+  dividerText: {
+    color: colors.dim,
+    fontSize: 12,
   },
   googleBtn: {
     width: '100%',
@@ -369,19 +333,5 @@ const styles = StyleSheet.create({
     fontSize: 11,
     textAlign: 'center',
     lineHeight: 17,
-  },
-
-  devBtn: {
-    marginTop: 16,
-    paddingVertical: 10,
-    paddingHorizontal: 24,
-    borderRadius: borderRadius.full,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-  },
-  devBtnText: {
-    color: colors.muted,
-    fontSize: 13,
   },
 });

@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,6 +13,7 @@ import { fetchMyPredictions } from '../api/predictions';
 import { fetchMyLeagues } from '../api/leagues';
 import { Match, Prediction, League } from '../types';
 import PredictionSheet from '../components/PredictionSheet';
+import MatchCard from '../components/MatchCard';
 import Flag from '../components/ui/Flag';
 import Avatar from '../components/ui/Avatar';
 import Badge from '../components/ui/Badge';
@@ -37,10 +37,6 @@ function getResult(pred: Prediction, match: Match): 'exact' | 'correct' | 'wrong
 
 function formatDate(utcDate: string) {
   return new Date(utcDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
-
-function formatTime(utcDate: string) {
-  return new Date(utcDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 }
 
 export default function HomeScreen() {
@@ -76,12 +72,26 @@ export default function HomeScreen() {
 
   useEffect(() => { load(); }, []);
 
-  const upcoming = matches.filter((m) => m.status === 'SCHEDULED' || m.status === 'LIVE');
-  const finished = matches.filter((m) => m.status === 'FINISHED');
-  const nextMatch = upcoming[0] ?? null;
-  const recentFinished = [...finished].reverse().slice(0, 4);
+  const now = new Date();
+  const next24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
-  const myPred = nextMatch ? predMap[nextMatch._id] : null;
+  const upcoming = [...matches]
+    .filter((m) => m.status === 'SCHEDULED' || m.status === 'LIVE')
+    .sort((a, b) => new Date(a.utcDate).getTime() - new Date(b.utcDate).getTime());
+  const finished = matches.filter((m) => m.status === 'FINISHED');
+  const matchesInNext24Hours = upcoming.filter((match) => {
+    if (match.status === 'LIVE') {
+      return true;
+    }
+
+    const kickoff = new Date(match.utcDate);
+    return kickoff >= now && kickoff <= next24Hours;
+  });
+  const nextMatches =
+    matchesInNext24Hours.length >= 3
+      ? matchesInNext24Hours
+      : upcoming.slice(0, 3);
+  const recentFinished = [...finished].reverse().slice(0, 4);
 
   const totalPoints = predictions.reduce((acc, p) => acc + (p.points ?? 0), 0);
   const exactCount = predictions.filter((p) => {
@@ -160,49 +170,24 @@ export default function HomeScreen() {
           ))}
         </View>
 
-        {/* Next match */}
-        {nextMatch && (
+        {/* Next matches */}
+        {nextMatches.length > 0 && (
           <View>
-            <SectionLabel>Next Match</SectionLabel>
-            <TouchableOpacity
-              style={[
-                styles.nextMatchCard,
-                myPred
-                  ? { backgroundColor: colors.card, borderColor: colors.border }
-                  : { backgroundColor: 'rgba(0,168,126,0.08)', borderColor: 'rgba(0,168,126,0.28)' },
-              ]}
-              onPress={() => setSelectedMatch(nextMatch)}
-            >
-              <View style={styles.nextMatchHeader}>
-                <Text style={styles.matchMeta}>
-                  {nextMatch.group ? `Group ${nextMatch.group}` : nextMatch.stage} · {formatDate(nextMatch.utcDate)} · {formatTime(nextMatch.utcDate)}
-                </Text>
-                {myPred ? (
-                  <Text style={styles.predictedBadge}>✓ Predicted</Text>
-                ) : (
-                  <View style={styles.predictBtn}>
-                    <Text style={styles.predictBtnText}>Predict →</Text>
-                  </View>
-                )}
-              </View>
-              <View style={styles.matchRow}>
-                <View style={styles.teamSide}>
-                  <Flag code={nextMatch.homeTeam.code} size={28} />
-                  <Text style={styles.teamName}>{nextMatch.homeTeam.name}</Text>
-                </View>
-                <View style={styles.scoreCenter}>
-                  {myPred ? (
-                    <Text style={styles.scoreLarge}>{myPred.homeGoals} – {myPred.awayGoals}</Text>
-                  ) : (
-                    <Text style={styles.vsText}>vs</Text>
-                  )}
-                </View>
-                <View style={[styles.teamSide, styles.teamSideRight]}>
-                  <Text style={styles.teamName}>{nextMatch.awayTeam.name}</Text>
-                  <Flag code={nextMatch.awayTeam.code} size={28} />
-                </View>
-              </View>
-            </TouchableOpacity>
+            <SectionLabel>Next Matches</SectionLabel>
+            <View style={styles.nextMatchesList}>
+              {nextMatches.map((match) => {
+                const myPred = predMap[match._id] ?? null;
+
+                return (
+                  <MatchCard
+                    key={match._id}
+                    match={match}
+                    prediction={myPred}
+                    onPress={() => setSelectedMatch(match)}
+                  />
+                );
+              })}
+            </View>
           </View>
         )}
 
@@ -330,23 +315,13 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2, marginBottom: 8, fontFamily: fonts.bodyMedium,
   },
 
-  nextMatchCard: {
-    borderRadius: 20, borderWidth: 1, padding: 16,
-  },
-  nextMatchHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
+  nextMatchesList: { gap: 10 },
   matchMeta: { color: colors.muted, fontSize: 11, fontFamily: fonts.body },
-  predictedBadge: { color: colors.accent, fontSize: 11, fontWeight: '600', fontFamily: fonts.bodyMedium },
-  predictBtn: { backgroundColor: colors.accent, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 9999 },
-  predictBtnText: { color: '#fff', fontSize: 11, fontWeight: '600' },
-
   matchRow: { flexDirection: 'row', alignItems: 'center' },
   teamSide: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
   teamSideRight: { justifyContent: 'flex-end' },
-  teamName: { color: colors.text, fontSize: 16, fontFamily: fonts.displayBold },
   teamNameSm: { color: colors.text, fontSize: 14, fontFamily: fonts.displayBold },
   scoreCenter: { alignItems: 'center', paddingHorizontal: 10, minWidth: 70 },
-  scoreLarge: { color: colors.text, fontSize: 22, fontWeight: '700' },
-  vsText: { color: colors.dim, fontSize: 14 },
 
   card: { backgroundColor: colors.card, borderRadius: 20, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
   leaderRow: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 13, paddingHorizontal: 16 },
