@@ -49,13 +49,13 @@ function ScoreControl({
 }
 
 export default function PredictionSheet({ match, existing, onSave, onClose }: PredictionSheetProps) {
-  const [score, setScore] = useState<[number, number]>(existing || [1, 1]);
+  const [score, setScore] = useState<[number, number]>(existing || [0, 0]);
   const slideAnim = React.useRef(new Animated.Value(400)).current;
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (match) {
-      setScore(existing || [1, 1]);
+      setScore(existing || [0, 0]);
       Animated.parallel([
         Animated.timing(slideAnim, { toValue: 0, duration: 280, useNativeDriver: true }),
         Animated.timing(fadeAnim, { toValue: 1, duration: 220, useNativeDriver: true }),

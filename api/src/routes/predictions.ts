@@ -19,6 +19,15 @@ function deriveWinner(home: number, away: number): MatchWinner {
   return 'DRAW';
 }
 
+function serializePrediction<T extends { _id: unknown; userId: unknown; matchId: unknown }>(prediction: T) {
+  return {
+    ...prediction,
+    _id: String(prediction._id),
+    userId: String(prediction.userId),
+    matchId: String(prediction.matchId),
+  };
+}
+
 router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { matchId, homeGoals, awayGoals } = predictionSchema.parse(req.body);
@@ -55,16 +64,18 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
 router.get('/mine', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   const { stage } = req.query;
 
-  const predictions = await Prediction.find({ userId: req.userId })
-    .populate('matchId')
+  const filter: Record<string, unknown> = { userId: req.userId };
+
+  if (typeof stage === 'string' && stage) {
+    const stageMatches = await Match.find({ stage }).select('_id').lean();
+    filter.matchId = { $in: stageMatches.map((match) => match._id) };
+  }
+
+  const predictions = await Prediction.find(filter)
     .sort({ createdAt: -1 })
     .lean();
 
-  const filtered = stage
-    ? predictions.filter((p) => (p.matchId as any)?.stage === stage)
-    : predictions;
-
-  res.json({ predictions: filtered });
+  res.json({ predictions: predictions.map(serializePrediction) });
 });
 
 router.get('/match/:matchId', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {

@@ -1,9 +1,8 @@
 import { create } from 'zustand';
 import { getToken, setToken, deleteToken } from './tokenStorage';
+import { TOKEN_STORAGE_KEY } from './tokenKey';
 import { User } from '../types';
 import { loginWithGoogle, loginDev, getMe } from '../api/auth';
-
-const TOKEN_KEY = 'wc2026_token';
 
 interface AuthState {
   user: User | null;
@@ -22,19 +21,19 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   signInWithGoogle: async (idToken: string) => {
     const { token, user } = await loginWithGoogle(idToken);
-    await setToken(TOKEN_KEY, token);
+    await setToken(TOKEN_STORAGE_KEY, token);
     set({ user, token, isLoading: false });
   },
 
   signInDev: async () => {
     const { token, user } = await loginDev();
-    await setToken(TOKEN_KEY, token);
+    await setToken(TOKEN_STORAGE_KEY, token);
     set({ user, token, isLoading: false });
   },
 
   restoreSession: async () => {
     try {
-      const token = await getToken(TOKEN_KEY);
+      const token = await getToken(TOKEN_STORAGE_KEY);
       if (!token) {
         set({ isLoading: false });
         return;
@@ -42,13 +41,13 @@ export const useAuthStore = create<AuthState>((set) => ({
       const user = await getMe();
       set({ user, token, isLoading: false });
     } catch {
-      await deleteToken(TOKEN_KEY);
+      await deleteToken(TOKEN_STORAGE_KEY);
       set({ user: null, token: null, isLoading: false });
     }
   },
 
   signOut: async () => {
-    await deleteToken(TOKEN_KEY);
+    await deleteToken(TOKEN_STORAGE_KEY);
     set({ user: null, token: null });
   },
 }));

@@ -86,6 +86,7 @@ From the repo root:
 npm run dev       # API + app concurrently
 npm run api       # API only (http://localhost:3000)
 npm run app       # Expo app only
+npm run app:mobile # Expo on LAN for a physical device
 ```
 
 Or individually:
@@ -96,6 +97,20 @@ cd api && npm run dev
 
 # App
 cd app && npx expo start
+```
+
+### Using a Physical Phone
+
+When you run the app in Expo Go on a phone, the app now auto-detects the Expo dev server host and uses that machine's IP on port `3000` for the API. That means:
+
+- Start the API locally with `npm run api`
+- Start Expo on LAN with `npm run app:mobile`
+- Keep your phone and computer on the same Wi-Fi network
+
+If you want to override the API host manually, set `EXPO_PUBLIC_API_URL` to something like:
+
+```bash
+EXPO_PUBLIC_API_URL=http://192.168.1.50:3000
 ```
 
 ## API
