@@ -1,27 +1,9 @@
-import { Platform } from 'react-native';
 import { create } from 'zustand';
-import * as SecureStore from 'expo-secure-store';
+import { getToken, setToken, deleteToken } from './tokenStorage';
 import { User } from '../types';
 import { loginWithGoogle, loginDev, getMe } from '../api/auth';
 
 const TOKEN_KEY = 'wc2026_token';
-
-const storage = {
-  get: (key: string): Promise<string | null> =>
-    Platform.OS === 'web'
-      ? Promise.resolve(localStorage.getItem(key))
-      : SecureStore.getItemAsync(key),
-
-  set: (key: string, value: string): Promise<void> =>
-    Platform.OS === 'web'
-      ? Promise.resolve(localStorage.setItem(key, value))
-      : SecureStore.setItemAsync(key, value),
-
-  delete: (key: string): Promise<void> =>
-    Platform.OS === 'web'
-      ? Promise.resolve(localStorage.removeItem(key))
-      : SecureStore.deleteItemAsync(key),
-};
 
 interface AuthState {
   user: User | null;
@@ -40,19 +22,19 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   signInWithGoogle: async (idToken: string) => {
     const { token, user } = await loginWithGoogle(idToken);
-    await storage.set(TOKEN_KEY, token);
+    await setToken(TOKEN_KEY, token);
     set({ user, token, isLoading: false });
   },
 
   signInDev: async () => {
     const { token, user } = await loginDev();
-    await storage.set(TOKEN_KEY, token);
+    await setToken(TOKEN_KEY, token);
     set({ user, token, isLoading: false });
   },
 
   restoreSession: async () => {
     try {
-      const token = await storage.get(TOKEN_KEY);
+      const token = await getToken(TOKEN_KEY);
       if (!token) {
         set({ isLoading: false });
         return;
@@ -60,13 +42,13 @@ export const useAuthStore = create<AuthState>((set) => ({
       const user = await getMe();
       set({ user, token, isLoading: false });
     } catch {
-      await storage.delete(TOKEN_KEY);
+      await deleteToken(TOKEN_KEY);
       set({ user: null, token: null, isLoading: false });
     }
   },
 
   signOut: async () => {
-    await storage.delete(TOKEN_KEY);
+    await deleteToken(TOKEN_KEY);
     set({ user: null, token: null });
   },
 }));
