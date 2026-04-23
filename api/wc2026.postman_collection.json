@@ -10,7 +10,7 @@
       "type": "string"
     },
     {
-      "key": "wc2026_token",
+      "key": "token",
       "value": "",
       "type": "string"
     },
@@ -25,6 +25,11 @@
       "type": "string"
     },
     {
+      "key": "memberUserId",
+      "value": "",
+      "type": "string"
+    },
+    {
       "key": "syncApiKey",
       "value": "",
       "type": "string"
@@ -34,6 +39,54 @@
     {
       "name": "Auth",
       "item": [
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.token) { pm.collectionVariables.set('token', json.token); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/auth/register", "host": ["{{baseUrl}}"], "path": ["auth", "register"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"player@example.com\",\n  \"name\": \"Player One\",\n  \"password\": \"supersecret123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Password Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.token) { pm.collectionVariables.set('token', json.token); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"player@example.com\",\n  \"password\": \"supersecret123\"\n}"
+            }
+          }
+        },
         {
           "name": "Google Login",
           "event": [
@@ -184,6 +237,31 @@
               "mode": "raw",
               "raw": "{\n  \"name\": \"My League\"\n}"
             }
+          }
+        },
+        {
+          "name": "Add League Admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{baseUrl}}/leagues/{{leagueId}}/admins", "host": ["{{baseUrl}}"], "path": ["leagues", "{{leagueId}}", "admins"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{memberUserId}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Remove League Admin",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/leagues/{{leagueId}}/admins/{{memberUserId}}", "host": ["{{baseUrl}}"], "path": ["leagues", "{{leagueId}}", "admins", "{{memberUserId}}"] }
           }
         },
         {

@@ -1,20 +1,24 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IUser extends Document {
-  googleId: string;
+  googleId: string | null;
   email: string;
   name: string;
   avatarUrl: string;
+  passwordHash: string | null;
+  isMaster: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
 
 const userSchema = new Schema<IUser>(
   {
-    googleId: { type: String, required: true, unique: true },
-    email: { type: String, required: true, unique: true },
+    googleId: { type: String, default: null, unique: true, sparse: true },
+    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     name: { type: String, required: true },
     avatarUrl: { type: String, default: '' },
+    passwordHash: { type: String, default: null, select: false },
+    isMaster: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
