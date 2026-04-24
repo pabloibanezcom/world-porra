@@ -14,22 +14,8 @@ const fontAssets = {
   'FWC26-UltraCondensedBold': require('./assets/fonts/FWC26-UltraCondensedBold.ttf'),
 };
 
-if (Platform.OS === 'web' && typeof document !== 'undefined') {
-  const injectLink = (rel: string, href: string, extra?: Record<string, string>) => {
-    if (document.querySelector(`link[href="${href}"]`)) return;
-    const el = document.createElement('link');
-    el.rel = rel;
-    el.href = href;
-    if (extra) Object.entries(extra).forEach(([k, v]) => el.setAttribute(k, v));
-    document.head.appendChild(el);
-  };
-
-  injectLink('manifest', '/manifest.json');
-  injectLink('apple-touch-icon', '/icon-192.png');
-
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
-  }
+if (Platform.OS === 'web' && typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
 }
 
 export default function App() {
