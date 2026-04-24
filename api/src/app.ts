@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
+import mongoose from 'mongoose';
 import { errorHandler } from './middleware/errorHandler';
 import authRoutes from './routes/auth';
 import matchRoutes from './routes/matches';
@@ -22,7 +23,10 @@ app.use(
 );
 
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  const dbState = mongoose.connection.readyState;
+  const db = dbState === 1 ? 'connected' : dbState === 2 ? 'connecting' : 'disconnected';
+  const status = db === 'connected' ? 'ok' : 'degraded';
+  res.status(db === 'connected' ? 200 : 503).json({ status, db, timestamp: new Date().toISOString() });
 });
 
 app.use('/auth', authRoutes);
