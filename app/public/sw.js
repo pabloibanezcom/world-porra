@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'wc2026-v1';
+const CACHE_VERSION = 'wc2026-v2';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const FONT_CACHE = `${CACHE_VERSION}-fonts`;
 
