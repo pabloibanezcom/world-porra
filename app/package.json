@@ -8,6 +8,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
+    "generate:icons": "bash scripts/generate-logo-assets.sh",
     "build:web": "expo export -p web && node scripts/inject-pwa-tags.js"
   },
   "dependencies": {
