@@ -47,6 +47,7 @@ function serializeUser(user: {
   name: string;
   avatarUrl: string;
   isMaster?: boolean;
+  totalPoints?: number;
 }) {
   return {
     id: String(user._id),
@@ -54,6 +55,7 @@ function serializeUser(user: {
     name: user.name,
     avatarUrl: user.avatarUrl,
     isMaster: !!user.isMaster,
+    totalPoints: user.totalPoints ?? 0,
   };
 }
 

@@ -8,7 +8,8 @@
     "start": "node dist/index.js",
     "test": "vitest run",
     "test:watch": "vitest",
-    "seed": "tsx src/jobs/seedMatches.ts"
+    "seed": "tsx src/jobs/seedMatches.ts",
+    "seed:league-points": "tsx src/jobs/seedLeaguePoints.ts"
   },
   "dependencies": {
     "axios": "^1.7.9",

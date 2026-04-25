@@ -7,6 +7,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../store/authStore';
 import { fetchMatches } from '../api/matches';
 import { fetchMyPredictions } from '../api/predictions';
@@ -14,6 +15,7 @@ import { fetchMyLeagues } from '../api/leagues';
 import { Match, Prediction, League } from '../types';
 import PredictionSheet from '../components/PredictionSheet';
 import MatchCard from '../components/MatchCard';
+import LeagueCard from '../components/LeagueCard';
 import Flag from '../components/ui/Flag';
 import Avatar from '../components/ui/Avatar';
 import Badge from '../components/ui/Badge';
@@ -42,6 +44,7 @@ function formatDate(utcDate: string) {
 
 export default function HomeScreen() {
   const user = useAuthStore((s) => s.user);
+  const navigation = useNavigation<any>();
   const [matches, setMatches] = useState<Match[]>([]);
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [leagues, setLeagues] = useState<League[]>([]);
@@ -97,7 +100,7 @@ export default function HomeScreen() {
       : upcoming.slice(0, 3);
   const recentFinished = [...finished].reverse().slice(0, 4);
 
-  const totalPoints = predictions.reduce((acc, p) => acc + (p.points ?? 0), 0);
+  const totalPoints = user?.totalPoints ?? 0;
   const homeLeagues = leagues.slice(0, 2);
 
   const handleSave = async (matchId: string, score: [number, number]) => {
@@ -167,31 +170,16 @@ export default function HomeScreen() {
         {homeLeagues.length > 0 && (
           <View>
             <SectionLabel>Leagues</SectionLabel>
-            <View style={styles.card}>
-              {homeLeagues.map((league, index) => {
-                const sortedMembers = [...league.members].sort((a, b) => b.totalPoints - a.totalPoints);
-                const rank = sortedMembers.findIndex((member) => {
-                  const memberUser = member.userId as any;
-                  return memberUser?.id === user?.id || memberUser?._id === user?.id;
-                });
-
-                return (
-                  <View
-                    key={league._id}
-                    style={[
-                      styles.leagueRow,
-                      index < homeLeagues.length - 1 && styles.leagueRowBorder,
-                    ]}
-                  >
-                    <View style={styles.leagueInfo}>
-                      <Text style={styles.leagueName}>{league.name}</Text>
-                    </View>
-                    <Text style={styles.leagueRank}>
-                      {rank >= 0 ? rank + 1 : '—'}/{league.members.length}
-                    </Text>
-                  </View>
-                );
-              })}
+            <View style={{ gap: 10 }}>
+              {homeLeagues.map((league) => (
+                <LeagueCard
+                  key={league._id}
+                  league={league}
+                  userId={user?.id}
+                  compact
+                  onPress={() => navigation.navigate('LeagueDetail', { leagueId: league._id })}
+                />
+              ))}
             </View>
           </View>
         )}
@@ -282,12 +270,6 @@ const styles = StyleSheet.create({
   teamNameSm: { color: colors.text, fontSize: 14, fontFamily: fonts.displayBold },
   scoreCenter: { alignItems: 'center', paddingHorizontal: 10, minWidth: 70 },
 
-  card: { backgroundColor: colors.card, borderRadius: 20, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
-  leagueRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 15, paddingHorizontal: 16 },
-  leagueRowBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
-  leagueInfo: { flex: 1, paddingRight: 12 },
-  leagueName: { color: colors.text, fontSize: 15, fontFamily: fonts.bodyMedium },
-  leagueRank: { color: colors.accent, fontSize: 16, fontFamily: fonts.displayBold },
 
   resultCard: { backgroundColor: colors.card, borderRadius: 16, borderWidth: 1, borderColor: colors.border, padding: 12, paddingHorizontal: 16 },
   resultHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },

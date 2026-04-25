@@ -2,7 +2,6 @@ import mongoose, { Schema, Document, Types } from 'mongoose';
 
 export interface ILeagueMember {
   userId: Types.ObjectId;
-  totalPoints: number;
   joinedAt: Date;
   isAdmin: boolean;
 }
@@ -20,7 +19,6 @@ export interface ILeague extends Document {
 const leagueMemberSchema = new Schema<ILeagueMember>(
   {
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    totalPoints: { type: Number, default: 0 },
     joinedAt: { type: Date, default: Date.now },
     isAdmin: { type: Boolean, default: false },
   },

@@ -1,12 +1,16 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { fetchMyLeagues } from '../api/leagues';
 import { League } from '../types';
+import { useAuthStore } from '../store/authStore';
+import LeagueCard from '../components/LeagueCard';
 import LoadingView from '../components/ui/LoadingView';
-import { colors, spacing, fontSize, borderRadius } from '../theme';
+import { colors, fonts } from '../theme';
 
 export default function LeaguesScreen() {
+  const user = useAuthStore((s) => s.user);
   const [leagues, setLeagues] = useState<League[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -36,7 +40,11 @@ export default function LeaguesScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={styles.titleRow}>
+        <Text style={styles.title}>Leagues</Text>
+      </View>
+
       <View style={styles.actions}>
         <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('CreateLeague')}>
           <Text style={styles.actionText}>Create League</Text>
@@ -56,16 +64,16 @@ export default function LeaguesScreen() {
           data={leagues}
           keyExtractor={(item) => item._id}
           renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.leagueCard}
+            <LeagueCard
+              league={item}
+              userId={user?.id}
               onPress={() => navigation.navigate('LeagueDetail', { leagueId: item._id })}
-            >
-              <Text style={styles.leagueName}>{item.name}</Text>
-              <Text style={styles.leagueInfo}>{item.members.length} members</Text>
-            </TouchableOpacity>
+            />
           )}
           contentContainerStyle={styles.list}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />
+          }
           ListEmptyComponent={
             <View style={styles.empty}>
               <Text style={styles.emptyText}>No leagues yet.</Text>
@@ -74,35 +82,35 @@ export default function LeaguesScreen() {
           }
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  actions: { flexDirection: 'row', padding: spacing.md, gap: spacing.sm },
+  container: { flex: 1, backgroundColor: colors.bg },
+
+  titleRow: { paddingHorizontal: 18, paddingTop: 22, paddingBottom: 12 },
+  title: { color: colors.text, fontSize: 30, fontFamily: fonts.display },
+
+  actions: { flexDirection: 'row', paddingHorizontal: 18, paddingBottom: 12, gap: 10 },
   actionButton: {
     flex: 1,
-    backgroundColor: colors.primary,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.md,
+    backgroundColor: colors.accent,
+    paddingVertical: 12,
+    borderRadius: 14,
     alignItems: 'center',
   },
-  secondaryButton: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.primary },
-  actionText: { color: '#fff', fontWeight: '600', fontSize: fontSize.sm },
-  secondaryText: { color: colors.primary },
-  list: { padding: spacing.md, paddingBottom: spacing.md },
-  leagueCard: {
-    backgroundColor: colors.surface,
-    padding: spacing.lg,
-    borderRadius: borderRadius.md,
-    marginBottom: spacing.sm,
-    borderLeftWidth: 4,
-    borderLeftColor: colors.accent,
+  secondaryButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: colors.borderMid,
   },
-  leagueName: { fontSize: fontSize.md, fontWeight: '700', color: colors.text },
-  leagueInfo: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: spacing.xs },
-  empty: { alignItems: 'center', paddingTop: spacing.xxl },
-  emptyText: { fontSize: fontSize.md, color: colors.textSecondary, fontWeight: '600' },
-  emptySubtext: { fontSize: fontSize.sm, color: colors.textLight, marginTop: spacing.xs },
+  actionText: { color: '#fff', fontWeight: '600', fontSize: 13, fontFamily: fonts.bodyMedium },
+  secondaryText: { color: colors.text },
+
+  list: { padding: 18, paddingTop: 4, gap: 10 },
+
+  empty: { alignItems: 'center', paddingTop: 48 },
+  emptyText: { color: colors.muted, fontSize: 16, fontWeight: '600', fontFamily: fonts.bodyMedium },
+  emptySubtext: { color: colors.dim, fontSize: 13, marginTop: 4, fontFamily: fonts.body },
 });

@@ -3,6 +3,7 @@ export interface User {
   name: string;
   email: string;
   avatarUrl: string;
+  totalPoints: number;
 }
 
 export type MatchStage =
@@ -54,7 +55,6 @@ export interface Prediction {
 
 export interface LeagueMember {
   userId: User;
-  totalPoints: number;
   joinedAt: string;
 }
 

@@ -48,7 +48,7 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
       name,
       inviteCode: generateInviteCode(),
       ownerId: req.userId,
-      members: [{ userId: req.userId, totalPoints: 0, isAdmin: true }],
+      members: [{ userId: req.userId, isAdmin: true }],
     });
 
     res.status(201).json({ league });
@@ -82,7 +82,7 @@ router.post('/join', authMiddleware, async (req: AuthRequest, res: Response): Pr
       return;
     }
 
-    league.members.push({ userId: req.userId as any, totalPoints: 0, joinedAt: new Date(), isAdmin: false });
+    league.members.push({ userId: req.userId as any, joinedAt: new Date(), isAdmin: false });
     await league.save();
 
     res.json({ league });
@@ -98,6 +98,7 @@ router.post('/join', authMiddleware, async (req: AuthRequest, res: Response): Pr
 router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   const leagues = await League.find({ 'members.userId': req.userId })
     .populate('ownerId', 'name avatarUrl')
+    .populate('members.userId', 'name avatarUrl totalPoints')
     .lean();
 
   res.json({ leagues });
@@ -105,7 +106,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise
 
 router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   const league = await League.findById(req.params.id)
-    .populate('members.userId', 'name avatarUrl')
+    .populate('members.userId', 'name avatarUrl totalPoints')
     .populate('ownerId', 'name avatarUrl')
     .lean();
 
@@ -121,7 +122,11 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response): Prom
   }
 
   // Sort members by points descending for leaderboard
-  league.members.sort((a, b) => b.totalPoints - a.totalPoints);
+  league.members.sort((a, b) => {
+    const aPoints = (a.userId as any)?.totalPoints ?? 0;
+    const bPoints = (b.userId as any)?.totalPoints ?? 0;
+    return bPoints - aPoints;
+  });
 
   res.json({ league });
 });

@@ -1,6 +1,6 @@
 import { Match } from '../models/Match';
 import { Prediction } from '../models/Prediction';
-import { League } from '../models/League';
+import { User } from '../models/User';
 import { fetchAllMatches, mapExternalMatch } from './footballApi';
 import { calculatePoints } from './scoring';
 import { logger } from '../config/logger';
@@ -54,25 +54,21 @@ export async function processFinishedMatches(): Promise<{
     logger.info(`Scored ${predictions.length} predictions for match ${match.homeTeam.name} vs ${match.awayTeam.name}`);
   }
 
-  // Update league leaderboards
-  const leaguesUpdated = await updateLeaguePoints();
+  // Update total points on each user who had predictions scored
+  const usersUpdated = await updateUserPoints();
 
-  return { matchesProcessed, predictionsScored, leaguesUpdated };
+  return { matchesProcessed, predictionsScored, leaguesUpdated: usersUpdated };
 }
 
-async function updateLeaguePoints(): Promise<number> {
-  const leagues = await League.find();
+async function updateUserPoints(): Promise<number> {
+  const results = await Prediction.aggregate([
+    { $match: { points: { $ne: null } } },
+    { $group: { _id: '$userId', total: { $sum: '$points' } } },
+  ]);
 
-  for (const league of leagues) {
-    for (const member of league.members) {
-      const result = await Prediction.aggregate([
-        { $match: { userId: member.userId, points: { $ne: null } } },
-        { $group: { _id: null, total: { $sum: '$points' } } },
-      ]);
-      member.totalPoints = result[0]?.total || 0;
-    }
-    await league.save();
+  for (const { _id, total } of results) {
+    await User.findByIdAndUpdate(_id, { totalPoints: total });
   }
 
-  return leagues.length;
+  return results.length;
 }
