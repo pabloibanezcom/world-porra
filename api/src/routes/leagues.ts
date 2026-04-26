@@ -6,6 +6,7 @@ import { Match } from '../models/Match';
 import { Prediction } from '../models/Prediction';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { User } from '../models/User';
+import { getRequestLanguage, hydrateMatches } from '../services/countryTeamService';
 
 const router = Router();
 
@@ -253,9 +254,14 @@ router.get('/:id/members/:userId/predictions', authMiddleware, async (req: AuthR
       return;
     }
 
-    const [finishedMatches, upcomingMatches] = await Promise.all([
+    const [rawFinishedMatches, rawUpcomingMatches] = await Promise.all([
       Match.find({ status: 'FINISHED' }).lean(),
       Match.find({ status: 'SCHEDULED' }).sort({ utcDate: 1 }).lean(),
+    ]);
+    const language = getRequestLanguage(req);
+    const [finishedMatches, upcomingMatches] = await Promise.all([
+      hydrateMatches(rawFinishedMatches, language),
+      hydrateMatches(rawUpcomingMatches, language),
     ]);
 
     const finishedIds = finishedMatches.map((m) => m._id);

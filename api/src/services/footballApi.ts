@@ -123,13 +123,22 @@ export function mapExternalMatch(ext: FootballDataMatch) {
           : 'DRAW'
       : null;
 
+  const homeTeamName = mapTeamName(ext.homeTeam.name);
+  const awayTeamName = mapTeamName(ext.awayTeam.name);
+  const homeTeamCode = mapTeamCode(ext.homeTeam);
+  const awayTeamCode = mapTeamCode(ext.awayTeam);
+
   return {
     externalId: ext.id,
     stage,
     group: mapGroup(ext.group),
     matchday: ext.matchday,
-    homeTeam: { name: mapTeamName(ext.homeTeam.name), code: mapTeamCode(ext.homeTeam), crest: ext.homeTeam.crest || '' },
-    awayTeam: { name: mapTeamName(ext.awayTeam.name), code: mapTeamCode(ext.awayTeam), crest: ext.awayTeam.crest || '' },
+    homeTeamCode,
+    awayTeamCode,
+    sourceTeams: {
+      home: { name: homeTeamName, code: homeTeamCode, crest: ext.homeTeam.crest || '' },
+      away: { name: awayTeamName, code: awayTeamCode, crest: ext.awayTeam.crest || '' },
+    },
     utcDate: new Date(ext.utcDate),
     status,
     result:

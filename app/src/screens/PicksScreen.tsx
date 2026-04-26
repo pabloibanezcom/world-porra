@@ -27,6 +27,7 @@ import Flag from '../components/ui/Flag';
 import TournamentPicksSection from '../components/TournamentPicksSection';
 import { TournamentPicks, PlayerOption, TeamOption } from '../data/tournamentData';
 import { colors, fonts } from '../theme';
+import { useI18n } from '../i18n';
 
 function getResult(pred: Prediction, match: Match): 'exact' | 'correct' | 'wrong' | null {
   if (!match.result) return null;
@@ -46,15 +47,15 @@ function getDayKey(utcDate: string) {
   return `${year}-${month}-${day}`;
 }
 
-function formatDayLabel(utcDate: string) {
-  return new Date(utcDate).toLocaleDateString('en-US', {
+function formatDayLabel(utcDate: string, locale: string) {
+  return new Date(utcDate).toLocaleDateString(locale, {
     weekday: 'long',
     month: 'long',
     day: 'numeric',
   });
 }
 
-function groupMatchesByDay(matches: Match[]) {
+function groupMatchesByDay(matches: Match[], locale: string) {
   const groups = new Map<string, Match[]>();
 
   matches.forEach((match) => {
@@ -64,7 +65,7 @@ function groupMatchesByDay(matches: Match[]) {
 
   return Array.from(groups.entries()).map(([day, dayMatches]) => ({
     day,
-    label: formatDayLabel(dayMatches[0].utcDate),
+    label: formatDayLabel(dayMatches[0].utcDate, locale),
     matches: dayMatches,
   }));
 }
@@ -107,6 +108,7 @@ function getGroupsFromMatches(matches: Match[]): GroupStanding[] {
 }
 
 export default function PicksScreen() {
+  const { language, t, locale } = useI18n();
   const scrollRef = useRef<ScrollView>(null);
   const tabAnimation = useRef(new Animated.Value(0)).current;
   const [tab, setTab] = useState<PicksTab>('upcoming');
@@ -124,7 +126,7 @@ export default function PicksScreen() {
   const predMap = Object.fromEntries(predictions.map((p) => [p.matchId, p]));
   const groupPredMap = Object.fromEntries(groupPredictions.map((p) => [p.group, p]));
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       const [m, p, gp] = await Promise.all([
         fetchMatches({}),
@@ -139,19 +141,21 @@ export default function PicksScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [language]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await load();
     setRefreshing(false);
-  }, []);
+  }, [load]);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   useEffect(() => {
     fetchTournamentPrediction().then(setTournamentPicks).catch(() => {});
-  }, []);
+  }, [language]);
 
   const handleTournamentPick = useCallback(
     (key: keyof TournamentPicks, value: TeamOption | PlayerOption) => {
@@ -195,7 +199,7 @@ export default function PicksScreen() {
       ),
     [finished, tab, upcoming],
   );
-  const matchGroups = useMemo(() => groupMatchesByDay(shown), [shown]);
+  const matchGroups = useMemo(() => groupMatchesByDay(shown, locale), [locale, shown]);
   const groupStandings = useMemo(() => getGroupsFromMatches(matches), [matches]);
 
   const handleSave = async (matchId: string, score: [number, number]) => {
@@ -211,8 +215,15 @@ export default function PicksScreen() {
     setGroupPredictions((prev) => {
       const existing = prev.find((prediction) => prediction.group === groupId);
       const optimistic: GroupPrediction = existing
-        ? { ...existing, orderedTeams }
-        : { _id: `local-${groupId}`, userId: '', group: groupId, orderedTeams, points: null };
+        ? { ...existing, orderedTeams, orderedTeamCodes: orderedTeams.map((team) => team.code) }
+        : {
+            _id: `local-${groupId}`,
+            userId: '',
+            group: groupId,
+            orderedTeams,
+            orderedTeamCodes: orderedTeams.map((team) => team.code),
+            points: null,
+          };
 
       return [...prev.filter((prediction) => prediction.group !== groupId), optimistic];
     });
@@ -237,8 +248,8 @@ export default function PicksScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.fixedHeader}>
         <View style={styles.titleRow}>
-          <Text style={styles.title}>My Picks</Text>
-          <Text style={styles.subtitle}>2026 FIFA World Cup · Group Stage</Text>
+          <Text style={styles.title}>{t('picks.title')}</Text>
+          <Text style={styles.subtitle}>{t('picks.subtitle')}</Text>
         </View>
 
         <View
@@ -258,16 +269,16 @@ export default function PicksScreen() {
             />
           )}
 
-          {PICK_TABS.map((t) => {
-            const active = tab === t;
+          {PICK_TABS.map((tabKey) => {
+            const active = tab === tabKey;
             return (
               <TouchableOpacity
-                key={t}
+                key={tabKey}
                 style={[styles.tab, active && styles.tabActive]}
-                onPress={() => setTab(t)}
+                onPress={() => setTab(tabKey)}
               >
                 <Text style={[styles.tabText, active && styles.tabTextActive]}>
-                  {t === 'upcoming' ? 'Upcoming' : t === 'results' ? 'Results' : t === 'groups' ? 'Groups' : 'Finals'}
+                  {tabKey === 'upcoming' ? t('picks.upcoming') : tabKey === 'results' ? t('picks.results') : tabKey === 'groups' ? t('picks.groups') : t('picks.finals')}
                 </Text>
               </TouchableOpacity>
             );
@@ -301,7 +312,7 @@ export default function PicksScreen() {
 
             {groupStandings.length === 0 && !refreshing && (
               <View style={styles.empty}>
-                <Text style={styles.emptyText}>Groups will appear once teams are confirmed.</Text>
+                <Text style={styles.emptyText}>{t('picks.groupsPending')}</Text>
               </View>
             )}
           </View>
@@ -335,7 +346,7 @@ export default function PicksScreen() {
         {tab !== 'groups' && tab !== 'finals' && shown.length === 0 && !refreshing && (
           <View style={styles.empty}>
             <Text style={styles.emptyText}>
-              {tab === 'upcoming' ? 'No upcoming matches.' : 'No results yet.'}
+              {tab === 'upcoming' ? t('picks.noUpcoming') : t('picks.noResults')}
             </Text>
           </View>
         )}
@@ -366,6 +377,7 @@ function GroupCard({
   onOrderChange: (groupId: string, orderedTeams: TeamInfo[]) => void;
   onDragStateChange: (isDragging: boolean) => void;
 }) {
+  const { t } = useI18n();
   const moveTeam = (index: number, targetIndex: number) => {
     if (targetIndex < 0 || targetIndex >= order.length || targetIndex === index) return;
     const next = [...order];
@@ -377,7 +389,7 @@ function GroupCard({
   return (
     <View style={styles.groupCard}>
       <View style={styles.groupHeader}>
-        <Text style={styles.groupTitle}>Group {group.id}</Text>
+        <Text style={styles.groupTitle}>{t('common.group', { group: group.id })}</Text>
       </View>
 
       {order.map((team, index) => {

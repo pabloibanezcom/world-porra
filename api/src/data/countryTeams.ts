@@ -1,0 +1,72 @@
+export interface CountryTeamSeed {
+  code: string;
+  names: {
+    en: string;
+    es: string;
+    [language: string]: string;
+  };
+  crest?: string;
+  aliases?: string[];
+}
+
+export const COUNTRY_TEAMS: CountryTeamSeed[] = [
+  { code: 'TBD', names: { en: 'TBD', es: 'P/D' }, aliases: ['To be determined'] },
+  { code: 'ALG', names: { en: 'Algeria', es: 'Argelia' } },
+  { code: 'ARG', names: { en: 'Argentina', es: 'Argentina' } },
+  { code: 'AUS', names: { en: 'Australia', es: 'Australia' } },
+  { code: 'AUT', names: { en: 'Austria', es: 'Austria' } },
+  { code: 'BEL', names: { en: 'Belgium', es: 'Bélgica' } },
+  { code: 'BIH', names: { en: 'Bosnia and Herzegovina', es: 'Bosnia y Herzegovina' } },
+  { code: 'BOL', names: { en: 'Bolivia', es: 'Bolivia' } },
+  { code: 'BRA', names: { en: 'Brazil', es: 'Brasil' } },
+  { code: 'CAN', names: { en: 'Canada', es: 'Canadá' } },
+  { code: 'CHI', names: { en: 'Chile', es: 'Chile' } },
+  { code: 'CIV', names: { en: 'Ivory Coast', es: 'Costa de Marfil' }, aliases: ["Côte d'Ivoire", 'Cote dIvoire'] },
+  { code: 'CMR', names: { en: 'Cameroon', es: 'Camerún' } },
+  { code: 'COD', names: { en: 'DR Congo', es: 'RD Congo' } },
+  { code: 'COL', names: { en: 'Colombia', es: 'Colombia' } },
+  { code: 'CPV', names: { en: 'Cape Verde', es: 'Cabo Verde' } },
+  { code: 'CRC', names: { en: 'Costa Rica', es: 'Costa Rica' } },
+  { code: 'CRO', names: { en: 'Croatia', es: 'Croacia' } },
+  { code: 'CUW', names: { en: 'Curaçao', es: 'Curazao' } },
+  { code: 'CZE', names: { en: 'Czechia', es: 'Chequia' } },
+  { code: 'DEN', names: { en: 'Denmark', es: 'Dinamarca' } },
+  { code: 'ECU', names: { en: 'Ecuador', es: 'Ecuador' } },
+  { code: 'EGY', names: { en: 'Egypt', es: 'Egipto' } },
+  { code: 'ENG', names: { en: 'England', es: 'Inglaterra' } },
+  { code: 'ESP', names: { en: 'Spain', es: 'España' } },
+  { code: 'FRA', names: { en: 'France', es: 'Francia' } },
+  { code: 'GER', names: { en: 'Germany', es: 'Alemania' } },
+  { code: 'GHA', names: { en: 'Ghana', es: 'Ghana' } },
+  { code: 'HAI', names: { en: 'Haiti', es: 'Haití' } },
+  { code: 'IRN', names: { en: 'Iran', es: 'Irán' } },
+  { code: 'IRQ', names: { en: 'Iraq', es: 'Irak' } },
+  { code: 'JOR', names: { en: 'Jordan', es: 'Jordania' } },
+  { code: 'JPN', names: { en: 'Japan', es: 'Japón' } },
+  { code: 'KEN', names: { en: 'Kenya', es: 'Kenia' } },
+  { code: 'KOR', names: { en: 'South Korea', es: 'Corea del Sur' }, aliases: ['Korea Republic'] },
+  { code: 'KSA', names: { en: 'Saudi Arabia', es: 'Arabia Saudí' } },
+  { code: 'MAR', names: { en: 'Morocco', es: 'Marruecos' } },
+  { code: 'MEX', names: { en: 'Mexico', es: 'México' } },
+  { code: 'NED', names: { en: 'Netherlands', es: 'Países Bajos' } },
+  { code: 'NGA', names: { en: 'Nigeria', es: 'Nigeria' } },
+  { code: 'NOR', names: { en: 'Norway', es: 'Noruega' } },
+  { code: 'NZL', names: { en: 'New Zealand', es: 'Nueva Zelanda' } },
+  { code: 'PAN', names: { en: 'Panama', es: 'Panamá' } },
+  { code: 'PAR', names: { en: 'Paraguay', es: 'Paraguay' } },
+  { code: 'PER', names: { en: 'Peru', es: 'Perú' } },
+  { code: 'POR', names: { en: 'Portugal', es: 'Portugal' } },
+  { code: 'QAT', names: { en: 'Qatar', es: 'Catar' } },
+  { code: 'RSA', names: { en: 'South Africa', es: 'Sudáfrica' } },
+  { code: 'SCO', names: { en: 'Scotland', es: 'Escocia' } },
+  { code: 'SEN', names: { en: 'Senegal', es: 'Senegal' } },
+  { code: 'SER', names: { en: 'Serbia', es: 'Serbia' } },
+  { code: 'SUI', names: { en: 'Switzerland', es: 'Suiza' } },
+  { code: 'SWE', names: { en: 'Sweden', es: 'Suecia' } },
+  { code: 'TUN', names: { en: 'Tunisia', es: 'Túnez' } },
+  { code: 'TUR', names: { en: 'Türkiye', es: 'Turquía' }, aliases: ['Turkey'] },
+  { code: 'URU', names: { en: 'Uruguay', es: 'Uruguay' } },
+  { code: 'USA', names: { en: 'United States', es: 'Estados Unidos' }, aliases: ['United States of America', 'USA'] },
+  { code: 'UZB', names: { en: 'Uzbekistan', es: 'Uzbekistán' } },
+  { code: 'VEN', names: { en: 'Venezuela', es: 'Venezuela' } },
+];

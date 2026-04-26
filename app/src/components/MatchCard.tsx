@@ -4,6 +4,7 @@ import { Match, Prediction } from '../types';
 import Flag from './ui/Flag';
 import Badge from './ui/Badge';
 import { colors, fonts } from '../theme';
+import { useI18n } from '../i18n';
 
 type Result = 'exact' | 'correct' | 'wrong';
 type MatchCardState = 'empty' | 'tbd' | 'predicted' | 'live' | 'finished';
@@ -15,12 +16,12 @@ interface Props {
   onPress?: () => void;
 }
 
-function formatDate(utcDate: string) {
-  return new Date(utcDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+function formatDate(utcDate: string, locale: string) {
+  return new Date(utcDate).toLocaleDateString(locale, { month: 'short', day: 'numeric' });
 }
 
-function formatTime(utcDate: string) {
-  return new Date(utcDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+function formatTime(utcDate: string, locale: string) {
+  return new Date(utcDate).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
 }
 
 function getTeamLabel(name: string, code?: string) {
@@ -54,6 +55,7 @@ function getCardState(match: Match, prediction?: Prediction | null): MatchCardSt
 }
 
 export default function MatchCard({ match, prediction, result, onPress }: Props) {
+  const { t, locale } = useI18n();
   const state = getCardState(match, prediction);
   const cardStyle =
     state === 'empty'
@@ -70,23 +72,23 @@ export default function MatchCard({ match, prediction, result, onPress }: Props)
   if (state === 'empty') {
     action = (
       <View style={styles.predictBtn}>
-        <Text style={styles.predictBtnText}>Predict →</Text>
+        <Text style={styles.predictBtnText}>{t('matchCard.predict')}</Text>
       </View>
     );
   } else if (state === 'tbd') {
-    action = <Text style={styles.tbdBadge}>Teams TBD</Text>;
+    action = <Text style={styles.tbdBadge}>{t('matchCard.teamsTbd')}</Text>;
   } else if (state === 'predicted') {
-    action = <Text style={styles.predictedBadge}>✓ Predicted</Text>;
+    action = <Text style={styles.predictedBadge}>✓ {t('matchCard.predicted')}</Text>;
   } else if (state === 'live') {
     action = (
       <View style={styles.livePill}>
-        <Text style={styles.liveText}>LIVE</Text>
+        <Text style={styles.liveText}>{t('common.live')}</Text>
       </View>
     );
   } else if (result) {
     action = <Badge result={result} />;
   } else {
-    action = <Text style={styles.finalText}>Final</Text>;
+    action = <Text style={styles.finalText}>{t('common.final')}</Text>;
   }
 
   return (
@@ -98,8 +100,8 @@ export default function MatchCard({ match, prediction, result, onPress }: Props)
     >
       <View style={styles.header}>
         <Text style={styles.meta}>
-          {match.group ? `Group ${match.group}` : match.stage} · {formatDate(match.utcDate)}
-          {(state === 'empty' || state === 'predicted') ? ` · ${formatTime(match.utcDate)}` : ''}
+          {match.group ? t('common.group', { group: match.group }) : match.stage} · {formatDate(match.utcDate, locale)}
+          {(state === 'empty' || state === 'predicted') ? ` · ${formatTime(match.utcDate, locale)}` : ''}
         </Text>
         {action}
       </View>
@@ -112,9 +114,9 @@ export default function MatchCard({ match, prediction, result, onPress }: Props)
 
         <View style={styles.scoreCenter}>
           {state === 'empty' ? (
-            <Text style={styles.vsText}>vs</Text>
+            <Text style={styles.vsText}>{t('common.vs')}</Text>
           ) : state === 'tbd' ? (
-            <Text style={styles.vsText}>TBD</Text>
+            <Text style={styles.vsText}>{t('common.tbd')}</Text>
           ) : state === 'predicted' ? (
             <Text style={styles.predictedScore}>
               {prediction?.homeGoals} – {prediction?.awayGoals}
@@ -126,10 +128,10 @@ export default function MatchCard({ match, prediction, result, onPress }: Props)
               </Text>
               {prediction ? (
                 <Text style={styles.pickText}>
-                  pick: {prediction.homeGoals}–{prediction.awayGoals}
+                  {t('common.pick')}: {prediction.homeGoals}–{prediction.awayGoals}
                 </Text>
               ) : state === 'live' ? (
-                <Text style={styles.pickText}>in progress</Text>
+                <Text style={styles.pickText}>{t('common.inProgress')}</Text>
               ) : null}
             </>
           )}

@@ -6,14 +6,22 @@ import { calculatePoints } from './scoring';
 import { logger } from '../config/logger';
 import { MatchStage } from '../models/Match';
 import { sendToUser } from './pushService';
+import { hydrateMatch, seedCountryTeams, upsertCountryTeamFromSource } from './countryTeamService';
 
 export async function syncAllFixtures(): Promise<{ fixturesSynced: number }> {
   logger.info('Syncing all fixtures...');
+  await seedCountryTeams();
   const externalMatches = await fetchAllMatches();
 
   for (const ext of externalMatches) {
     const mapped = mapExternalMatch(ext);
-    await Match.findOneAndUpdate({ externalId: mapped.externalId }, mapped, { upsert: true });
+    await Promise.all([
+      upsertCountryTeamFromSource(mapped.sourceTeams.home),
+      upsertCountryTeamFromSource(mapped.sourceTeams.away),
+    ]);
+
+    const { sourceTeams, ...matchUpdate } = mapped;
+    await Match.findOneAndUpdate({ externalId: mapped.externalId }, matchUpdate, { upsert: true });
   }
 
   logger.info(`Synced ${externalMatches.length} fixtures`);
@@ -31,6 +39,7 @@ export async function processFinishedMatches(): Promise<{
 
   for (const match of unprocessed) {
     if (!match.result) continue;
+    const localizedMatch = await hydrateMatch(match.toObject(), 'en');
 
     const predictions = await Prediction.find({ matchId: match._id });
 
@@ -47,7 +56,7 @@ export async function processFinishedMatches(): Promise<{
       await prediction.save();
 
       sendToUser(prediction.userId.toString(), {
-        title: `${match.homeTeam.name} ${match.result!.homeGoals}–${match.result!.awayGoals} ${match.awayTeam.name}`,
+        title: `${localizedMatch.homeTeam.name} ${match.result!.homeGoals}–${match.result!.awayGoals} ${localizedMatch.awayTeam.name}`,
         body: points > 0 ? `You earned ${points} point${points !== 1 ? 's' : ''}!` : 'No points this time — better luck next match.',
         url: '/picks',
       }).catch(() => {});
@@ -58,7 +67,7 @@ export async function processFinishedMatches(): Promise<{
     match.scoresProcessed = true;
     await match.save();
 
-    logger.info(`Scored ${predictions.length} predictions for match ${match.homeTeam.name} vs ${match.awayTeam.name}`);
+    logger.info(`Scored ${predictions.length} predictions for match ${localizedMatch.homeTeam.name} vs ${localizedMatch.awayTeam.name}`);
   }
 
   // Update total points on each user who had predictions scored

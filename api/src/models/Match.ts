@@ -29,8 +29,10 @@ export interface IMatch extends Document {
   stage: MatchStage;
   group: string | null;
   matchday: number;
-  homeTeam: ITeamInfo;
-  awayTeam: ITeamInfo;
+  homeTeamCode: string;
+  awayTeamCode: string;
+  homeTeam?: ITeamInfo;
+  awayTeam?: ITeamInfo;
   utcDate: Date;
   status: MatchStatus;
   result: IMatchResult | null;
@@ -67,8 +69,10 @@ const matchSchema = new Schema<IMatch>(
     },
     group: { type: String, default: null },
     matchday: { type: Number, required: true },
-    homeTeam: { type: teamInfoSchema, required: true },
-    awayTeam: { type: teamInfoSchema, required: true },
+    homeTeamCode: { type: String, required: true, uppercase: true, trim: true },
+    awayTeamCode: { type: String, required: true, uppercase: true, trim: true },
+    homeTeam: { type: teamInfoSchema, default: undefined, select: false },
+    awayTeam: { type: teamInfoSchema, default: undefined, select: false },
     utcDate: { type: Date, required: true },
     status: {
       type: String,
@@ -83,5 +87,7 @@ const matchSchema = new Schema<IMatch>(
 
 matchSchema.index({ utcDate: 1 });
 matchSchema.index({ status: 1 });
+matchSchema.index({ homeTeamCode: 1 });
+matchSchema.index({ awayTeamCode: 1 });
 
 export const Match = mongoose.model<IMatch>('Match', matchSchema);

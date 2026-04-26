@@ -3,24 +3,26 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, ActivityInd
 import { useNavigation } from '@react-navigation/native';
 import { joinLeague } from '../api/leagues';
 import { colors, spacing, fontSize, borderRadius } from '../theme';
+import { useI18n } from '../i18n';
 
 export default function JoinLeagueScreen() {
+  const { t } = useI18n();
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const navigation = useNavigation<any>();
 
   const handleJoin = async () => {
     if (code.trim().length !== 6) {
-      Alert.alert('Error', 'Invite code must be 6 characters');
+      Alert.alert(t('common.error'), t('joinLeague.invalidCode'));
       return;
     }
 
     setLoading(true);
     try {
       const league = await joinLeague(code.trim().toUpperCase());
-      Alert.alert('Joined!', `Welcome to ${league.name}`, [
+      Alert.alert(t('joinLeague.successTitle'), t('joinLeague.welcome', { name: league.name }), [
         {
-          text: 'OK',
+          text: t('common.ok'),
           onPress: () =>
             navigation.navigate('Main', {
               screen: 'Leagues',
@@ -32,7 +34,7 @@ export default function JoinLeagueScreen() {
         },
       ]);
     } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.error || 'Failed to join league');
+      Alert.alert(t('common.error'), err.response?.data?.error || t('joinLeague.failed'));
     } finally {
       setLoading(false);
     }
@@ -40,7 +42,7 @@ export default function JoinLeagueScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>Invite Code</Text>
+      <Text style={styles.label}>{t('joinLeague.inviteCode')}</Text>
       <TextInput
         style={styles.input}
         value={code}
@@ -51,7 +53,7 @@ export default function JoinLeagueScreen() {
         autoFocus
       />
       <TouchableOpacity style={styles.button} onPress={handleJoin} disabled={loading}>
-        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Join League</Text>}
+        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>{t('leagues.joinLeague')}</Text>}
       </TouchableOpacity>
     </View>
   );

@@ -4,6 +4,7 @@ import { League } from '../types';
 import { colors, fonts } from '../theme';
 import LeagueRaceStrip from './LeagueRaceStrip';
 import { getMemberRank, isCurrentMember, memberPoints, sortMembersByPoints } from '../utils/league';
+import { useI18n } from '../i18n';
 
 interface Props {
   league: League;
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export default function LeagueCard({ league, userId, compact = false, onPress }: Props) {
+  const { t } = useI18n();
   const sorted = sortMembersByPoints(league.members);
   const rank = getMemberRank(league.members, userId);
   const me = sorted.find((member) => isCurrentMember(member, userId));
@@ -33,13 +35,15 @@ export default function LeagueCard({ league, userId, compact = false, onPress }:
         <View style={styles.nameBlock}>
           <Text style={styles.name} numberOfLines={1}>{league.name}</Text>
           <Text style={styles.sub}>
-            {league.members.length} players{myPoints !== null ? ` · ${myPoints} pts` : ''}
+            {myPoints !== null
+              ? t('leagues.playersWithPoints', { count: league.members.length, points: myPoints })
+              : t('leagues.players', { count: league.members.length })}
           </Text>
         </View>
         {rank !== null && (
           <View style={[styles.rankBadge, { backgroundColor: accentDim }]}>
             <Text style={[styles.rankNum, { color: accent }]}>#{rank}</Text>
-            <Text style={[styles.rankLabel, { color: accent }]}>rank</Text>
+            <Text style={[styles.rankLabel, { color: accent }]}>{t('common.rank')}</Text>
           </View>
         )}
       </View>

@@ -22,6 +22,7 @@ import Badge from '../components/ui/Badge';
 import LoadingView from '../components/ui/LoadingView';
 import { colors, fonts } from '../theme';
 import { submitPrediction } from '../api/predictions';
+import { useI18n } from '../i18n';
 
 function SectionLabel({ children }: { children: string }) {
   return (
@@ -38,11 +39,12 @@ function getResult(pred: Prediction, match: Match): 'exact' | 'correct' | 'wrong
   return pOut === aOut ? 'correct' : 'wrong';
 }
 
-function formatDate(utcDate: string) {
-  return new Date(utcDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+function formatDate(utcDate: string, locale: string) {
+  return new Date(utcDate).toLocaleDateString(locale, { month: 'short', day: 'numeric' });
 }
 
 export default function HomeScreen() {
+  const { language, t, locale } = useI18n();
   const user = useAuthStore((s) => s.user);
   const navigation = useNavigation<any>();
   const [matches, setMatches] = useState<Match[]>([]);
@@ -54,7 +56,7 @@ export default function HomeScreen() {
 
   const predMap = Object.fromEntries(predictions.map((p) => [p.matchId, p]));
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       const [m, p, leagues] = await Promise.all([
         fetchMatches({}),
@@ -69,15 +71,17 @@ export default function HomeScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [language]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await load();
     setRefreshing(false);
-  }, []);
+  }, [load]);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const now = new Date();
   const next24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
@@ -116,8 +120,8 @@ export default function HomeScreen() {
   };
 
   const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
-  const firstName = user?.name?.split(' ')[0] || 'Fan';
+  const greeting = hour < 12 ? t('home.goodMorning') : hour < 18 ? t('home.goodAfternoon') : t('home.goodEvening');
+  const firstName = user?.name?.split(' ')[0] || t('home.fan');
 
   if (loading) {
     return (
@@ -140,7 +144,7 @@ export default function HomeScreen() {
             <Text style={styles.greeting}>{greeting},</Text>
             <View style={styles.headerTitleRow}>
               <Text style={styles.userName}>{firstName}</Text>
-              <Text style={styles.pointsSummary}>{totalPoints} points</Text>
+              <Text style={styles.pointsSummary}>{totalPoints} {t('common.points')}</Text>
             </View>
           </View>
         </View>
@@ -148,7 +152,7 @@ export default function HomeScreen() {
         {/* Next matches */}
         {nextMatches.length > 0 && (
           <View>
-            <SectionLabel>Next Matches</SectionLabel>
+            <SectionLabel>{t('home.nextMatches')}</SectionLabel>
             <View style={styles.nextMatchesList}>
               {nextMatches.map((match) => {
                 const myPred = predMap[match._id] ?? null;
@@ -170,7 +174,7 @@ export default function HomeScreen() {
         {/* Leagues */}
         {homeLeagues.length > 0 && (
           <View>
-            <SectionLabel>Leagues</SectionLabel>
+            <SectionLabel>{t('home.leagues')}</SectionLabel>
             <View style={{ gap: 10 }}>
               {homeLeagues.map((league) => (
                 <LeagueCard
@@ -193,7 +197,7 @@ export default function HomeScreen() {
         {/* Recent results */}
         {recentFinished.length > 0 && (
           <View>
-            <SectionLabel>Recent Results</SectionLabel>
+            <SectionLabel>{t('home.recentResults')}</SectionLabel>
             <View style={{ gap: 8 }}>
               {recentFinished.map((m) => {
                 const pred = predMap[m._id];
@@ -202,7 +206,7 @@ export default function HomeScreen() {
                   <View key={m._id} style={styles.resultCard}>
                     <View style={styles.resultHeader}>
                       <Text style={styles.matchMeta}>
-                        {m.group ? `Group ${m.group}` : m.stage} · {formatDate(m.utcDate)}
+                        {m.group ? t('common.group', { group: m.group }) : m.stage} · {formatDate(m.utcDate, locale)}
                       </Text>
                       {result && <Badge result={result} />}
                     </View>
@@ -217,7 +221,7 @@ export default function HomeScreen() {
                         </Text>
                         {pred && (
                           <Text style={styles.yourPick}>
-                            your pick: {pred.homeGoals}–{pred.awayGoals}
+                            {t('common.yourPick')}: {pred.homeGoals}–{pred.awayGoals}
                           </Text>
                         )}
                       </View>
@@ -235,8 +239,8 @@ export default function HomeScreen() {
 
         {matches.length === 0 && (
           <View style={styles.empty}>
-            <Text style={styles.emptyText}>No matches yet.</Text>
-            <Text style={styles.emptySubtext}>Fixtures will appear once synced.</Text>
+            <Text style={styles.emptyText}>{t('home.noMatches')}</Text>
+            <Text style={styles.emptySubtext}>{t('home.fixturesSynced')}</Text>
           </View>
         )}
       </ScrollView>

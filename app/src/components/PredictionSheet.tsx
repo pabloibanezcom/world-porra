@@ -12,6 +12,7 @@ import { colors, borderRadius } from '../theme';
 import Flag from './ui/Flag';
 import { Match } from '../types';
 import { hasTbdTeam } from './MatchCard';
+import { useI18n } from '../i18n';
 
 interface PredictionSheetProps {
   match: Match | null;
@@ -50,6 +51,7 @@ function ScoreControl({
 }
 
 export default function PredictionSheet({ match, existing, onSave, onClose }: PredictionSheetProps) {
+  const { t, locale } = useI18n();
   const [score, setScore] = useState<[number, number]>(existing || [0, 0]);
   const slideAnim = React.useRef(new Animated.Value(400)).current;
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
@@ -80,12 +82,12 @@ export default function PredictionSheet({ match, existing, onSave, onClose }: Pr
 
   if (!match) return null;
 
-  const groupLabel = match.group ? `Group ${match.group}` : match.stage;
-  const dateStr = new Date(match.utcDate).toLocaleDateString('en-US', {
+  const groupLabel = match.group ? t('common.group', { group: match.group }) : match.stage;
+  const dateStr = new Date(match.utcDate).toLocaleDateString(locale, {
     month: 'short',
     day: 'numeric',
   });
-  const timeStr = new Date(match.utcDate).toLocaleTimeString('en-US', {
+  const timeStr = new Date(match.utcDate).toLocaleTimeString(locale, {
     hour: '2-digit',
     minute: '2-digit',
   });
@@ -102,7 +104,7 @@ export default function PredictionSheet({ match, existing, onSave, onClose }: Pr
           <View style={styles.matchTeams}>
             <Flag code={match.homeTeam.code} size={22} />
             <Text style={styles.matchTitle}>
-              {match.homeTeam.name} vs {match.awayTeam.name}
+              {match.homeTeam.name} {t('common.vs')} {match.awayTeam.name}
             </Text>
             <Flag code={match.awayTeam.code} size={22} />
           </View>
@@ -126,7 +128,7 @@ export default function PredictionSheet({ match, existing, onSave, onClose }: Pr
         </View>
 
         <TouchableOpacity style={styles.saveBtn} onPress={save}>
-          <Text style={styles.saveBtnText}>Save Prediction</Text>
+          <Text style={styles.saveBtnText}>{t('predictionSheet.save')}</Text>
         </TouchableOpacity>
       </Animated.View>
     </Modal>

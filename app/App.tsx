@@ -4,6 +4,7 @@ import { useFonts } from 'expo-font';
 import Toast from 'react-native-toast-message';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import RootNavigator from './src/navigation/RootNavigator';
+import { I18nProvider } from './src/i18n';
 
 const fontAssets = {
   'FIFASans-Regular': require('./assets/fonts/FIFASans-Regular.ttf'),
@@ -23,9 +24,11 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <StatusBar style="light" />
-      <RootNavigator />
-      <Toast />
+      <I18nProvider>
+        <StatusBar style="light" />
+        <RootNavigator />
+        <Toast />
+      </I18nProvider>
     </SafeAreaProvider>
   );
 }

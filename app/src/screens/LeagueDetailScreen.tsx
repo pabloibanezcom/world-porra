@@ -27,6 +27,7 @@ import {
   memberPoints,
   sortMembersByPoints,
 } from '../utils/league';
+import { useI18n } from '../i18n';
 
 type RouteParams = { LeagueDetail: { leagueId: string } };
 
@@ -35,6 +36,7 @@ function SectionLabel({ children }: { children: string }) {
 }
 
 export default function LeagueDetailScreen() {
+  const { t } = useI18n();
   const route = useRoute<RouteProp<RouteParams, 'LeagueDetail'>>();
   const navigation = useNavigation<any>();
   const user = useAuthStore((s) => s.user);
@@ -65,7 +67,7 @@ export default function LeagueDetailScreen() {
   const handleShare = async () => {
     if (!league) return;
     await Share.share({
-      message: `Join my WC 2026 prediction league "${league.name}"! Use invite code: ${league.inviteCode}`,
+      message: t('league.shareMessage', { name: league.name, code: league.inviteCode }),
     });
   };
 
@@ -80,7 +82,7 @@ export default function LeagueDetailScreen() {
   if (!league) {
     return (
       <View style={styles.center}>
-        <Text style={styles.emptyText}>League not found</Text>
+        <Text style={styles.emptyText}>{t('league.notFound')}</Text>
       </View>
     );
   }
@@ -103,38 +105,38 @@ export default function LeagueDetailScreen() {
       >
         <View style={styles.titleRow}>
           <Text style={styles.title}>{league.name}</Text>
-          <Text style={styles.subtitle}>{league.members.length} players · Group Stage</Text>
+          <Text style={styles.subtitle}>{t('league.playersGroupStage', { count: league.members.length })}</Text>
         </View>
 
         <View style={styles.statsRow}>
-          <StatCard label="Your rank" value={myRank ? `#${myRank}` : '—'} color={accent} />
-          <StatCard label="Your points" value={`${myPoints}`} color={colors.text} />
-          <StatCard label="Leader" value={leader ? `${memberPoints(leader)} pts` : '—'} color={colors.text} />
+          <StatCard label={t('league.yourRank')} value={myRank ? `#${myRank}` : '—'} color={accent} />
+          <StatCard label={t('league.yourPoints')} value={`${myPoints}`} color={colors.text} />
+          <StatCard label={t('league.leader')} value={leader ? `${memberPoints(leader)} ${t('common.pointsShort')}` : '—'} color={colors.text} />
         </View>
 
         <TouchableOpacity style={styles.inviteCard} onPress={handleShare} activeOpacity={0.85}>
           <View>
-            <Text style={styles.inviteLabel}>Invite code</Text>
+            <Text style={styles.inviteLabel}>{t('league.inviteCode')}</Text>
             <Text style={styles.inviteCode}>{league.inviteCode}</Text>
           </View>
           <View style={styles.sharePill}>
-            <Text style={styles.shareText}>Share</Text>
+            <Text style={styles.shareText}>{t('common.share')}</Text>
           </View>
         </TouchableOpacity>
 
         {isAdmin && (
           <TouchableOpacity style={styles.notifyBtn} onPress={() => setNotifyModalVisible(true)} activeOpacity={0.85}>
-            <Text style={styles.notifyBtnText}>Notify members</Text>
+            <Text style={styles.notifyBtnText}>{t('league.notifyMembers')}</Text>
           </TouchableOpacity>
         )}
 
         <View style={styles.raceCard}>
-          <SectionLabel>Points Race</SectionLabel>
+          <SectionLabel>{t('league.pointsRace')}</SectionLabel>
           <LeagueRaceStrip members={league.members} userId={user?.id} accent={accent} accentDim={accentDim} />
         </View>
 
         <View>
-          <SectionLabel>Rankings</SectionLabel>
+          <SectionLabel>{t('league.rankings')}</SectionLabel>
           <View style={styles.rankingsCard}>
             {sorted.map((member, index) => (
               <RankingRow
@@ -167,7 +169,7 @@ export default function LeagueDetailScreen() {
 
       <NotifyModal
         visible={notifyModalVisible}
-        title={`Notify ${league.name}`}
+        title={t('league.notifyTitle', { name: league.name })}
         onClose={() => setNotifyModalVisible(false)}
         onSend={(title, body) => notifyLeagueMembers(league._id, title, body)}
       />
@@ -201,6 +203,7 @@ function RankingRow({
   isLast: boolean;
   onPress: () => void;
 }) {
+  const { t } = useI18n();
   const isMe = isCurrentMember(member, userId);
   const id = memberId(member) || String(index);
   const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : null;
@@ -224,15 +227,15 @@ function RankingRow({
           <Text style={styles.memberName} numberOfLines={1}>{memberName(member)}</Text>
           {isMe && (
             <View style={[styles.youBadge, { backgroundColor: accentDim }]}>
-              <Text style={[styles.youText, { color: accent }]}>You</Text>
+              <Text style={[styles.youText, { color: accent }]}>{t('common.you')}</Text>
             </View>
           )}
         </View>
-        <Text style={styles.memberMeta}>{member.isAdmin ? 'Admin' : 'Member'}</Text>
+        <Text style={styles.memberMeta}>{member.isAdmin ? t('common.admin') : t('common.member')}</Text>
       </View>
       <Text style={[styles.points, isMe && { color: accent }]}>
         {memberPoints(member)}
-        <Text style={styles.pointsSuffix}> pts</Text>
+        <Text style={styles.pointsSuffix}> {t('common.pointsShort')}</Text>
       </Text>
     </TouchableOpacity>
   );

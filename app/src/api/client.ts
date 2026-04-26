@@ -1,9 +1,26 @@
 import axios from 'axios';
+import * as Localization from 'expo-localization';
 import { resolveApiUrl } from './resolveApiUrl';
 import { deleteToken, getToken } from '../store/tokenStorage';
 import { TOKEN_STORAGE_KEY } from '../store/tokenKey';
 
 const API_URL = resolveApiUrl();
+const LANGUAGE_STORAGE_KEY = 'wc2026.language';
+let activeLanguage: 'en' | 'es' | null = null;
+
+export function setApiLanguage(language: 'en' | 'es') {
+  activeLanguage = language;
+}
+
+function getDeviceLanguage(): 'en' | 'es' {
+  const locale = Localization.getLocales()[0];
+  const languageCode = locale?.languageCode?.toLowerCase();
+  const languageTag = locale?.languageTag?.toLowerCase();
+  const browserLanguage =
+    typeof navigator !== 'undefined' && navigator.language?.toLowerCase().startsWith('es') ? 'es' : undefined;
+
+  return languageCode === 'es' || languageTag?.startsWith('es-') || browserLanguage === 'es' ? 'es' : 'en';
+}
 
 export const apiClient = axios.create({
   baseURL: API_URL,
@@ -20,6 +37,8 @@ apiClient.interceptors.request.use(async (config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  const savedLanguage = activeLanguage ?? await getToken(LANGUAGE_STORAGE_KEY);
+  config.headers['Accept-Language'] = savedLanguage === 'es' || savedLanguage === 'en' ? savedLanguage : getDeviceLanguage();
   return config;
 });
 

@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { Match } from '../models/Match';
 import { Prediction } from '../models/Prediction';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
+import { getRequestLanguage, hydrateMatch, hydrateMatches } from '../services/countryTeamService';
 
 const router = Router();
 
@@ -14,7 +15,7 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
   if (status) filter.status = status;
 
   const matches = await Match.find(filter).sort({ utcDate: 1 }).lean();
-  res.json({ matches });
+  res.json({ matches: await hydrateMatches(matches, getRequestLanguage(req)) });
 });
 
 router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
@@ -29,7 +30,7 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response): Prom
     matchId: match._id,
   }).lean();
 
-  res.json({ match, prediction: prediction || null });
+  res.json({ match: await hydrateMatch(match, getRequestLanguage(req)), prediction: prediction || null });
 });
 
 export default router;

@@ -41,7 +41,7 @@ export async function fetchMyGroupPredictions(): Promise<GroupPrediction[]> {
 export async function submitGroupPrediction(group: string, orderedTeams: TeamInfo[]): Promise<GroupPrediction> {
   const { data } = await apiClient.post<{ prediction: GroupPrediction }>('/predictions/groups', {
     group,
-    orderedTeams,
+    orderedTeamCodes: orderedTeams.map((team) => team.code),
   });
   return data.prediction;
 }

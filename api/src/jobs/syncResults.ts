@@ -3,6 +3,7 @@ import { syncAllFixtures, processFinishedMatches } from '../services/syncService
 import { logger } from '../config/logger';
 import { Match } from '../models/Match';
 import { sendToAll } from '../services/pushService';
+import { hydrateMatch } from '../services/countryTeamService';
 
 export function startSyncJobs(): void {
   // Every 5 minutes during tournament — sync and score
@@ -35,9 +36,10 @@ export function startSyncJobs(): void {
         status: 'SCHEDULED',
       });
       for (const match of upcoming) {
+        const localizedMatch = await hydrateMatch(match.toObject(), 'en');
         await sendToAll({
           title: 'Last chance to predict!',
-          body: `${match.homeTeam.name} vs ${match.awayTeam.name} kicks off in ~30 minutes.`,
+          body: `${localizedMatch.homeTeam.name} vs ${localizedMatch.awayTeam.name} kicks off in ~30 minutes.`,
           url: '/matches',
         });
       }

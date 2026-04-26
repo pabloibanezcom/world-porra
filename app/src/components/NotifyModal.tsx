@@ -11,6 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { colors, fonts } from '../theme';
+import { useI18n } from '../i18n';
 
 interface Props {
   visible: boolean;
@@ -20,6 +21,7 @@ interface Props {
 }
 
 export default function NotifyModal({ visible, title, onClose, onSend }: Props) {
+  const { t } = useI18n();
   const [notifTitle, setNotifTitle] = useState('');
   const [notifBody, setNotifBody] = useState('');
   const [sending, setSending] = useState(false);
@@ -52,22 +54,22 @@ export default function NotifyModal({ visible, title, onClose, onSend }: Props) 
         <View style={styles.sheet}>
           <Text style={styles.heading}>{title}</Text>
 
-          <Text style={styles.label}>Title</Text>
+          <Text style={styles.label}>{t('notify.title')}</Text>
           <TextInput
             style={styles.input}
             value={notifTitle}
             onChangeText={setNotifTitle}
-            placeholder="Notification title"
+            placeholder={t('notify.titlePlaceholder')}
             placeholderTextColor={colors.dim}
             maxLength={100}
           />
 
-          <Text style={styles.label}>Message</Text>
+          <Text style={styles.label}>{t('notify.message')}</Text>
           <TextInput
             style={[styles.input, styles.textarea]}
             value={notifBody}
             onChangeText={setNotifBody}
-            placeholder="Write your message…"
+            placeholder={t('notify.messagePlaceholder')}
             placeholderTextColor={colors.dim}
             multiline
             maxLength={300}
@@ -75,7 +77,7 @@ export default function NotifyModal({ visible, title, onClose, onSend }: Props) 
 
           <View style={styles.actions}>
             <TouchableOpacity style={styles.cancelBtn} onPress={handleClose} disabled={sending}>
-              <Text style={styles.cancelText}>Cancel</Text>
+              <Text style={styles.cancelText}>{t('common.cancel')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.sendBtn, (!notifTitle.trim() || !notifBody.trim()) && styles.sendBtnDisabled]}
@@ -85,7 +87,7 @@ export default function NotifyModal({ visible, title, onClose, onSend }: Props) 
               {sending ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Text style={styles.sendText}>Send</Text>
+                <Text style={styles.sendText}>{t('notify.send')}</Text>
               )}
             </TouchableOpacity>
           </View>

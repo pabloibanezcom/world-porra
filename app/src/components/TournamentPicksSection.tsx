@@ -21,6 +21,7 @@ import {
   TOURNAMENT_SLOT_KEYS,
 } from '../data/tournamentData';
 import { Ionicons } from '@expo/vector-icons';
+import { useI18n } from '../i18n';
 
 interface TournamentPicksSectionProps {
   picks: TournamentPicks;
@@ -44,6 +45,15 @@ const POS_BG: Record<string, string> = {
   GK: 'rgba(226,59,74,0.15)',
 };
 
+function getTeamName(team: TeamOption, language: string) {
+  return language === 'es' ? team.nameEs ?? team.name : team.name;
+}
+
+function getTeamNameByCode(code: string, fallback: string, language: string) {
+  const team = ALL_TEAMS.find((option) => option.code === code);
+  return team ? getTeamName(team, language) : fallback;
+}
+
 function SectionLabel({ children }: { children: string }) {
   return <Text style={styles.sectionLabel}>{children.toUpperCase()}</Text>;
 }
@@ -64,6 +74,7 @@ function SlotCard({
   icon: string;
   onPress: () => void;
 }) {
+  const { language, t } = useI18n();
   return (
     <TouchableOpacity
       style={[styles.slotCard, !pick && styles.slotCardEmpty]}
@@ -78,10 +89,10 @@ function SlotCard({
         {pick ? (
           <View style={styles.slotTeamRow}>
             <Flag code={pick.code} size={20} />
-            <Text style={styles.slotTeamName}>{pick.name}</Text>
+            <Text style={styles.slotTeamName}>{getTeamName(pick, language)}</Text>
           </View>
         ) : (
-          <Text style={styles.slotPlaceholder}>Tap to select →</Text>
+          <Text style={styles.slotPlaceholder}>{t('tournament.tapToSelect')}</Text>
         )}
       </View>
       {pick && <CheckIcon />}
@@ -105,6 +116,7 @@ function AwardCard({
   accentBg?: string;
   onPress: () => void;
 }) {
+  const { language, t } = useI18n();
   return (
     <TouchableOpacity
       style={[styles.slotCard, !pick && styles.awardCardEmpty]}
@@ -121,11 +133,11 @@ function AwardCard({
             <Text style={styles.slotTeamName}>{pick.name}</Text>
             <View style={styles.playerMeta}>
               <Flag code={pick.code} size={14} />
-              <Text style={styles.playerTeam}>{pick.team}</Text>
+              <Text style={styles.playerTeam}>{getTeamNameByCode(pick.code, pick.team, language)}</Text>
             </View>
           </View>
         ) : (
-          <Text style={styles.slotPlaceholder}>Tap to select →</Text>
+          <Text style={styles.slotPlaceholder}>{t('tournament.tapToSelect')}</Text>
         )}
       </View>
       {pick && <CheckIcon />}
@@ -145,6 +157,7 @@ function TeamPickerModal({
   onSelect: (team: TeamOption) => void;
   onClose: () => void;
 }) {
+  const { language, t } = useI18n();
   const slideAnim = useRef(new Animated.Value(600)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const [search, setSearch] = useState('');
@@ -164,12 +177,12 @@ function TeamPickerModal({
   };
 
   const pick = (team: TeamOption) => {
-    onSelect(team);
+    onSelect({ ...team, name: getTeamName(team, language) });
     close();
   };
 
-  const filtered = ALL_TEAMS.filter((t) =>
-    t.name.toLowerCase().includes(search.toLowerCase())
+  const filtered = ALL_TEAMS.filter((team) =>
+    `${team.name} ${team.nameEs ?? ''}`.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -181,7 +194,7 @@ function TeamPickerModal({
         <View style={styles.sheetHandle} />
         <View style={styles.sheetHeader}>
           <Text style={styles.sheetTitle}>{title}</Text>
-          <Text style={styles.sheetSubtitle}>Pick a national team</Text>
+          <Text style={styles.sheetSubtitle}>{t('tournament.pickNationalTeam')}</Text>
         </View>
         <View style={styles.searchBar}>
           <Ionicons name="search" size={14} color={colors.dim} />
@@ -189,7 +202,7 @@ function TeamPickerModal({
             style={styles.searchInput}
             value={search}
             onChangeText={setSearch}
-            placeholder="Search team…"
+            placeholder={t('tournament.searchTeam')}
             placeholderTextColor={colors.dim}
             autoCorrect={false}
           />
@@ -211,7 +224,7 @@ function TeamPickerModal({
               >
                 <Flag code={team.code} size={26} />
                 <Text style={[styles.teamRowName, isSel && styles.teamRowNameSelected]}>
-                  {team.name}
+                  {getTeamName(team, language)}
                 </Text>
                 {isSel && <CheckIcon />}
               </TouchableOpacity>
@@ -238,6 +251,7 @@ function PlayerPickerModal({
   onSelect: (player: PlayerOption) => void;
   onClose: () => void;
 }) {
+  const { language, t } = useI18n();
   const slideAnim = useRef(new Animated.Value(600)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const [search, setSearch] = useState('');
@@ -264,7 +278,7 @@ function PlayerPickerModal({
   const filtered = players.filter(
     (p) =>
       p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.team.toLowerCase().includes(search.toLowerCase())
+      `${p.team} ${getTeamNameByCode(p.code, p.team, language)}`.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -283,7 +297,7 @@ function PlayerPickerModal({
             style={styles.searchInput}
             value={search}
             onChangeText={setSearch}
-            placeholder="Search player or team…"
+            placeholder={t('tournament.searchPlayerTeam')}
             placeholderTextColor={colors.dim}
             autoCorrect={false}
           />
@@ -308,7 +322,7 @@ function PlayerPickerModal({
                   <Text style={[styles.teamRowName, isSel && styles.teamRowNameSelected]}>
                     {player.name}
                   </Text>
-                  <Text style={styles.playerTeamSmall}>{player.team}</Text>
+                  <Text style={styles.playerTeamSmall}>{getTeamNameByCode(player.code, player.team, language)}</Text>
                 </View>
                 <View style={[styles.posBadge, { backgroundColor: POS_BG[player.pos] }]}>
                   <Text style={[styles.posBadgeText, { color: POS_COLOR[player.pos] }]}>
@@ -331,6 +345,7 @@ export default function TournamentPicksSection({
   picks,
   onPickChange,
 }: TournamentPicksSectionProps) {
+  const { t } = useI18n();
   const [activePicker, setActivePicker] = useState<ActivePicker | null>(null);
 
   const doneCount = TOURNAMENT_SLOT_KEYS.filter((k) => picks[k] !== undefined).length;
@@ -347,9 +362,9 @@ export default function TournamentPicksSection({
       {/* Progress */}
       <View style={styles.progressCard}>
         <View style={styles.progressHeader}>
-          <Text style={styles.progressLabel}>Tournament picks</Text>
+          <Text style={styles.progressLabel}>{t('tournament.picks')}</Text>
           <Text style={styles.progressCount}>
-            {doneCount}/{totalCount} done
+            {doneCount}/{totalCount} {t('common.done')}
           </Text>
         </View>
         <View style={styles.progressTrack}>
@@ -359,35 +374,35 @@ export default function TournamentPicksSection({
 
       {/* Final Four */}
       <View style={styles.section}>
-        <SectionLabel>Final Four</SectionLabel>
+        <SectionLabel>{t('tournament.finalFour')}</SectionLabel>
         <View style={styles.cards}>
           <SlotCard
             pick={picks.champion}
-            label="Tournament Winner"
+            label={t('tournament.winner')}
             icon="🏆"
-            onPress={() => openTeam('champion', 'Tournament Winner')}
+            onPress={() => openTeam('champion', t('tournament.winner'))}
           />
           <SlotCard
             pick={picks.runnerUp}
-            label="Runner-up"
+            label={t('tournament.runnerUp')}
             icon="🥈"
-            onPress={() => openTeam('runnerUp', 'Runner-up')}
+            onPress={() => openTeam('runnerUp', t('tournament.runnerUp'))}
           />
           <View style={styles.semisRow}>
             <View style={styles.semiCell}>
               <SlotCard
                 pick={picks.semi1}
-                label="Semi-finalist"
+                label={t('tournament.semiFinalist')}
                 icon="⚽"
-                onPress={() => openTeam('semi1', 'Semi-finalist')}
+                onPress={() => openTeam('semi1', t('tournament.semiFinalist'))}
               />
             </View>
             <View style={styles.semiCell}>
               <SlotCard
                 pick={picks.semi2}
-                label="Semi-finalist"
+                label={t('tournament.semiFinalist')}
                 icon="⚽"
-                onPress={() => openTeam('semi2', 'Semi-finalist')}
+                onPress={() => openTeam('semi2', t('tournament.semiFinalist'))}
               />
             </View>
           </View>
@@ -396,27 +411,27 @@ export default function TournamentPicksSection({
 
       {/* Individual Awards */}
       <View style={styles.section}>
-        <SectionLabel>Individual Awards</SectionLabel>
+        <SectionLabel>{t('tournament.individualAwards')}</SectionLabel>
         <View style={styles.cards}>
           <AwardCard
             pick={picks.bestPlayer as PlayerOption | undefined}
-            label="Best Player — Golden Ball"
+            label={t('tournament.bestPlayer')}
             icon="🌟"
-            onPress={() => openPlayer('bestPlayer', 'Best Player — Golden Ball', AWARD_PLAYERS.bestPlayer)}
+            onPress={() => openPlayer('bestPlayer', t('tournament.bestPlayer'), AWARD_PLAYERS.bestPlayer)}
           />
           <AwardCard
             pick={picks.topScorer as PlayerOption | undefined}
-            label="Top Scorer — Golden Boot"
+            label={t('tournament.topScorer')}
             icon="👟"
-            onPress={() => openPlayer('topScorer', 'Top Scorer — Golden Boot', AWARD_PLAYERS.topScorer)}
+            onPress={() => openPlayer('topScorer', t('tournament.topScorer'), AWARD_PLAYERS.topScorer)}
           />
           <AwardCard
             pick={picks.bestYoung as PlayerOption | undefined}
-            label="Best Young Player"
+            label={t('tournament.bestYoung')}
             icon="🌱"
             accentColor={colors.warning}
             accentBg="rgba(236,126,0,0.14)"
-            onPress={() => openPlayer('bestYoung', 'Best Young Player', AWARD_PLAYERS.bestYoung)}
+            onPress={() => openPlayer('bestYoung', t('tournament.bestYoung'), AWARD_PLAYERS.bestYoung)}
           />
         </View>
       </View>

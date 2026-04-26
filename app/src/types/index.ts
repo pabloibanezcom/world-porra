@@ -38,6 +38,8 @@ export interface Match {
   stage: MatchStage;
   group: string | null;
   matchday: number;
+  homeTeamCode: string;
+  awayTeamCode: string;
   homeTeam: TeamInfo;
   awayTeam: TeamInfo;
   utcDate: string;
@@ -59,6 +61,7 @@ export interface GroupPrediction {
   _id: string;
   userId: string;
   group: string;
+  orderedTeamCodes: string[];
   orderedTeams: TeamInfo[];
   points: number | null;
 }

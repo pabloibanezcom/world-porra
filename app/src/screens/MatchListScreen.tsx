@@ -6,6 +6,7 @@ import { Match, MatchStage } from '../types';
 import MatchCard from '../components/MatchCard';
 import LoadingView from '../components/ui/LoadingView';
 import { colors, spacing, fontSize, borderRadius } from '../theme';
+import { useI18n } from '../i18n';
 
 const STAGES: { label: string; value: MatchStage }[] = [
   { label: 'Groups', value: 'GROUP' },
@@ -17,6 +18,7 @@ const STAGES: { label: string; value: MatchStage }[] = [
 ];
 
 export default function MatchListScreen() {
+  const { language } = useI18n();
   const [activeStage, setActiveStage] = useState<MatchStage>('GROUP');
   const [matches, setMatches] = useState<Match[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -37,7 +39,7 @@ export default function MatchListScreen() {
   useEffect(() => {
     setLoading(true);
     loadMatches();
-  }, [activeStage]);
+  }, [activeStage, language]);
 
   const onRefresh = async () => {
     setRefreshing(true);

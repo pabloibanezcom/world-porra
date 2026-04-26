@@ -16,6 +16,7 @@ import Avatar from '../components/ui/Avatar';
 import Flag from '../components/ui/Flag';
 import NotifyModal from '../components/NotifyModal';
 import { notifyLeagueMembers } from '../api/leagues';
+import { useI18n } from '../i18n';
 
 type RouteParams = {
   MemberScreen: {
@@ -43,10 +44,11 @@ function getResult(
 }
 
 function ResultBadge({ result }: { result: 'exact' | 'correct' | 'wrong' }) {
+  const { t } = useI18n();
   const cfg = {
-    exact: { label: 'Exact', bg: colors.accentDim, color: colors.accent },
-    correct: { label: 'Correct', bg: colors.blueDim, color: colors.blue },
-    wrong: { label: 'Wrong', bg: 'rgba(226,59,74,0.12)', color: colors.danger },
+    exact: { label: t('member.exact'), bg: colors.accentDim, color: colors.accent },
+    correct: { label: t('member.correct'), bg: colors.blueDim, color: colors.blue },
+    wrong: { label: t('member.wrong'), bg: 'rgba(226,59,74,0.12)', color: colors.danger },
   }[result];
   return (
     <View style={[styles.badge, { backgroundColor: cfg.bg }]}>
@@ -59,11 +61,12 @@ function SectionLabel({ children }: { children: string }) {
   return <Text style={styles.sectionLabel}>{children.toUpperCase()}</Text>;
 }
 
-function formatMatchDate(utcDate: string): string {
-  return new Date(utcDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+function formatMatchDate(utcDate: string, locale: string): string {
+  return new Date(utcDate).toLocaleDateString(locale, { month: 'short', day: 'numeric' });
 }
 
 export default function MemberScreen() {
+  const { language, t } = useI18n();
   const route = useRoute<RouteProp<RouteParams, 'MemberScreen'>>();
   const navigation = useNavigation();
   const {
@@ -92,7 +95,7 @@ export default function MemberScreen() {
     } finally {
       setLoading(false);
     }
-  }, [leagueId, memberId]);
+  }, [leagueId, memberId, language]);
 
   useEffect(() => {
     load();
@@ -123,24 +126,24 @@ export default function MemberScreen() {
             <Avatar name={name} color={memberColor} size={76} />
           </View>
           <View style={styles.heroInfo}>
-            <Text style={styles.heroName}>{isMe ? `${name} (You)` : name}</Text>
+            <Text style={styles.heroName}>{isMe ? t('member.heroNameYou', { name }) : name}</Text>
             <Text style={styles.heroLeague}>{leagueName}</Text>
           </View>
           <View style={styles.heroBadges}>
             <View style={[styles.pill, { backgroundColor: colors.accentDim }]}>
-              <Text style={[styles.pillText, { color: colors.accent }]}>#{rank} in league</Text>
+              <Text style={[styles.pillText, { color: colors.accent }]}>{t('member.inLeague', { rank })}</Text>
             </View>
             <View style={[styles.pill, { backgroundColor: 'rgba(255,255,255,0.06)' }]}>
-              <Text style={[styles.pillText, { color: colors.text }]}>{points} pts</Text>
+              <Text style={[styles.pillText, { color: colors.text }]}>{points} {t('common.pointsShort')}</Text>
             </View>
           </View>
         </View>
 
         {/* Stats */}
         <View style={styles.statsRow}>
-          <StatCard label="Picks made" value={`${picksMade}/${picksTotal}`} color={colors.text} loading={loading} />
-          <StatCard label="Pending" value={`${pending}`} color={colors.warning} loading={loading} />
-          <StatCard label="Rank" value={`#${rank}/${totalMembers}`} color={colors.accent} loading={loading} />
+          <StatCard label={t('member.picksMade')} value={`${picksMade}/${picksTotal}`} color={colors.text} loading={loading} />
+          <StatCard label={t('member.pending')} value={`${pending}`} color={colors.warning} loading={loading} />
+          <StatCard label={t('common.rank')} value={`#${rank}/${totalMembers}`} color={colors.accent} loading={loading} />
         </View>
 
         {loading ? (
@@ -150,7 +153,7 @@ export default function MemberScreen() {
             {/* Latest picks */}
             {finishedMatches.length > 0 && (
               <View>
-                <SectionLabel>Latest Picks</SectionLabel>
+                <SectionLabel>{t('member.latestPicks')}</SectionLabel>
                 <View style={styles.cardsColumn}>
                   {finishedMatches.map((m) => (
                     <FinishedMatchCard key={m._id} match={m} />
@@ -162,7 +165,7 @@ export default function MemberScreen() {
             {/* Pending picks */}
             {upcomingMatches.filter((m) => !m.hasPick).length > 0 && (
               <View>
-                <SectionLabel>Pending Picks</SectionLabel>
+                <SectionLabel>{t('member.pendingPicks')}</SectionLabel>
                 <View style={styles.cardsColumn}>
                   {upcomingMatches
                     .filter((m) => !m.hasPick)
@@ -180,14 +183,14 @@ export default function MemberScreen() {
         <View style={styles.reminderBar}>
           <TouchableOpacity style={styles.reminderBtn} onPress={() => setNotifyVisible(true)} activeOpacity={0.85}>
             <Ionicons name="notifications-outline" size={18} color={colors.text} />
-            <Text style={styles.reminderBtnText}>Send reminder</Text>
+            <Text style={styles.reminderBtnText}>{t('member.sendReminder')}</Text>
           </TouchableOpacity>
         </View>
       )}
 
       <NotifyModal
         visible={notifyVisible}
-        title={`Remind ${name}`}
+        title={t('member.remind', { name })}
         onClose={() => setNotifyVisible(false)}
         onSend={(title, body) => notifyLeagueMembers(leagueId, title, body)}
       />
@@ -205,6 +208,7 @@ function StatCard({ label, value, color, loading }: { label: string; value: stri
 }
 
 function FinishedMatchCard({ match }: { match: MemberMatchPrediction }) {
+  const { t, locale } = useI18n();
   const result =
     match.prediction && match.result
       ? getResult(match.prediction, match.result)
@@ -214,9 +218,9 @@ function FinishedMatchCard({ match }: { match: MemberMatchPrediction }) {
     <View style={styles.matchCard}>
       <View style={styles.matchCardHeader}>
         <Text style={styles.matchMeta}>
-          {match.group ? `Group ${match.group}` : match.stage.replace(/_/g, ' ')} · {formatMatchDate(match.utcDate)}
+          {match.group ? t('common.group', { group: match.group }) : match.stage.replace(/_/g, ' ')} · {formatMatchDate(match.utcDate, locale)}
         </Text>
-        {result ? <ResultBadge result={result} /> : <Text style={styles.noPick}>No pick</Text>}
+        {result ? <ResultBadge result={result} /> : <Text style={styles.noPick}>{t('member.noPick')}</Text>}
       </View>
       <View style={styles.matchRow}>
         <View style={styles.teamSide}>
@@ -229,7 +233,7 @@ function FinishedMatchCard({ match }: { match: MemberMatchPrediction }) {
           </Text>
           {match.prediction && (
             <Text style={styles.pickLabel}>
-              pick: {match.prediction.homeGoals}–{match.prediction.awayGoals}
+              {t('common.pick')}: {match.prediction.homeGoals}–{match.prediction.awayGoals}
             </Text>
           )}
         </View>
@@ -243,16 +247,17 @@ function FinishedMatchCard({ match }: { match: MemberMatchPrediction }) {
 }
 
 function PendingMatchRow({ match }: { match: MemberUpcomingMatch }) {
+  const { t } = useI18n();
   return (
     <View style={styles.pendingRow}>
       <View style={styles.pendingTeams}>
         <Flag code={match.homeTeam.code} size={18} />
         <Text style={styles.pendingTeamText}>
-          {match.homeTeam.name} vs {match.awayTeam.name}
+          {match.homeTeam.name} {t('common.vs')} {match.awayTeam.name}
         </Text>
         <Flag code={match.awayTeam.code} size={18} />
       </View>
-      <Text style={styles.missingLabel}>Missing</Text>
+      <Text style={styles.missingLabel}>{t('common.missing')}</Text>
     </View>
   );
 }

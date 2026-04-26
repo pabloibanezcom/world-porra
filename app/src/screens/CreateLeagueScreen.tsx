@@ -3,24 +3,26 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, ActivityInd
 import { useNavigation } from '@react-navigation/native';
 import { createLeague } from '../api/leagues';
 import { colors, spacing, fontSize, borderRadius } from '../theme';
+import { useI18n } from '../i18n';
 
 export default function CreateLeagueScreen() {
+  const { t } = useI18n();
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const navigation = useNavigation<any>();
 
   const handleCreate = async () => {
     if (!name.trim()) {
-      Alert.alert('Error', 'Please enter a league name');
+      Alert.alert(t('common.error'), t('createLeague.required'));
       return;
     }
 
     setLoading(true);
     try {
       const league = await createLeague(name.trim());
-      Alert.alert('League Created!', `Invite code: ${league.inviteCode}`, [
+      Alert.alert(t('createLeague.successTitle'), t('createLeague.inviteCode', { code: league.inviteCode }), [
         {
-          text: 'OK',
+          text: t('common.ok'),
           onPress: () =>
             navigation.navigate('Main', {
               screen: 'Leagues',
@@ -32,7 +34,7 @@ export default function CreateLeagueScreen() {
         },
       ]);
     } catch {
-      Alert.alert('Error', 'Failed to create league');
+      Alert.alert(t('common.error'), t('createLeague.failed'));
     } finally {
       setLoading(false);
     }
@@ -40,17 +42,17 @@ export default function CreateLeagueScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>League Name</Text>
+      <Text style={styles.label}>{t('createLeague.name')}</Text>
       <TextInput
         style={styles.input}
         value={name}
         onChangeText={setName}
-        placeholder="e.g. Office Champions"
+        placeholder={t('createLeague.placeholder')}
         maxLength={50}
         autoFocus
       />
       <TouchableOpacity style={styles.button} onPress={handleCreate} disabled={loading}>
-        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Create League</Text>}
+        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>{t('createLeague.submit')}</Text>}
       </TouchableOpacity>
     </View>
   );

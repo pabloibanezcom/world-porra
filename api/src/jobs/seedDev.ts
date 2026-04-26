@@ -1,5 +1,6 @@
 import { Match } from '../models/Match';
 import { logger } from '../config/logger';
+import { seedCountryTeams } from '../services/countryTeamService';
 
 const teams = [
   { name: 'United States', code: 'USA', crest: '' },
@@ -19,6 +20,7 @@ const teams = [
 const groups = ['A', 'B', 'C', 'D'];
 
 export async function seedDevMatches(): Promise<void> {
+  await seedCountryTeams();
   const count = await Match.countDocuments();
   if (count > 0) return;
 
@@ -55,8 +57,8 @@ export async function seedDevMatches(): Promise<void> {
         stage: 'GROUP' as const,
         group: groups[g],
         matchday: md,
-        homeTeam: groupTeams[h],
-        awayTeam: groupTeams[a],
+        homeTeamCode: groupTeams[h].code,
+        awayTeamCode: groupTeams[a].code,
         utcDate,
         status: isFinished ? 'FINISHED' as const : 'SCHEDULED' as const,
         result: isFinished

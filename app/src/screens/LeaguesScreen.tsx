@@ -8,8 +8,10 @@ import { useAuthStore } from '../store/authStore';
 import LeagueCard from '../components/LeagueCard';
 import LoadingView from '../components/ui/LoadingView';
 import { colors, fonts } from '../theme';
+import { useI18n } from '../i18n';
 
 export default function LeaguesScreen() {
+  const { t } = useI18n();
   const user = useAuthStore((s) => s.user);
   const [leagues, setLeagues] = useState<League[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -42,9 +44,9 @@ export default function LeaguesScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.titleRow}>
-        <Text style={styles.title}>Leagues</Text>
+        <Text style={styles.title}>{t('nav.leagues')}</Text>
         <Text style={styles.subtitle}>
-          {leagues.length > 0 ? `${leagues.length} private pools` : 'Join a private pool'}
+          {leagues.length > 0 ? t('leagues.privatePools', { count: leagues.length }) : t('leagues.joinPrivatePool')}
         </Text>
       </View>
 
@@ -67,13 +69,13 @@ export default function LeaguesScreen() {
           }
           ListFooterComponent={
             <TouchableOpacity style={styles.joinButton} onPress={() => navigation.navigate('JoinLeague')}>
-              <Text style={styles.joinButtonText}>Join League</Text>
+              <Text style={styles.joinButtonText}>{t('leagues.joinLeague')}</Text>
             </TouchableOpacity>
           }
           ListEmptyComponent={
             <View style={styles.empty}>
-              <Text style={styles.emptyText}>No leagues yet.</Text>
-              <Text style={styles.emptySubtext}>Join a league to compete with friends.</Text>
+              <Text style={styles.emptyText}>{t('leagues.noLeagues')}</Text>
+              <Text style={styles.emptySubtext}>{t('leagues.emptyHint')}</Text>
             </View>
           }
         />

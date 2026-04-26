@@ -7,10 +7,12 @@ import { Match, Prediction } from '../types';
 import { colors, spacing, fontSize, borderRadius } from '../theme';
 import { format } from 'date-fns';
 import { hasTbdTeam } from '../components/MatchCard';
+import { useI18n } from '../i18n';
 
 type RouteParams = { MatchDetail: { matchId: string } };
 
 export default function MatchDetailScreen() {
+  const { language, t } = useI18n();
   const route = useRoute<RouteProp<RouteParams, 'MatchDetail'>>();
   const [match, setMatch] = useState<Match | null>(null);
   const [prediction, setPrediction] = useState<Prediction | null>(null);
@@ -20,8 +22,9 @@ export default function MatchDetailScreen() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    setLoading(true);
     loadMatch();
-  }, []);
+  }, [route.params.matchId, language]);
 
   const loadMatch = async () => {
     try {
@@ -40,7 +43,7 @@ export default function MatchDetailScreen() {
   const handleSubmit = async () => {
     if (!match) return;
     if (hasTbdTeam(match)) {
-      Alert.alert('Predictions open once both teams are confirmed.');
+      Alert.alert(t('match.predictionsTbd'));
       return;
     }
 
@@ -48,9 +51,9 @@ export default function MatchDetailScreen() {
     try {
       const pred = await submitPrediction(match._id, homeGoals, awayGoals);
       setPrediction(pred);
-      Alert.alert('Prediction saved!');
+      Alert.alert(t('match.saved'));
     } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.error || 'Failed to save prediction');
+      Alert.alert(t('common.error'), err.response?.data?.error || t('match.failedSave'));
     } finally {
       setSubmitting(false);
     }
@@ -71,7 +74,7 @@ export default function MatchDetailScreen() {
   if (!match) {
     return (
       <View style={styles.center}>
-        <Text>Match not found</Text>
+        <Text>{t('match.notFound')}</Text>
       </View>
     );
   }
@@ -79,7 +82,9 @@ export default function MatchDetailScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.matchHeader}>
-        <Text style={styles.stage}>{match.stage.replace(/_/g, ' ')}{match.group ? ` - Group ${match.group}` : ''}</Text>
+        <Text style={styles.stage}>
+          {match.stage.replace(/_/g, ' ')}{match.group ? ` - ${t('common.group', { group: match.group })}` : ''}
+        </Text>
         <Text style={styles.date}>{format(new Date(match.utcDate), 'EEE, MMM d · HH:mm')}</Text>
       </View>
 
@@ -89,7 +94,7 @@ export default function MatchDetailScreen() {
           <Text style={styles.teamName}>{match.homeTeam.name}</Text>
         </View>
         <Text style={styles.vs}>
-          {match.result ? `${match.result.homeGoals} - ${match.result.awayGoals}` : 'vs'}
+          {match.result ? `${match.result.homeGoals} - ${match.result.awayGoals}` : t('common.vs')}
         </Text>
         <View style={styles.team}>
           <Text style={styles.teamCode}>{match.awayTeam.code}</Text>
@@ -100,12 +105,12 @@ export default function MatchDetailScreen() {
       {/* Prediction section */}
       <View style={styles.predictionSection}>
         <Text style={styles.sectionTitle}>
-          {predictionDisabled ? 'Your Prediction' : 'Make Your Prediction'}
+          {predictionDisabled ? t('match.yourPrediction') : t('match.makePrediction')}
         </Text>
 
         {prediction?.points != null && (
           <View style={styles.pointsBadge}>
-            <Text style={styles.pointsText}>+{prediction.points} pts</Text>
+            <Text style={styles.pointsText}>+{prediction.points} {t('common.pointsShort')}</Text>
           </View>
         )}
 
@@ -160,14 +165,14 @@ export default function MatchDetailScreen() {
             {submitting ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.submitText}>{prediction ? 'Update Prediction' : 'Submit Prediction'}</Text>
+              <Text style={styles.submitText}>{prediction ? t('match.updatePrediction') : t('match.submitPrediction')}</Text>
             )}
           </TouchableOpacity>
         )}
 
         {predictionDisabled && !prediction && (
           <Text style={styles.lockedText}>
-            {teamsTbd ? 'Predictions open once both teams are confirmed.' : 'Predictions are locked for this match.'}
+            {teamsTbd ? t('match.predictionsTbd') : t('match.locked')}
           </Text>
         )}
       </View>

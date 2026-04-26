@@ -15,12 +15,14 @@ import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 import { useAuthStore } from '../store/authStore';
 import { colors, spacing, borderRadius } from '../theme';
+import { useI18n } from '../i18n';
 
 WebBrowser.maybeCompleteAuthSession();
 
 const hasGoogleConfig = !!process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
 
 export default function LoginScreen() {
+  const { t } = useI18n();
   const signInWithPassword = useAuthStore((s) => s.signInWithPassword);
   const [isSigningIn, setIsSigningIn] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -36,7 +38,7 @@ export default function LoginScreen() {
     const normalizedEmail = email.trim().toLowerCase();
 
     if (!normalizedEmail || !password) {
-      setError('Email and password are required.');
+      setError(t('login.required'));
       return;
     }
 
@@ -45,7 +47,7 @@ export default function LoginScreen() {
     try {
       await signInWithPassword(normalizedEmail, password);
     } catch {
-      setError('Email/password login failed. Please check your credentials.');
+      setError(t('login.passwordFailed'));
     } finally {
       setIsSigningIn(false);
     }
@@ -72,8 +74,8 @@ export default function LoginScreen() {
             resizeMode="contain"
           />
           <View style={styles.titleBox}>
-            <Text style={styles.title}>World Cup Pool</Text>
-            <Text style={styles.subtitle}>2026 FIFA · USA · Canada · Mexico</Text>
+            <Text style={styles.title}>{t('login.title')}</Text>
+            <Text style={styles.subtitle}>{t('login.subtitle')}</Text>
           </View>
         </View>
 
@@ -82,7 +84,7 @@ export default function LoginScreen() {
         {/* CTA */}
         <View style={styles.ctaSection}>
           <View style={styles.formCard}>
-            <Text style={styles.formLabel}>Email</Text>
+            <Text style={styles.formLabel}>{t('login.email')}</Text>
             <TextInput
               autoCapitalize="none"
               autoCorrect={false}
@@ -93,12 +95,12 @@ export default function LoginScreen() {
               value={email}
               onChangeText={setEmail}
             />
-            <Text style={styles.formLabel}>Password</Text>
+            <Text style={styles.formLabel}>{t('login.password')}</Text>
             <TextInput
               autoCapitalize="none"
               autoCorrect={false}
               secureTextEntry
-              placeholder="Your password"
+              placeholder={t('login.passwordPlaceholder')}
               placeholderTextColor={colors.dim}
               style={styles.input}
               value={password}
@@ -112,14 +114,14 @@ export default function LoginScreen() {
               {isSigningIn ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.passwordBtnText}>Continue with Email</Text>
+                <Text style={styles.passwordBtnText}>{t('login.continueEmail')}</Text>
               )}
             </TouchableOpacity>
           </View>
 
           <View style={styles.dividerRow}>
             <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or</Text>
+            <Text style={styles.dividerText}>{t('login.or')}</Text>
             <View style={styles.dividerLine} />
           </View>
 
@@ -127,11 +129,11 @@ export default function LoginScreen() {
             <GoogleLoginButton isSigningIn={isSigningIn} setIsSigningIn={setIsSigningIn} setError={setError} />
           ) : (
             <TouchableOpacity style={[styles.googleBtn, styles.googleBtnDisabled]} disabled>
-              <Text style={[styles.googleBtnText, { color: '#666' }]}>Sign in with Google (not configured)</Text>
+              <Text style={[styles.googleBtnText, { color: '#666' }]}>{t('login.googleNotConfigured')}</Text>
             </TouchableOpacity>
           )}
           <Text style={styles.fine}>
-            By continuing you agree to the pool rules.{'\n'}Your picks are visible to other members.
+            {t('login.finePrint')}
           </Text>
         </View>
 
@@ -151,6 +153,7 @@ function GoogleLoginButton({
   setIsSigningIn: (v: boolean) => void;
   setError: (v: string | null) => void;
 }) {
+  const { t } = useI18n();
   const signInWithGoogle = useAuthStore((s) => s.signInWithGoogle);
 
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
@@ -165,7 +168,7 @@ function GoogleLoginButton({
       setIsSigningIn(true);
       setError(null);
       signInWithGoogle(id_token)
-        .catch(() => setError('Sign in failed. Please try again.'))
+        .catch(() => setError(t('login.signInFailed')))
         .finally(() => setIsSigningIn(false));
     }
   }, [response]);
@@ -185,7 +188,7 @@ function GoogleLoginButton({
         />
       )}
       <Text style={[styles.googleBtnText, isSigningIn && { color: '#666' }]}>
-        {isSigningIn ? 'Signing in…' : 'Continue with Google'}
+        {isSigningIn ? t('login.signingIn') : t('login.continueGoogle')}
       </Text>
     </TouchableOpacity>
   );

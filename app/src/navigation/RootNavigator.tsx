@@ -17,6 +17,7 @@ import JoinLeagueScreen from '../screens/JoinLeagueScreen';
 import LeagueDetailScreen from '../screens/LeagueDetailScreen';
 import MatchDetailScreen from '../screens/MatchDetailScreen';
 import MemberScreen from '../screens/MemberScreen';
+import { useI18n } from '../i18n';
 
 const Stack = createNativeStackNavigator();
 const LeaguesStack = createNativeStackNavigator();
@@ -32,6 +33,8 @@ function LeaguesStackNavigator() {
 }
 
 function MainTabs() {
+  const { t } = useI18n();
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -61,12 +64,12 @@ function MainTabs() {
       <Tab.Screen
         name="Home"
         component={HomeScreen}
-        options={{ title: 'Home', tabBarLabel: 'Home' }}
+        options={{ title: t('nav.home'), tabBarLabel: t('nav.home') }}
       />
       <Tab.Screen
         name="Leagues"
         component={LeaguesStackNavigator}
-        options={{ title: 'Leagues', tabBarLabel: 'Leagues' }}
+        options={{ title: t('nav.leagues'), tabBarLabel: t('nav.leagues') }}
         listeners={({ navigation }) => ({
           tabPress: () => {
             navigation.navigate('Leagues', { screen: 'LeagueList' });
@@ -76,12 +79,12 @@ function MainTabs() {
       <Tab.Screen
         name="Predictions"
         component={PicksScreen}
-        options={{ title: 'Predictions', tabBarLabel: 'Predictions' }}
+        options={{ title: t('nav.predictions'), tabBarLabel: t('nav.predictions') }}
       />
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
-        options={{ title: 'Profile', tabBarLabel: 'Profile' }}
+        options={{ title: t('nav.profile'), tabBarLabel: t('nav.profile') }}
       />
     </Tab.Navigator>
   );
@@ -89,6 +92,7 @@ function MainTabs() {
 
 export default function RootNavigator() {
   const { user, isLoading, restoreSession } = useAuthStore();
+  const { t } = useI18n();
 
   useEffect(() => {
     restoreSession();
@@ -111,17 +115,17 @@ export default function RootNavigator() {
             <Stack.Screen
               name="CreateLeague"
               component={CreateLeagueScreen}
-              options={{ headerShown: true, title: 'Create League', presentation: 'modal', animation: 'slide_from_bottom' }}
+              options={{ headerShown: true, title: t('nav.createLeague'), presentation: 'modal', animation: 'slide_from_bottom' }}
             />
             <Stack.Screen
               name="JoinLeague"
               component={JoinLeagueScreen}
-              options={{ headerShown: true, title: 'Join League', presentation: 'modal', animation: 'slide_from_bottom' }}
+              options={{ headerShown: true, title: t('nav.joinLeague'), presentation: 'modal', animation: 'slide_from_bottom' }}
             />
             <Stack.Screen
               name="MatchDetail"
               component={MatchDetailScreen}
-              options={{ headerShown: true, title: 'Match', animation: 'slide_from_right' }}
+              options={{ headerShown: true, title: t('nav.match'), animation: 'slide_from_right' }}
             />
             <Stack.Screen
               name="MemberScreen"
