@@ -306,6 +306,59 @@
       ]
     },
     {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "Get VAPID Public Key",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/notifications/vapid-public-key", "host": ["{{baseUrl}}"], "path": ["notifications", "vapid-public-key"] }
+          }
+        },
+        {
+          "name": "Subscribe to Push",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{wc2026_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{baseUrl}}/notifications/subscribe", "host": ["{{baseUrl}}"], "path": ["notifications", "subscribe"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"endpoint\": \"https://fcm.googleapis.com/fcm/send/...\",\n  \"keys\": {\n    \"p256dh\": \"<p256dh-key>\",\n    \"auth\": \"<auth-key>\"\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "Unsubscribe from Push",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{wc2026_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{baseUrl}}/notifications/subscribe", "host": ["{{baseUrl}}"], "path": ["notifications", "subscribe"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"endpoint\": \"https://fcm.googleapis.com/fcm/send/...\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Send Test Push",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{wc2026_token}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/notifications/test", "host": ["{{baseUrl}}"], "path": ["notifications", "test"] }
+          }
+        }
+      ]
+    },
+    {
       "name": "Admin",
       "item": [
         {
