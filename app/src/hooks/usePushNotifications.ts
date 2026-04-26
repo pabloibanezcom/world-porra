@@ -13,20 +13,26 @@ function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
   return outputArray.buffer;
 }
 
-const isSupported =
-  Platform.OS === 'web' &&
-  typeof window !== 'undefined' &&
-  'Notification' in window &&
-  'serviceWorker' in navigator &&
-  'PushManager' in window;
+function checkSupported(): boolean {
+  return (
+    Platform.OS === 'web' &&
+    typeof window !== 'undefined' &&
+    'Notification' in window &&
+    'serviceWorker' in navigator &&
+    'PushManager' in window
+  );
+}
 
 export function usePushNotifications() {
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isSupported, setIsSupported] = useState(false);
 
   useEffect(() => {
-    if (!isSupported) return;
+    const supported = checkSupported();
+    setIsSupported(supported);
+    if (!supported) return;
     setPermission(Notification.permission);
     navigator.serviceWorker.ready.then((reg) => {
       reg.pushManager.getSubscription().then((sub) => {
@@ -36,7 +42,7 @@ export function usePushNotifications() {
   }, []);
 
   const subscribe = useCallback(async () => {
-    if (!isSupported) return;
+    if (!checkSupported()) return;
     setLoading(true);
     try {
       const perm = await Notification.requestPermission();
@@ -65,7 +71,7 @@ export function usePushNotifications() {
   }, []);
 
   const unsubscribe = useCallback(async () => {
-    if (!isSupported) return;
+    if (!checkSupported()) return;
     setLoading(true);
     try {
       const reg = await navigator.serviceWorker.ready;

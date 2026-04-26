@@ -108,12 +108,12 @@ export default function ProfileScreen() {
         </View>
 
         {/* Notifications */}
-        {pushSupported && (
-          <View>
-            <SectionLabel>Notifications</SectionLabel>
-            <View style={styles.card}>
-              <View style={styles.settingsRow}>
-                <Text style={styles.settingsLabel}>Push notifications</Text>
+        <View>
+          <SectionLabel>Notifications</SectionLabel>
+          <View style={styles.card}>
+            <View style={styles.settingsRow}>
+              <Text style={styles.settingsLabel}>Push notifications</Text>
+              {pushSupported ? (
                 <Switch
                   value={isSubscribed}
                   onValueChange={isSubscribed ? unsubscribe : subscribe}
@@ -121,10 +121,12 @@ export default function ProfileScreen() {
                   trackColor={{ true: colors.accent, false: colors.border }}
                   thumbColor={colors.text}
                 />
-              </View>
+              ) : (
+                <Text style={styles.settingsValue}>Not available</Text>
+              )}
             </View>
           </View>
-        )}
+        </View>
 
         {/* Account */}
         <View>
