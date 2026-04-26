@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   Switch,
   Image,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../store/authStore';
@@ -63,16 +62,9 @@ export default function ProfileScreen() {
       })()
     : '—';
 
-  const handleSignOut = () => {
-    Alert.alert('Sign out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign out', style: 'destructive', onPress: signOut },
-    ]);
-  };
-
   const accountItems = [
     { label: 'Edit profile', value: '' },
-    { label: 'Sign out', value: '', danger: true, onPress: handleSignOut },
+    { label: 'Sign out', value: '', danger: true, onPress: signOut },
   ];
 
   const handleBroadcast = async (title: string, body: string) => {
