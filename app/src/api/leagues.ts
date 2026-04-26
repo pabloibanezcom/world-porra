@@ -24,3 +24,7 @@ export async function fetchLeague(id: string): Promise<League> {
 export async function leaveLeague(id: string): Promise<void> {
   await apiClient.delete(`/leagues/${id}/leave`);
 }
+
+export async function notifyLeagueMembers(id: string, title: string, body: string): Promise<void> {
+  await apiClient.post(`/leagues/${id}/notify`, { title, body });
+}

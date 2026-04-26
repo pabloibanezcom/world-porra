@@ -200,6 +200,36 @@ router.delete('/:id/admins/:userId', authMiddleware, async (req: AuthRequest, re
   res.json({ league });
 });
 
+const notifyLeagueSchema = z.object({
+  title: z.string().min(1).max(100),
+  body: z.string().min(1).max(300),
+});
+
+router.post('/:id/notify', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  const league = await League.findById(req.params.id);
+  if (!league) {
+    res.status(404).json({ error: 'League not found' });
+    return;
+  }
+  if (!isLeagueAdmin(league, req.userId!)) {
+    res.status(403).json({ error: 'Only league admins can send notifications' });
+    return;
+  }
+  try {
+    const { title, body } = notifyLeagueSchema.parse(req.body);
+    const { sendToUsers } = await import('../services/pushService');
+    const memberIds = league.members.map((m) => m.userId.toString());
+    await sendToUsers(memberIds, { title, body, url: '/' });
+    res.json({ ok: true });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: 'Invalid payload', details: error.errors });
+      return;
+    }
+    throw error;
+  }
+});
+
 router.delete('/:id/leave', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   const league = await League.findById(req.params.id);
   if (!league) {

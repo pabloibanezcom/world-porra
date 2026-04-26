@@ -9,9 +9,10 @@ import {
   Share,
   RefreshControl,
 } from 'react-native';
+import NotifyModal from '../components/NotifyModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RouteProp, useRoute } from '@react-navigation/native';
-import { fetchLeague } from '../api/leagues';
+import { fetchLeague, notifyLeagueMembers } from '../api/leagues';
 import { League, LeagueMember } from '../types';
 import { colors, fonts } from '../theme';
 import Avatar from '../components/ui/Avatar';
@@ -39,6 +40,7 @@ export default function LeagueDetailScreen() {
   const [league, setLeague] = useState<League | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [notifyModalVisible, setNotifyModalVisible] = useState(false);
 
   const loadLeague = useCallback(async () => {
     try {
@@ -89,6 +91,7 @@ export default function LeagueDetailScreen() {
   const myPoints = me ? memberPoints(me) : 0;
   const accent = colors.accent;
   const accentDim = colors.accentDim;
+  const isAdmin = me?.isAdmin || league.ownerId?.id === user?.id || (league.ownerId as any)?._id === user?.id;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -118,6 +121,12 @@ export default function LeagueDetailScreen() {
           </View>
         </TouchableOpacity>
 
+        {isAdmin && (
+          <TouchableOpacity style={styles.notifyBtn} onPress={() => setNotifyModalVisible(true)} activeOpacity={0.85}>
+            <Text style={styles.notifyBtnText}>Notify members</Text>
+          </TouchableOpacity>
+        )}
+
         <View style={styles.raceCard}>
           <SectionLabel>Points Race</SectionLabel>
           <LeagueRaceStrip members={league.members} userId={user?.id} accent={accent} accentDim={accentDim} />
@@ -140,6 +149,13 @@ export default function LeagueDetailScreen() {
           </View>
         </View>
       </ScrollView>
+
+      <NotifyModal
+        visible={notifyModalVisible}
+        title={`Notify ${league.name}`}
+        onClose={() => setNotifyModalVisible(false)}
+        onSend={(title, body) => notifyLeagueMembers(league._id, title, body)}
+      />
     </SafeAreaView>
   );
 }
@@ -310,4 +326,19 @@ const styles = StyleSheet.create({
   points: { color: colors.text, fontFamily: fonts.displayBold, fontSize: 16, fontWeight: '700' },
   pointsSuffix: { color: colors.muted, fontFamily: fonts.body, fontSize: 10, fontWeight: '400' },
   emptyText: { color: colors.muted, fontFamily: fonts.bodyMedium, fontSize: 16 },
+
+  notifyBtn: {
+    backgroundColor: colors.card,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: 13,
+    alignItems: 'center',
+  },
+  notifyBtnText: {
+    color: colors.accent,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 14,
+    fontWeight: '600',
+  },
 });

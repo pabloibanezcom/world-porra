@@ -56,4 +56,29 @@ router.post('/test', authMiddleware, async (req: AuthRequest, res: Response): Pr
   res.json({ ok: true });
 });
 
+const broadcastSchema = z.object({
+  title: z.string().min(1).max(100),
+  body: z.string().min(1).max(300),
+});
+
+router.post('/broadcast', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  const user = await (await import('../models/User')).User.findById(req.userId);
+  if (!user?.isMaster) {
+    res.status(403).json({ error: 'Master access required' });
+    return;
+  }
+  try {
+    const { title, body } = broadcastSchema.parse(req.body);
+    const { sendToAll } = await import('../services/pushService');
+    await sendToAll({ title, body, url: '/' });
+    res.json({ ok: true });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: 'Invalid payload', details: error.errors });
+      return;
+    }
+    throw error;
+  }
+});
+
 export default router;

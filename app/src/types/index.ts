@@ -5,6 +5,7 @@ export interface User {
   email: string;
   avatarUrl: string;
   totalPoints: number;
+  isMaster?: boolean;
 }
 
 export type MatchStage =

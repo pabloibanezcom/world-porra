@@ -18,6 +18,8 @@ import Avatar from '../components/ui/Avatar';
 import { colors, fonts } from '../theme';
 import { sortMembersByPoints } from '../utils/league';
 import { usePushNotifications } from '../hooks/usePushNotifications';
+import NotifyModal from '../components/NotifyModal';
+import { apiClient } from '../api/client';
 
 function SectionLabel({ children }: { children: string }) {
   return <Text style={styles.sectionLabel}>{children.toUpperCase()}</Text>;
@@ -37,6 +39,7 @@ export default function ProfileScreen() {
   const [league, setLeague] = useState<League | null>(null);
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const { isSubscribed, loading: pushLoading, subscribe, unsubscribe, isSupported: pushSupported } = usePushNotifications();
+  const [notifyModalVisible, setNotifyModalVisible] = useState(false);
 
   useEffect(() => {
     Promise.all([fetchMyLeagues(), fetchMyPredictions()])
@@ -71,6 +74,10 @@ export default function ProfileScreen() {
     { label: 'Edit profile', value: '' },
     { label: 'Sign out', value: '', danger: true, onPress: handleSignOut },
   ];
+
+  const handleBroadcast = async (title: string, body: string) => {
+    await apiClient.post('/notifications/broadcast', { title, body });
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -128,6 +135,21 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        {/* Master: broadcast to all */}
+        {user?.isMaster && (
+          <View>
+            <SectionLabel>Admin</SectionLabel>
+            <View style={styles.card}>
+              <TouchableOpacity style={styles.settingsRow} onPress={() => setNotifyModalVisible(true)}>
+                <Text style={styles.settingsLabel}>Notify all members</Text>
+                <View style={styles.settingsRight}>
+                  <Text style={styles.chevron}>›</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         {/* Account */}
         <View>
           <SectionLabel>Account</SectionLabel>
@@ -151,6 +173,13 @@ export default function ProfileScreen() {
           </View>
         </View>
       </ScrollView>
+
+      <NotifyModal
+        visible={notifyModalVisible}
+        title="Notify all members"
+        onClose={() => setNotifyModalVisible(false)}
+        onSend={handleBroadcast}
+      />
     </SafeAreaView>
   );
 }
