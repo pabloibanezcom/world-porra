@@ -16,6 +16,7 @@ import CreateLeagueScreen from '../screens/CreateLeagueScreen';
 import JoinLeagueScreen from '../screens/JoinLeagueScreen';
 import LeagueDetailScreen from '../screens/LeagueDetailScreen';
 import MatchDetailScreen from '../screens/MatchDetailScreen';
+import MemberScreen from '../screens/MemberScreen';
 
 const Stack = createNativeStackNavigator();
 const LeaguesStack = createNativeStackNavigator();
@@ -121,6 +122,11 @@ export default function RootNavigator() {
               name="MatchDetail"
               component={MatchDetailScreen}
               options={{ headerShown: true, title: 'Match', animation: 'slide_from_right' }}
+            />
+            <Stack.Screen
+              name="MemberScreen"
+              component={MemberScreen}
+              options={{ headerShown: false, animation: 'slide_from_right' }}
             />
           </>
         ) : (

@@ -1,5 +1,31 @@
 import { apiClient } from './client';
-import { League } from '../types';
+import { League, Match, MatchResult } from '../types';
+
+export interface MemberMatchPrediction {
+  _id: string;
+  homeTeam: Match['homeTeam'];
+  awayTeam: Match['awayTeam'];
+  utcDate: string;
+  stage: Match['stage'];
+  group: string | null;
+  result: MatchResult | null;
+  prediction: { homeGoals: number; awayGoals: number; points: number | null } | null;
+}
+
+export interface MemberUpcomingMatch {
+  _id: string;
+  homeTeam: Match['homeTeam'];
+  awayTeam: Match['awayTeam'];
+  utcDate: string;
+  stage: Match['stage'];
+  group: string | null;
+  hasPick: boolean;
+}
+
+export interface MemberPredictionsResponse {
+  finishedMatches: MemberMatchPrediction[];
+  upcomingMatches: MemberUpcomingMatch[];
+}
 
 export async function createLeague(name: string): Promise<League> {
   const { data } = await apiClient.post<{ league: League }>('/leagues', { name });
@@ -27,4 +53,14 @@ export async function leaveLeague(id: string): Promise<void> {
 
 export async function notifyLeagueMembers(id: string, title: string, body: string): Promise<void> {
   await apiClient.post(`/leagues/${id}/notify`, { title, body });
+}
+
+export async function fetchMemberPredictions(
+  leagueId: string,
+  userId: string
+): Promise<MemberPredictionsResponse> {
+  const { data } = await apiClient.get<MemberPredictionsResponse>(
+    `/leagues/${leagueId}/members/${userId}/predictions`
+  );
+  return data;
 }

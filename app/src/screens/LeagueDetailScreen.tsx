@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import NotifyModal from '../components/NotifyModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { RouteProp, useRoute } from '@react-navigation/native';
+import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { fetchLeague, notifyLeagueMembers } from '../api/leagues';
 import { League, LeagueMember } from '../types';
 import { colors, fonts } from '../theme';
@@ -36,6 +36,7 @@ function SectionLabel({ children }: { children: string }) {
 
 export default function LeagueDetailScreen() {
   const route = useRoute<RouteProp<RouteParams, 'LeagueDetail'>>();
+  const navigation = useNavigation<any>();
   const user = useAuthStore((s) => s.user);
   const [league, setLeague] = useState<League | null>(null);
   const [loading, setLoading] = useState(true);
@@ -144,6 +145,20 @@ export default function LeagueDetailScreen() {
                 accent={accent}
                 accentDim={accentDim}
                 isLast={index === sorted.length - 1}
+                onPress={() =>
+                  navigation.navigate('MemberScreen', {
+                    leagueId: league._id,
+                    leagueName: league.name,
+                    memberId: memberId(member),
+                    memberName: memberName(member),
+                    memberColor: avatarColor(memberId(member) || String(index)),
+                    memberPoints: memberPoints(member),
+                    memberRank: index + 1,
+                    totalMembers: league.members.length,
+                    isAdmin,
+                    isMe: isCurrentMember(member, user?.id),
+                  })
+                }
               />
             ))}
           </View>
@@ -176,6 +191,7 @@ function RankingRow({
   accent,
   accentDim,
   isLast,
+  onPress,
 }: {
   member: LeagueMember;
   index: number;
@@ -183,18 +199,21 @@ function RankingRow({
   accent: string;
   accentDim: string;
   isLast: boolean;
+  onPress: () => void;
 }) {
   const isMe = isCurrentMember(member, userId);
   const id = memberId(member) || String(index);
   const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : null;
 
   return (
-    <View
+    <TouchableOpacity
       style={[
         styles.memberRow,
         !isLast && styles.memberRowBorder,
         isMe && { backgroundColor: accentDim },
       ]}
+      onPress={onPress}
+      activeOpacity={0.7}
     >
       <View style={styles.rankCell}>
         <Text style={medal ? styles.medal : styles.rankNum}>{medal || index + 1}</Text>
@@ -215,7 +234,7 @@ function RankingRow({
         {memberPoints(member)}
         <Text style={styles.pointsSuffix}> pts</Text>
       </Text>
-    </View>
+    </TouchableOpacity>
   );
 }
 

@@ -2,6 +2,8 @@ import { Router, Response } from 'express';
 import { z } from 'zod';
 import crypto from 'crypto';
 import { League } from '../models/League';
+import { Match } from '../models/Match';
+import { Prediction } from '../models/Prediction';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { User } from '../models/User';
 
@@ -227,6 +229,73 @@ router.post('/:id/notify', authMiddleware, async (req: AuthRequest, res: Respons
       return;
     }
     throw error;
+  }
+});
+
+router.get('/:id/members/:userId/predictions', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const league = await League.findById(req.params.id);
+    if (!league) {
+      res.status(404).json({ error: 'League not found' });
+      return;
+    }
+
+    const isViewer = league.members.some((m) => m.userId.toString() === req.userId);
+    if (!isViewer) {
+      res.status(403).json({ error: 'Not a league member' });
+      return;
+    }
+
+    const targetUserId = req.params.userId;
+    const targetInLeague = league.members.some((m) => m.userId.toString() === targetUserId);
+    if (!targetInLeague) {
+      res.status(404).json({ error: 'Member not found in league' });
+      return;
+    }
+
+    const [finishedMatches, upcomingMatches] = await Promise.all([
+      Match.find({ status: 'FINISHED' }).lean(),
+      Match.find({ status: 'SCHEDULED' }).sort({ utcDate: 1 }).lean(),
+    ]);
+
+    const finishedIds = finishedMatches.map((m) => m._id);
+    const upcomingIds = upcomingMatches.map((m) => m._id);
+
+    const [finishedPredictions, upcomingPredictions] = await Promise.all([
+      Prediction.find({ userId: targetUserId, matchId: { $in: finishedIds } }).lean(),
+      Prediction.find({ userId: targetUserId, matchId: { $in: upcomingIds } }).select('matchId').lean(),
+    ]);
+
+    const pickedSet = new Set(upcomingPredictions.map((p) => p.matchId.toString()));
+
+    res.json({
+      finishedMatches: finishedMatches.map((m) => {
+        const pred = finishedPredictions.find((p) => p.matchId.toString() === m._id.toString());
+        return {
+          _id: String(m._id),
+          homeTeam: m.homeTeam,
+          awayTeam: m.awayTeam,
+          utcDate: m.utcDate,
+          stage: m.stage,
+          group: m.group,
+          result: m.result,
+          prediction: pred
+            ? { homeGoals: pred.homeGoals, awayGoals: pred.awayGoals, points: pred.points }
+            : null,
+        };
+      }),
+      upcomingMatches: upcomingMatches.map((m) => ({
+        _id: String(m._id),
+        homeTeam: m.homeTeam,
+        awayTeam: m.awayTeam,
+        utcDate: m.utcDate,
+        stage: m.stage,
+        group: m.group,
+        hasPick: pickedSet.has(m._id.toString()),
+      })),
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
   }
 });
 
