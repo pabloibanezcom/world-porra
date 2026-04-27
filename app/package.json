@@ -9,7 +9,9 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "generate:icons": "bash scripts/generate-logo-assets.sh",
-    "build:web": "expo export -p web && node scripts/inject-pwa-tags.js"
+    "build:web": "expo export -p web && node scripts/inject-pwa-tags.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@react-navigation/bottom-tabs": "^7.15.9",
@@ -36,7 +38,8 @@
   },
   "devDependencies": {
     "@types/react": "~19.1.0",
-    "typescript": "~5.9.2"
+    "typescript": "~5.9.2",
+    "vitest": "^3.0.4"
   },
   "private": true
 }
