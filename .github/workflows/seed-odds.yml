@@ -12,6 +12,7 @@ jobs:
   seed:
     name: Seed mock odds
     runs-on: ubuntu-latest
+    environment: production
     if: ${{ github.event.inputs.confirm == 'yes' }}
 
     steps:
