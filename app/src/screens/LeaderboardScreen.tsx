@@ -12,7 +12,7 @@ import { fetchMyLeagues } from '../api/leagues';
 import { League, LeagueMember } from '../types';
 import Avatar from '../components/ui/Avatar';
 import { colors, fonts } from '../theme';
-import { memberPoints, sortMembersByPoints } from '../utils/league';
+import { memberAvatarUrl, memberName, memberPoints, sortMembersByPoints } from '../utils/league';
 
 const MEMBER_COLORS = ['#494fdf', '#00a87e', '#e61e49', '#ec7e00', '#936d62'];
 
@@ -80,7 +80,7 @@ export default function LeaderboardScreen() {
             <View style={styles.card}>
               {members.map((member, i) => {
                 const memberUser = member.userId as any;
-                const name = memberUser?.name || 'Player';
+                const name = memberName(member);
                 const isMe = memberUser?.id === user?.id || memberUser?._id === user?.id;
                 const color = MEMBER_COLORS[i % MEMBER_COLORS.length];
                 return (
@@ -99,7 +99,7 @@ export default function LeaderboardScreen() {
                         <Text style={[styles.rankNum, i === 0 && { color: '#f5a623' }]}>{i + 1}</Text>
                       )}
                     </View>
-                    <Avatar name={name} color={color} size={34} />
+                    <Avatar name={name} color={color} imageUrl={memberAvatarUrl(member)} size={34} />
                     <View style={{ flex: 1 }}>
                       <View style={styles.nameRow}>
                         <Text style={styles.memberName}>{name}</Text>
@@ -171,15 +171,14 @@ function PodiumSlot({
   color: string;
   elevated?: boolean;
 }) {
-  const memberUser = member.userId as any;
-  const name = memberUser?.name || 'Player';
+  const name = memberName(member);
   const medal = ['🥇', '🥈', '🥉'][rank - 1];
   const size = elevated ? 50 : 40;
 
   return (
     <View style={[styles.podiumSlot, elevated && styles.podiumSlotElevated]}>
       {elevated && <Text style={styles.crown}>👑</Text>}
-      <Avatar name={name} color={color} size={size} />
+      <Avatar name={name} color={color} imageUrl={memberAvatarUrl(member)} size={size} />
       <Text style={[styles.podiumName, elevated && styles.podiumNameLarge]}>{name}</Text>
       <View style={[styles.podiumBadge, elevated && styles.podiumBadgeAccent]}>
         <Text style={[styles.podiumBadgeText, elevated && { color: colors.accent, fontSize: 14 }]}>

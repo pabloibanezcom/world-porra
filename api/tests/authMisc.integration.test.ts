@@ -72,6 +72,7 @@ describe('misc app and auth routes', () => {
 
     const stored = await User.findOne({ email: 'google@wc2026.test' }).lean();
     expect(stored?.googleId).toBe('google-user-001');
+    expect(stored?.avatarUrl).toBe('https://example.test/avatar.png');
   });
 
   it('links a Google login to an existing email account and rejects failed Google auth', async () => {

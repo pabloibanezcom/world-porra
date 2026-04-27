@@ -14,6 +14,10 @@ export function memberName(member: LeagueMember): string {
   return member.userId.name || 'Player';
 }
 
+export function memberAvatarUrl(member: LeagueMember): string {
+  return member.userId.avatarUrl || '';
+}
+
 export function memberInitials(member: LeagueMember): string {
   return memberName(member)
     .split(' ')

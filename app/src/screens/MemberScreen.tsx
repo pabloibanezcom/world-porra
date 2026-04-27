@@ -25,6 +25,7 @@ type RouteParams = {
     memberId: string;
     memberName: string;
     memberColor: string;
+    memberAvatarUrl?: string;
     memberPoints: number;
     memberRank: number;
     totalMembers: number;
@@ -75,6 +76,7 @@ export default function MemberScreen() {
     memberId,
     memberName: name,
     memberColor,
+    memberAvatarUrl,
     memberPoints: points,
     memberRank: rank,
     totalMembers,
@@ -123,7 +125,7 @@ export default function MemberScreen() {
               isMe && { borderWidth: 3, borderColor: colors.accent, shadowColor: colors.accent, shadowOpacity: 0.35, shadowRadius: 8, shadowOffset: { width: 0, height: 0 } },
             ]}
           >
-            <Avatar name={name} color={memberColor} size={76} />
+            <Avatar name={name} color={memberColor} imageUrl={memberAvatarUrl} size={76} />
           </View>
           <View style={styles.heroInfo}>
             <Text style={styles.heroName}>{isMe ? t('member.heroNameYou', { name }) : name}</Text>

@@ -6,6 +6,7 @@ import {
   memberId,
   memberInitials,
   memberName,
+  memberAvatarUrl,
   memberPoints,
   sortMembersByPoints,
 } from './league';
@@ -29,13 +30,21 @@ function member(overrides: Partial<LeagueMember['userId']> = {}): LeagueMember {
 
 describe('league utilities', () => {
   it('normalizes member identity, display name, initials, and points', () => {
-    const fullMember = member({ id: 'user-1', _id: 'legacy-id', name: 'Pablo Ibanez', totalPoints: 42 });
+    const fullMember = member({
+      id: 'user-1',
+      _id: 'legacy-id',
+      name: 'Pablo Ibanez',
+      avatarUrl: 'https://example.test/avatar.png',
+      totalPoints: 42,
+    });
     const fallbackMember = member({ _id: 'legacy-id' });
 
     expect(memberId(fullMember)).toBe('user-1');
     expect(memberId(fallbackMember)).toBe('legacy-id');
     expect(memberName(fullMember)).toBe('Pablo Ibanez');
     expect(memberName(fallbackMember)).toBe('Player');
+    expect(memberAvatarUrl(fullMember)).toBe('https://example.test/avatar.png');
+    expect(memberAvatarUrl(fallbackMember)).toBe('');
     expect(memberInitials(fullMember)).toBe('PI');
     expect(memberPoints(fullMember)).toBe(42);
   });

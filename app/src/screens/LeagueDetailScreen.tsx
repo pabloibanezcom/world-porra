@@ -22,6 +22,7 @@ import {
   avatarColor,
   getMemberRank,
   isCurrentMember,
+  memberAvatarUrl,
   memberId,
   memberName,
   memberPoints,
@@ -154,6 +155,7 @@ export default function LeagueDetailScreen() {
                     memberId: memberId(member),
                     memberName: memberName(member),
                     memberColor: avatarColor(memberId(member) || String(index)),
+                    memberAvatarUrl: memberAvatarUrl(member),
                     memberPoints: memberPoints(member),
                     memberRank: index + 1,
                     totalMembers: league.members.length,
@@ -221,7 +223,7 @@ function RankingRow({
       <View style={styles.rankCell}>
         <Text style={medal ? styles.medal : styles.rankNum}>{medal || index + 1}</Text>
       </View>
-      <Avatar name={memberName(member)} color={avatarColor(id)} size={34} />
+      <Avatar name={memberName(member)} color={avatarColor(id)} imageUrl={memberAvatarUrl(member)} size={34} />
       <View style={styles.memberInfo}>
         <View style={styles.nameRow}>
           <Text style={styles.memberName} numberOfLines={1}>{memberName(member)}</Text>

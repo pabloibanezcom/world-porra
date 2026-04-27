@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { LayoutChangeEvent, StyleSheet, Text, View } from 'react-native';
 import { LeagueMember } from '../types';
 import { colors, fonts } from '../theme';
+import Avatar from './ui/Avatar';
 import {
   avatarColor,
   isCurrentMember,
+  memberAvatarUrl,
   memberId,
-  memberInitials,
+  memberName,
   memberPoints,
   sortMembersByPoints,
 } from '../utils/league';
@@ -47,20 +49,22 @@ export default function LeagueRaceStrip({ members, userId, accent, accentDim }: 
             <View key={id} style={[styles.avatarWrap, { left, zIndex: isMe ? 20 : index }]}>
               <View
                 style={[
-                  styles.avatar,
+                  styles.avatarFrame,
                   {
                     width: size,
                     height: size,
                     borderRadius: size / 2,
-                    backgroundColor: avatarColor(id),
                     borderColor: isMe ? accent : colors.bg,
                     borderWidth: isMe ? 2 : 1.5,
                   },
                 ]}
               >
-                <Text style={[styles.avatarText, { fontSize: isMe ? 11 : 9 }]}>
-                  {memberInitials(member)}
-                </Text>
+                <Avatar
+                  name={memberName(member)}
+                  color={avatarColor(id)}
+                  imageUrl={memberAvatarUrl(member)}
+                  size={size - (isMe ? 4 : 3)}
+                />
               </View>
               <View style={[styles.pointsPill, isMe && { backgroundColor: accentDim }]}>
                 <Text style={[styles.points, { color: isMe ? accent : colors.dim }]}>
@@ -93,14 +97,9 @@ const styles = StyleSheet.create({
     top: 0,
     alignItems: 'center',
   },
-  avatar: {
+  avatarFrame: {
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  avatarText: {
-    color: '#fff',
-    fontFamily: fonts.bodyMedium,
-    fontWeight: '700',
   },
   pointsPill: {
     borderRadius: 6,
