@@ -1,6 +1,7 @@
 import { Server } from 'http';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
+import { CountryTeam } from '../../src/models/CountryTeam';
 
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 'test-jwt-secret-with-enough-length';
@@ -54,6 +55,15 @@ export async function stopIntegrationServer(): Promise<void> {
 
 export async function clearDatabase(): Promise<void> {
   await Promise.all(Object.values(mongoose.connection.collections).map((collection) => collection.deleteMany({})));
+}
+
+export async function seedTestCountryTeams(): Promise<void> {
+  await CountryTeam.insertMany([
+    { code: 'ARG', names: { en: 'Argentina', es: 'Argentina' }, crest: '' },
+    { code: 'BRA', names: { en: 'Brazil', es: 'Brasil' }, crest: '' },
+    { code: 'ESP', names: { en: 'Spain', es: 'Espa\u00f1a' }, crest: '' },
+    { code: 'FRA', names: { en: 'France', es: 'Francia' }, crest: '' },
+  ]);
 }
 
 export async function requestJson<T = any>(

@@ -3,11 +3,10 @@ import { connectDB } from './config/db';
 import { env } from './config/env';
 import { logger } from './config/logger';
 import { startSyncJobs } from './jobs/syncResults';
-import { backfillCountryCodes, seedCountryTeams } from './services/countryTeamService';
+import { backfillCountryCodes } from './services/countryTeamService';
 
 async function start(): Promise<void> {
   await connectDB();
-  await seedCountryTeams();
   await backfillCountryCodes();
 
   if (env.FOOTBALL_DATA_API_KEY) {

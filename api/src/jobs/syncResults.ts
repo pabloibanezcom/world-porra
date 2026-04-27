@@ -32,7 +32,7 @@ export function startSyncJobs(): void {
       const windowStart = new Date(now.getTime() + 25 * 60 * 1000);
       const windowEnd = new Date(now.getTime() + 35 * 60 * 1000);
       const upcoming = await Match.find({
-        kickoff: { $gte: windowStart, $lte: windowEnd },
+        utcDate: { $gte: windowStart, $lte: windowEnd },
         status: 'SCHEDULED',
       });
       for (const match of upcoming) {

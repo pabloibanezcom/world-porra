@@ -1,6 +1,6 @@
 import { Match } from '../models/Match';
 import { logger } from '../config/logger';
-import { seedCountryTeams } from '../services/countryTeamService';
+import { upsertCountryTeamFromSource } from '../services/countryTeamService';
 
 const teams = [
   { name: 'United States', code: 'USA', crest: '' },
@@ -20,7 +20,7 @@ const teams = [
 const groups = ['A', 'B', 'C', 'D'];
 
 export async function seedDevMatches(): Promise<void> {
-  await seedCountryTeams();
+  await Promise.all(teams.map((team) => upsertCountryTeamFromSource(team)));
   const count = await Match.countDocuments();
   if (count > 0) return;
 

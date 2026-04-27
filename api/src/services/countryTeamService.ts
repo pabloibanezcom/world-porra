@@ -3,7 +3,6 @@ import { CountryTeam, ICountryTeam } from '../models/CountryTeam';
 import { GroupPrediction } from '../models/GroupPrediction';
 import { Match } from '../models/Match';
 import { TournamentPrediction } from '../models/TournamentPrediction';
-import { COUNTRY_TEAMS, CountryTeamSeed } from '../data/countryTeams';
 
 export type ApiLanguage = 'en' | 'es';
 
@@ -13,7 +12,7 @@ export interface LocalizedTeamInfo {
   crest: string;
 }
 
-type TeamCatalogEntry = Pick<ICountryTeam, 'code' | 'crest' | 'aliases'> & {
+type TeamCatalogEntry = Pick<ICountryTeam, 'code' | 'crest'> & {
   names: Map<string, string> | Record<string, string>;
 };
 
@@ -36,6 +35,11 @@ function getName(names: TeamCatalogEntry['names'], language: ApiLanguage, fallba
   return names[language] ?? names.en ?? fallbackCode;
 }
 
+function getFallbackName(code: string, language: ApiLanguage): string {
+  if (code === 'TBD') return language === 'es' ? 'P/D' : 'TBD';
+  return code;
+}
+
 export function localizeTeam(
   team: TeamCatalogEntry | null | undefined,
   code: string,
@@ -44,26 +48,9 @@ export function localizeTeam(
   const normalizedCode = normalizeCode(code);
   return {
     code: normalizedCode,
-    name: team ? getName(team.names, language, normalizedCode) : normalizedCode,
+    name: team ? getName(team.names, language, normalizedCode) : getFallbackName(normalizedCode, language),
     crest: team?.crest ?? '',
   };
-}
-
-export async function seedCountryTeams(): Promise<void> {
-  await Promise.all(
-    COUNTRY_TEAMS.map((team) =>
-      CountryTeam.findOneAndUpdate(
-        { code: team.code },
-        {
-          code: team.code,
-          names: team.names,
-          crest: team.crest ?? '',
-          aliases: team.aliases ?? [],
-        },
-        { upsert: true, new: true, setDefaultsOnInsert: true }
-      )
-    )
-  );
 }
 
 export async function upsertCountryTeamFromSource({
@@ -76,21 +63,17 @@ export async function upsertCountryTeamFromSource({
   crest?: string;
 }): Promise<void> {
   const normalizedCode = normalizeCode(code);
-  if (normalizedCode === 'TBD') {
-    await seedCountryTeams();
-    return;
-  }
-
-  const seeded = COUNTRY_TEAMS.find((team) => team.code === normalizedCode);
-  const names: CountryTeamSeed['names'] = seeded?.names ?? { en: name, es: name };
+  const normalizedName = name.trim() || getFallbackName(normalizedCode, 'en');
 
   await CountryTeam.findOneAndUpdate(
     { code: normalizedCode },
     {
       $setOnInsert: {
         code: normalizedCode,
-        names,
-        aliases: seeded?.aliases ?? [],
+        names: {
+          en: normalizedName,
+          es: normalizedCode === 'TBD' ? getFallbackName(normalizedCode, 'es') : normalizedName,
+        },
       },
       ...(crest ? { $set: { crest } } : {}),
     },

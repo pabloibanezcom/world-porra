@@ -16,6 +16,7 @@ export interface ITournamentPrediction extends Document {
   bestPlayer?: PlayerPick;
   topScorer?: PlayerPick;
   bestYoung?: PlayerPick;
+  createdAt: Date;
   updatedAt: Date;
 }
 

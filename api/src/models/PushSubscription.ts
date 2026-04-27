@@ -8,6 +8,7 @@ export interface IPushSubscription extends Document {
     auth: string;
   };
   createdAt: Date;
+  updatedAt: Date;
 }
 
 const pushSubscriptionSchema = new Schema<IPushSubscription>(

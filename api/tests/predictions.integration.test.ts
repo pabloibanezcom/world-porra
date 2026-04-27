@@ -1,6 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { clearDatabase, requestJson, startIntegrationServer, stopIntegrationServer } from './helpers/integration';
-import { seedCountryTeams } from '../src/services/countryTeamService';
+import { clearDatabase, requestJson, seedTestCountryTeams, startIntegrationServer, stopIntegrationServer } from './helpers/integration';
 import { Match } from '../src/models/Match';
 import { Prediction } from '../src/models/Prediction';
 
@@ -10,7 +9,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await clearDatabase();
-  await seedCountryTeams();
+  await seedTestCountryTeams();
 });
 
 afterAll(async () => {

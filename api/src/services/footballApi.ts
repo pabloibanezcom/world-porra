@@ -99,18 +99,6 @@ export async function fetchAllMatches(): Promise<FootballDataMatch[]> {
   }
 }
 
-export async function fetchFinishedMatches(dateFrom: string, dateTo: string): Promise<FootballDataMatch[]> {
-  try {
-    const response = await client.get(`/competitions/${COMPETITION_CODE}/matches`, {
-      params: { status: 'FINISHED', dateFrom, dateTo },
-    });
-    return response.data.matches;
-  } catch (error) {
-    logger.error({ err: error }, 'Failed to fetch finished matches');
-    throw error;
-  }
-}
-
 export function mapExternalMatch(ext: FootballDataMatch) {
   const stage = mapStage(ext.stage);
   const status = mapStatus(ext.status);

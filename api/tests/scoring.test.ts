@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculatePoints, ScoreInput } from '../src/services/scoring';
+import { calculatePoints } from '../src/services/scoring';
 
 function score(predicted: [number, number], actual: [number, number], stage = 'GROUP' as const): number {
   return calculatePoints({

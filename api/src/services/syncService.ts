@@ -6,11 +6,10 @@ import { calculatePoints } from './scoring';
 import { logger } from '../config/logger';
 import { MatchStage } from '../models/Match';
 import { sendToUser } from './pushService';
-import { hydrateMatch, seedCountryTeams, upsertCountryTeamFromSource } from './countryTeamService';
+import { hydrateMatch, upsertCountryTeamFromSource } from './countryTeamService';
 
 export async function syncAllFixtures(): Promise<{ fixturesSynced: number }> {
   logger.info('Syncing all fixtures...');
-  await seedCountryTeams();
   const externalMatches = await fetchAllMatches();
 
   for (const ext of externalMatches) {
