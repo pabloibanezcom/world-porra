@@ -166,6 +166,7 @@ const translations: Record<Language, TranslationMap> = {
     'match.updatePrediction': 'Update Prediction',
     'match.submitPrediction': 'Submit Prediction',
     'match.locked': 'Predictions are locked for this match.',
+    'match.bettingOdds': 'Betting odds',
 
     'matchCard.predict': 'Predict ->',
     'matchCard.teamsTbd': 'Teams TBD',
@@ -353,6 +354,7 @@ const translations: Record<Language, TranslationMap> = {
     'match.updatePrediction': 'Actualizar pronóstico',
     'match.submitPrediction': 'Enviar pronóstico',
     'match.locked': 'Los pronósticos están cerrados para este partido.',
+    'match.bettingOdds': 'Cuotas',
 
     'matchCard.predict': 'Pronosticar ->',
     'matchCard.teamsTbd': 'Equipos P/D',

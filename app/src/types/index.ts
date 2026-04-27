@@ -32,6 +32,12 @@ export interface MatchResult {
   winner: MatchWinner;
 }
 
+export interface MatchOdds {
+  home: number | null;
+  draw: number | null;
+  away: number | null;
+}
+
 export interface Match {
   _id: string;
   externalId: number;
@@ -45,6 +51,7 @@ export interface Match {
   utcDate: string;
   status: MatchStatus;
   result: MatchResult | null;
+  odds?: MatchOdds | null;
 }
 
 export interface Prediction {

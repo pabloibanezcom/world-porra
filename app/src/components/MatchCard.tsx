@@ -142,6 +142,25 @@ export default function MatchCard({ match, prediction, result, onPress }: Props)
           <Flag code={match.awayTeam.code} size={26} />
         </View>
       </View>
+
+      {match.odds && state !== 'finished' && (
+        <View style={styles.oddsRow}>
+          <Text style={styles.oddsItem}>
+            <Text style={styles.oddsLabel}>{getTeamLabel(match.homeTeam.name, match.homeTeam.code)} </Text>
+            <Text style={styles.oddsValue}>{match.odds.home?.toFixed(2)}</Text>
+          </Text>
+          <Text style={styles.oddsSep}>·</Text>
+          <Text style={styles.oddsItem}>
+            <Text style={styles.oddsLabel}>X </Text>
+            <Text style={styles.oddsValue}>{match.odds.draw?.toFixed(2)}</Text>
+          </Text>
+          <Text style={styles.oddsSep}>·</Text>
+          <Text style={styles.oddsItem}>
+            <Text style={styles.oddsLabel}>{getTeamLabel(match.awayTeam.name, match.awayTeam.code)} </Text>
+            <Text style={styles.oddsValue}>{match.odds.away?.toFixed(2)}</Text>
+          </Text>
+        </View>
+      )}
     </TouchableOpacity>
   );
 }
@@ -271,5 +290,27 @@ const styles = StyleSheet.create({
     color: colors.dim,
     fontSize: 14,
     fontFamily: fonts.body,
+  },
+  oddsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 10,
+    gap: 6,
+  },
+  oddsItem: {
+    fontSize: 10,
+  },
+  oddsLabel: {
+    color: colors.dim,
+    fontFamily: fonts.body,
+  },
+  oddsValue: {
+    color: colors.muted,
+    fontFamily: fonts.bodyMedium,
+  },
+  oddsSep: {
+    color: colors.dim,
+    fontSize: 10,
   },
 });

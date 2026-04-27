@@ -4,7 +4,7 @@ import { RouteProp, useRoute } from '@react-navigation/native';
 import { fetchMatch } from '../api/matches';
 import { submitPrediction } from '../api/predictions';
 import { Match, Prediction } from '../types';
-import { colors, spacing, fontSize, borderRadius } from '../theme';
+import { colors, spacing, fontSize, borderRadius, fonts } from '../theme';
 import { format } from 'date-fns';
 import { hasTbdTeam } from '../components/MatchCard';
 import { useI18n } from '../i18n';
@@ -101,6 +101,28 @@ export default function MatchDetailScreen() {
           <Text style={styles.teamName}>{match.awayTeam.name}</Text>
         </View>
       </View>
+
+      {match.odds && match.status !== 'FINISHED' && (
+        <View style={styles.oddsSection}>
+          <Text style={styles.oddsSectionTitle}>{t('match.bettingOdds')}</Text>
+          <View style={styles.oddsColumns}>
+            <View style={styles.oddsCol}>
+              <Text style={styles.oddsTeam}>{match.homeTeam.code}</Text>
+              <Text style={styles.oddsNum}>{match.odds.home?.toFixed(2)}</Text>
+            </View>
+            <View style={styles.oddsColDivider} />
+            <View style={styles.oddsCol}>
+              <Text style={styles.oddsTeam}>X</Text>
+              <Text style={styles.oddsNum}>{match.odds.draw?.toFixed(2)}</Text>
+            </View>
+            <View style={styles.oddsColDivider} />
+            <View style={styles.oddsCol}>
+              <Text style={styles.oddsTeam}>{match.awayTeam.code}</Text>
+              <Text style={styles.oddsNum}>{match.odds.away?.toFixed(2)}</Text>
+            </View>
+          </View>
+        </View>
+      )}
 
       {/* Prediction section */}
       <View style={styles.predictionSection}>
@@ -206,4 +228,49 @@ const styles = StyleSheet.create({
   submitButton: { backgroundColor: colors.primary, paddingVertical: spacing.md, borderRadius: 10, alignItems: 'center' },
   submitText: { color: '#fff', fontSize: fontSize.md, fontWeight: '600' },
   lockedText: { color: colors.textSecondary, textAlign: 'center', fontStyle: 'italic' },
+  oddsSection: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    backgroundColor: colors.card,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+  },
+  oddsSectionTitle: {
+    color: colors.muted,
+    fontSize: fontSize.xs,
+    fontFamily: fonts.bodyMedium,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
+  },
+  oddsColumns: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  oddsCol: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 4,
+  },
+  oddsColDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: colors.border,
+  },
+  oddsTeam: {
+    color: colors.muted,
+    fontSize: fontSize.xs,
+    fontFamily: fonts.bodyMedium,
+    fontWeight: '600',
+  },
+  oddsNum: {
+    color: colors.text,
+    fontSize: fontSize.lg,
+    fontFamily: fonts.displayBold,
+    fontWeight: '700',
+  },
 });
