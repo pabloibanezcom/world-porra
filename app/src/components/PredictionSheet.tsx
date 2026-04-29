@@ -8,7 +8,7 @@ import {
   Pressable,
   Animated,
 } from 'react-native';
-import { colors, borderRadius } from '../theme';
+import { colors, fonts, borderRadius } from '../theme';
 import Flag from './ui/Flag';
 import { Match } from '../types';
 import { hasTbdTeam, OddsBar, oddsToPercents, getTeamLabel } from './MatchCard';
@@ -127,7 +127,7 @@ export default function PredictionSheet({ match, existing, onSave, onClose }: Pr
           <View style={styles.matchTeams}>
             <Flag code={match.homeTeam.code} size={22} />
             <Text style={styles.matchTitle}>
-              {match.homeTeam.name} {t('common.vs')} {match.awayTeam.name}
+              {homeCode} {t('common.vs')} {awayCode}
             </Text>
             <Flag code={match.awayTeam.code} size={22} />
           </View>
@@ -153,13 +153,13 @@ export default function PredictionSheet({ match, existing, onSave, onClose }: Pr
           <ScoreControl
             value={score[0]}
             onChange={(v) => setScore([v, score[1]])}
-            label={match.homeTeam.name}
+            label={homeCode}
           />
           <Text style={styles.dash}>–</Text>
           <ScoreControl
             value={score[1]}
             onChange={(v) => setScore([score[0], v])}
-            label={match.awayTeam.name}
+            label={awayCode}
           />
         </View>
 
@@ -234,9 +234,10 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 17,
     fontWeight: '700',
+    fontFamily: fonts.display,
   },
   matchMeta: {
-    color: colors.muted,
+    color: colors.dim,
     fontSize: 12,
   },
   oddsCard: {
@@ -262,6 +263,7 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: 11,
     textAlign: 'center',
+    fontFamily: fonts.display,
   },
   stepper: {
     width: 42,
@@ -283,6 +285,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 52,
     fontWeight: '700',
+    fontFamily: fonts.display,
     width: 64,
     textAlign: 'center',
     lineHeight: 60,
@@ -317,6 +320,7 @@ const styles = StyleSheet.create({
   pointsValue: {
     fontSize: 22,
     fontWeight: '800',
+    fontFamily: fonts.display,
     lineHeight: 26,
   },
   pointsLabel: {
@@ -342,5 +346,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: fonts.display,
   },
 });
