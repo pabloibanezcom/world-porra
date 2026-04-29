@@ -6,6 +6,17 @@ import Badge from './ui/Badge';
 import { colors, fonts } from '../theme';
 import { useI18n } from '../i18n';
 
+function oddsToPercents(home: number | null, draw: number | null, away: number | null) {
+  if (!home || !draw || !away) return null;
+  const rh = 1 / home, rd = 1 / draw, ra = 1 / away;
+  const total = rh + rd + ra;
+  return {
+    h: Math.round((rh / total) * 100),
+    d: Math.round((rd / total) * 100),
+    a: Math.round((ra / total) * 100),
+  };
+}
+
 type Result = 'exact' | 'correct' | 'wrong';
 type MatchCardState = 'empty' | 'tbd' | 'predicted' | 'live' | 'finished';
 
@@ -143,24 +154,28 @@ export default function MatchCard({ match, prediction, result, onPress }: Props)
         </View>
       </View>
 
-      {match.odds && state !== 'finished' && (
-        <View style={styles.oddsRow}>
-          <Text style={styles.oddsItem}>
-            <Text style={styles.oddsLabel}>{getTeamLabel(match.homeTeam.name, match.homeTeam.code)} </Text>
-            <Text style={styles.oddsValue}>{match.odds.home?.toFixed(2)}</Text>
-          </Text>
-          <Text style={styles.oddsSep}>·</Text>
-          <Text style={styles.oddsItem}>
-            <Text style={styles.oddsLabel}>X </Text>
-            <Text style={styles.oddsValue}>{match.odds.draw?.toFixed(2)}</Text>
-          </Text>
-          <Text style={styles.oddsSep}>·</Text>
-          <Text style={styles.oddsItem}>
-            <Text style={styles.oddsLabel}>{getTeamLabel(match.awayTeam.name, match.awayTeam.code)} </Text>
-            <Text style={styles.oddsValue}>{match.odds.away?.toFixed(2)}</Text>
-          </Text>
-        </View>
-      )}
+      {match.odds && state !== 'finished' && (() => {
+        const pct = oddsToPercents(match.odds.home, match.odds.draw, match.odds.away);
+        if (!pct) return null;
+        const hc = match.homeTeam.color || '#505a63';
+        const ac = match.awayTeam.color || '#505a63';
+        const homeLabel = getTeamLabel(match.homeTeam.name, match.homeTeam.code);
+        const awayLabel = getTeamLabel(match.awayTeam.name, match.awayTeam.code);
+        return (
+          <View style={styles.oddsBar}>
+            <View style={styles.oddsLabels}>
+              <Text style={[styles.oddsLabelTeam, { color: hc }]}>{homeLabel} {pct.h}%</Text>
+              <Text style={styles.oddsLabelDraw}>Draw {pct.d}%</Text>
+              <Text style={[styles.oddsLabelTeam, { color: ac }]}>{pct.a}% {awayLabel}</Text>
+            </View>
+            <View style={styles.oddsTrack}>
+              <View style={[styles.oddsSegmentHome, { width: `${pct.h}%`, backgroundColor: hc }]} />
+              <View style={[styles.oddsSegmentDraw, { flex: 1 }]} />
+              <View style={[styles.oddsSegmentAway, { width: `${pct.a}%`, backgroundColor: ac }]} />
+            </View>
+          </View>
+        );
+      })()}
     </TouchableOpacity>
   );
 }
@@ -291,26 +306,48 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: fonts.body,
   },
-  oddsRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+  oddsBar: {
     marginTop: 10,
-    gap: 6,
   },
-  oddsItem: {
+  oddsLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 5,
+  },
+  oddsLabelTeam: {
     fontSize: 10,
-  },
-  oddsLabel: {
-    color: colors.dim,
-    fontFamily: fonts.body,
-  },
-  oddsValue: {
-    color: colors.muted,
+    fontWeight: '600',
     fontFamily: fonts.bodyMedium,
   },
-  oddsSep: {
-    color: colors.dim,
+  oddsLabelDraw: {
     fontSize: 10,
+    fontWeight: '600',
+    color: colors.dim,
+    fontFamily: fonts.bodyMedium,
+  },
+  oddsTrack: {
+    height: 5,
+    borderRadius: 9999,
+    overflow: 'hidden',
+    flexDirection: 'row',
+    gap: 1.5,
+    backgroundColor: colors.bg,
+  },
+  oddsSegmentHome: {
+    height: '100%',
+    borderTopLeftRadius: 9999,
+    borderBottomLeftRadius: 9999,
+    opacity: 0.85,
+  },
+  oddsSegmentDraw: {
+    height: '100%',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  oddsSegmentAway: {
+    height: '100%',
+    borderTopRightRadius: 9999,
+    borderBottomRightRadius: 9999,
+    opacity: 0.85,
   },
 });

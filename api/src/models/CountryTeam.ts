@@ -4,6 +4,7 @@ export interface ICountryTeam extends Document {
   code: string;
   names: Map<string, string>;
   crest: string;
+  color: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -13,6 +14,7 @@ const countryTeamSchema = new Schema<ICountryTeam>(
     code: { type: String, required: true, unique: true, uppercase: true, trim: true },
     names: { type: Map, of: String, required: true },
     crest: { type: String, default: '' },
+    color: { type: String, default: '' },
   },
   { timestamps: true }
 );

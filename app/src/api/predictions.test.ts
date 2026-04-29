@@ -88,8 +88,8 @@ describe('prediction API helpers', () => {
     });
 
     const prediction = await submitGroupPrediction('A', [
-      { code: 'ARG', name: 'Argentina', crest: '' },
-      { code: 'ESP', name: 'Spain', crest: '' },
+      { code: 'ARG', name: 'Argentina', crest: '', color: '' },
+      { code: 'ESP', name: 'Spain', crest: '', color: '' },
     ]);
 
     expect(mockedApiClient.post).toHaveBeenCalledWith('/predictions/groups', {

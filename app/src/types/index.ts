@@ -24,6 +24,7 @@ export interface TeamInfo {
   name: string;
   code: string;
   crest: string;
+  color: string;
 }
 
 export interface MatchResult {

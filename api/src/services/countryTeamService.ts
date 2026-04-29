@@ -10,9 +10,10 @@ export interface LocalizedTeamInfo {
   code: string;
   name: string;
   crest: string;
+  color: string;
 }
 
-type TeamCatalogEntry = Pick<ICountryTeam, 'code' | 'crest'> & {
+type TeamCatalogEntry = Pick<ICountryTeam, 'code' | 'crest' | 'color'> & {
   names: Map<string, string> | Record<string, string>;
 };
 
@@ -50,6 +51,7 @@ export function localizeTeam(
     code: normalizedCode,
     name: team ? getName(team.names, language, normalizedCode) : getFallbackName(normalizedCode, language),
     crest: team?.crest ?? '',
+    color: team?.color ?? '',
   };
 }
 
