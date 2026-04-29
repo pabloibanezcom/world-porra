@@ -126,9 +126,9 @@ export default function PredictionSheet({ match, existing, onSave, onClose }: Pr
         <View style={styles.matchInfo}>
           <View style={styles.matchTeams}>
             <Flag code={match.homeTeam.code} size={22} />
-            <Text style={styles.matchTitle}>
-              {homeCode} {t('common.vs')} {awayCode}
-            </Text>
+            <Text style={styles.matchTitle}>{homeCode}</Text>
+            <Text style={styles.matchVs}>{t('common.vs')}</Text>
+            <Text style={styles.matchTitle}>{awayCode}</Text>
             <Flag code={match.awayTeam.code} size={22} />
           </View>
           <Text style={styles.matchMeta}>
@@ -236,6 +236,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontFamily: fonts.display,
   },
+  matchVs: {
+    color: colors.dim,
+    fontSize: 12,
+  },
   matchMeta: {
     color: colors.dim,
     fontSize: 12,
@@ -260,8 +264,9 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   scoreLabel: {
-    color: colors.muted,
+    color: colors.dim,
     fontSize: 11,
+    fontWeight: '400',
     textAlign: 'center',
     fontFamily: fonts.display,
   },
