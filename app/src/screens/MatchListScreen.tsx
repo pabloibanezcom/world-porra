@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
+import { ScrollTriggerProvider } from '../contexts/ScrollTrigger';
 import { useNavigation } from '@react-navigation/native';
 import { fetchMatches } from '../api/matches';
 import { Match, MatchStage } from '../types';
@@ -24,6 +25,7 @@ export default function MatchListScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const navigation = useNavigation<any>();
+  const triggerRef = useRef<() => void>(() => {});
 
   const loadMatches = async () => {
     try {
@@ -64,20 +66,24 @@ export default function MatchListScreen() {
       {loading ? (
         <LoadingView />
       ) : (
-        <FlatList
-          data={matches}
-          keyExtractor={(item) => item._id}
-          renderItem={({ item }) => (
-            <MatchCard match={item} onPress={() => navigation.navigate('MatchDetail', { matchId: item._id })} />
-          )}
-          contentContainerStyle={styles.list}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-          ListEmptyComponent={
-            <View style={styles.empty}>
-              <Text style={styles.emptyText}>No matches for this stage yet.</Text>
-            </View>
-          }
-        />
+        <ScrollTriggerProvider triggerRef={triggerRef}>
+          <FlatList
+            data={matches}
+            keyExtractor={(item) => item._id}
+            renderItem={({ item }) => (
+              <MatchCard match={item} onPress={() => navigation.navigate('MatchDetail', { matchId: item._id })} />
+            )}
+            contentContainerStyle={styles.list}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+            onScroll={() => triggerRef.current()}
+            scrollEventThrottle={200}
+            ListEmptyComponent={
+              <View style={styles.empty}>
+                <Text style={styles.emptyText}>No matches for this stage yet.</Text>
+              </View>
+            }
+          />
+        </ScrollTriggerProvider>
       )}
     </View>
   );

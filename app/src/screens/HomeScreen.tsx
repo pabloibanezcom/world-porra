@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { ScrollTriggerProvider } from '../contexts/ScrollTrigger';
 import {
   View,
   Text,
@@ -47,6 +48,7 @@ export default function HomeScreen() {
   const { language, t, locale } = useI18n();
   const user = useAuthStore((s) => s.user);
   const navigation = useNavigation<any>();
+  const triggerRef = useRef<() => void>(() => {});
   const [matches, setMatches] = useState<Match[]>([]);
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [leagues, setLeagues] = useState<League[]>([]);
@@ -133,10 +135,13 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      <ScrollTriggerProvider triggerRef={triggerRef}>
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
+        onScroll={() => triggerRef.current()}
+        scrollEventThrottle={200}
       >
         {/* Header */}
         <View style={styles.header}>
@@ -244,6 +249,7 @@ export default function HomeScreen() {
           </View>
         )}
       </ScrollView>
+      </ScrollTriggerProvider>
 
       <PredictionSheet
         match={selectedMatch}

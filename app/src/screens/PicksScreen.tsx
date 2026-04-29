@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { ScrollTriggerProvider } from '../contexts/ScrollTrigger';
 import {
   Animated,
   PanResponder,
@@ -110,6 +111,7 @@ function getGroupsFromMatches(matches: Match[]): GroupStanding[] {
 export default function PicksScreen() {
   const { language, t, locale } = useI18n();
   const scrollRef = useRef<ScrollView>(null);
+  const triggerRef = useRef<() => void>(() => {});
   const tabAnimation = useRef(new Animated.Value(0)).current;
   const [tab, setTab] = useState<PicksTab>('upcoming');
   const [tabBarWidth, setTabBarWidth] = useState(0);
@@ -286,12 +288,15 @@ export default function PicksScreen() {
         </View>
       </View>
 
+      <ScrollTriggerProvider triggerRef={triggerRef}>
       <ScrollView
         ref={scrollRef}
         contentContainerStyle={styles.scroll}
         scrollEnabled={!isDraggingGroupTeam}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
+        onScroll={() => triggerRef.current()}
+        scrollEventThrottle={200}
       >
         {tab === 'finals' ? (
           <TournamentPicksSection
@@ -351,6 +356,7 @@ export default function PicksScreen() {
           </View>
         )}
       </ScrollView>
+      </ScrollTriggerProvider>
 
       <PredictionSheet
         match={selectedMatch}

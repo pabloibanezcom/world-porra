@@ -1,10 +1,11 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Animated, Dimensions, Easing, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Match, Prediction } from '../types';
 import Flag from './ui/Flag';
 import Badge from './ui/Badge';
 import { colors, fonts } from '../theme';
 import { useI18n } from '../i18n';
+import { useScrollTriggerContext } from '../contexts/ScrollTrigger';
 
 function oddsToPercents(home: number | null, draw: number | null, away: number | null) {
   if (!home || !draw || !away) return null;
@@ -23,15 +24,16 @@ interface OddsBarProps {
   awayColor: string;
   homeLabel: string;
   awayLabel: string;
+  visible: boolean;
 }
 
-function OddsBar({ pct, homeColor, awayColor, homeLabel, awayLabel }: OddsBarProps) {
+function OddsBar({ pct, homeColor, awayColor, homeLabel, awayLabel, visible }: OddsBarProps) {
   const progress = useRef(new Animated.Value(0)).current;
   const labelOpacity = useRef(new Animated.Value(0)).current;
   const [trackWidth, setTrackWidth] = useState(0);
 
   useEffect(() => {
-    if (trackWidth === 0) return;
+    if (trackWidth === 0 || !visible) return;
     Animated.parallel([
       Animated.timing(progress, {
         toValue: 1,
@@ -46,7 +48,7 @@ function OddsBar({ pct, homeColor, awayColor, homeLabel, awayLabel }: OddsBarPro
         useNativeDriver: true,
       }),
     ]).start();
-  }, [trackWidth]);
+  }, [trackWidth, visible]);
 
   const GAP = 1.5;
   const homeWidth = progress.interpolate({
@@ -127,6 +129,55 @@ function getCardState(match: Match, prediction?: Prediction | null): MatchCardSt
 
 export default function MatchCard({ match, prediction, result, onPress }: Props) {
   const { t, locale } = useI18n();
+  const ctx = useScrollTriggerContext();
+
+  // Without a ScrollTriggerProvider, cards are always visible (no animation delay).
+  const cardOpacity = useRef(new Animated.Value(ctx ? 0 : 1)).current;
+  const cardSlide = useRef(new Animated.Value(ctx ? 14 : 0)).current;
+  const viewRef = useRef<View>(null);
+  const seen = useRef(false);
+  const [visible, setVisible] = useState(!ctx);
+
+  const checkVisibility = useCallback(() => {
+    if (seen.current) return;
+    viewRef.current?.measureInWindow((_x, y) => {
+      const screenH = Dimensions.get('window').height;
+      if (y < screenH - 60) {
+        seen.current = true;
+        setVisible(true);
+      }
+    });
+  }, []);
+
+  // Subscribe to scroll trigger
+  useEffect(() => {
+    if (!ctx) return;
+    return ctx.subscribe(checkVisibility);
+  }, [ctx, checkVisibility]);
+
+  // Also check on layout (important for items that mount before they're scrolled to)
+  const handleLayout = useCallback(() => {
+    checkVisibility();
+  }, [checkVisibility]);
+
+  // Entrance animation when visible
+  useEffect(() => {
+    if (!visible) return;
+    Animated.parallel([
+      Animated.timing(cardOpacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(cardSlide, {
+        toValue: 0,
+        duration: 300,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [visible]);
+
   const state = getCardState(match, prediction);
   const cardStyle =
     state === 'empty'
@@ -163,71 +214,78 @@ export default function MatchCard({ match, prediction, result, onPress }: Props)
   }
 
   return (
-    <TouchableOpacity
-      style={[styles.card, cardStyle]}
-      onPress={onPress}
-      disabled={!onPress}
-      activeOpacity={0.85}
+    <Animated.View
+      ref={viewRef}
+      onLayout={handleLayout}
+      style={{ opacity: cardOpacity, transform: [{ translateY: cardSlide }] }}
     >
-      <View style={styles.header}>
-        <Text style={styles.meta}>
-          {match.group ? t('common.group', { group: match.group }) : match.stage} · {formatDate(match.utcDate, locale)}
-          {(state === 'empty' || state === 'predicted') ? ` · ${formatTime(match.utcDate, locale)}` : ''}
-        </Text>
-        {action}
-      </View>
-
-      <View style={styles.matchRow}>
-        <View style={styles.teamSide}>
-          <Flag code={match.homeTeam.code} size={26} />
-          <Text style={styles.teamCode}>{getTeamLabel(match.homeTeam.name, match.homeTeam.code)}</Text>
+      <TouchableOpacity
+        style={[styles.card, cardStyle]}
+        onPress={onPress}
+        disabled={!onPress}
+        activeOpacity={0.85}
+      >
+        <View style={styles.header}>
+          <Text style={styles.meta}>
+            {match.group ? t('common.group', { group: match.group }) : match.stage} · {formatDate(match.utcDate, locale)}
+            {(state === 'empty' || state === 'predicted') ? ` · ${formatTime(match.utcDate, locale)}` : ''}
+          </Text>
+          {action}
         </View>
 
-        <View style={styles.scoreCenter}>
-          {state === 'empty' ? (
-            <Text style={styles.vsText}>{t('common.vs')}</Text>
-          ) : state === 'tbd' ? (
-            <Text style={styles.vsText}>{t('common.tbd')}</Text>
-          ) : state === 'predicted' ? (
-            <Text style={styles.predictedScore}>
-              {prediction?.homeGoals} – {prediction?.awayGoals}
-            </Text>
-          ) : (
-            <>
-              <Text style={styles.resultScore}>
-                {match.result?.homeGoals ?? '?'} – {match.result?.awayGoals ?? '?'}
+        <View style={styles.matchRow}>
+          <View style={styles.teamSide}>
+            <Flag code={match.homeTeam.code} size={26} />
+            <Text style={styles.teamCode}>{getTeamLabel(match.homeTeam.name, match.homeTeam.code)}</Text>
+          </View>
+
+          <View style={styles.scoreCenter}>
+            {state === 'empty' ? (
+              <Text style={styles.vsText}>{t('common.vs')}</Text>
+            ) : state === 'tbd' ? (
+              <Text style={styles.vsText}>{t('common.tbd')}</Text>
+            ) : state === 'predicted' ? (
+              <Text style={styles.predictedScore}>
+                {prediction?.homeGoals} – {prediction?.awayGoals}
               </Text>
-              {prediction ? (
-                <Text style={styles.pickText}>
-                  {t('common.pick')}: {prediction.homeGoals}–{prediction.awayGoals}
+            ) : (
+              <>
+                <Text style={styles.resultScore}>
+                  {match.result?.homeGoals ?? '?'} – {match.result?.awayGoals ?? '?'}
                 </Text>
-              ) : state === 'live' ? (
-                <Text style={styles.pickText}>{t('common.inProgress')}</Text>
-              ) : null}
-            </>
-          )}
+                {prediction ? (
+                  <Text style={styles.pickText}>
+                    {t('common.pick')}: {prediction.homeGoals}–{prediction.awayGoals}
+                  </Text>
+                ) : state === 'live' ? (
+                  <Text style={styles.pickText}>{t('common.inProgress')}</Text>
+                ) : null}
+              </>
+            )}
+          </View>
+
+          <View style={[styles.teamSide, styles.teamSideRight]}>
+            <Text style={styles.teamCode}>{getTeamLabel(match.awayTeam.name, match.awayTeam.code)}</Text>
+            <Flag code={match.awayTeam.code} size={26} />
+          </View>
         </View>
 
-        <View style={[styles.teamSide, styles.teamSideRight]}>
-          <Text style={styles.teamCode}>{getTeamLabel(match.awayTeam.name, match.awayTeam.code)}</Text>
-          <Flag code={match.awayTeam.code} size={26} />
-        </View>
-      </View>
-
-      {match.odds && state !== 'finished' && (() => {
-        const pct = oddsToPercents(match.odds.home, match.odds.draw, match.odds.away);
-        if (!pct) return null;
-        return (
-          <OddsBar
-            pct={pct}
-            homeColor={match.homeTeam.color || '#505a63'}
-            awayColor={match.awayTeam.color || '#505a63'}
-            homeLabel={getTeamLabel(match.homeTeam.name, match.homeTeam.code)}
-            awayLabel={getTeamLabel(match.awayTeam.name, match.awayTeam.code)}
-          />
-        );
-      })()}
-    </TouchableOpacity>
+        {match.odds && state !== 'finished' && (() => {
+          const pct = oddsToPercents(match.odds.home, match.odds.draw, match.odds.away);
+          if (!pct) return null;
+          return (
+            <OddsBar
+              pct={pct}
+              homeColor={match.homeTeam.color || '#505a63'}
+              awayColor={match.awayTeam.color || '#505a63'}
+              homeLabel={getTeamLabel(match.homeTeam.name, match.homeTeam.code)}
+              awayLabel={getTeamLabel(match.awayTeam.name, match.awayTeam.code)}
+              visible={visible}
+            />
+          );
+        })()}
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 
