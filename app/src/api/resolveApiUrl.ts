@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 
 const DEFAULT_API_PORT = '3000';
 const LOCALHOST_API_URL = `http://localhost:${DEFAULT_API_PORT}`;
+const VERCEL_API_URL = 'https://wc2026-pool-api.vercel.app';
 
 function stripTrailingSlash(value: string): string {
   return value.replace(/\/+$/, '');
@@ -19,6 +20,10 @@ function extractHostname(hostUri: string): string | null {
 }
 
 export function resolveApiUrl(): string {
+  if (process.env.EXPO_PUBLIC_API_PRESET?.trim().toLowerCase() === 'vercel') {
+    return VERCEL_API_URL;
+  }
+
   const configuredUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
   if (configuredUrl) {
     return stripTrailingSlash(configuredUrl);

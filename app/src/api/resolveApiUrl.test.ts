@@ -2,11 +2,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 async function loadResolveApiUrl({
   apiUrl,
+  apiPreset,
   hostUri,
   platform,
   dev = true,
 }: {
   apiUrl?: string;
+  apiPreset?: string;
   hostUri?: string;
   platform: string;
   dev?: boolean;
@@ -17,6 +19,11 @@ async function loadResolveApiUrl({
     delete process.env.EXPO_PUBLIC_API_URL;
   } else {
     process.env.EXPO_PUBLIC_API_URL = apiUrl;
+  }
+  if (apiPreset === undefined) {
+    delete process.env.EXPO_PUBLIC_API_PRESET;
+  } else {
+    process.env.EXPO_PUBLIC_API_PRESET = apiPreset;
   }
 
   vi.doMock('expo-constants', () => ({
@@ -36,6 +43,17 @@ describe('resolveApiUrl', () => {
     vi.doUnmock('expo-constants');
     vi.doUnmock('react-native');
     delete process.env.EXPO_PUBLIC_API_URL;
+    delete process.env.EXPO_PUBLIC_API_PRESET;
+  });
+
+  it('prefers the Vercel API preset over configured local URLs', async () => {
+    const { resolveApiUrl } = await loadResolveApiUrl({
+      apiUrl: 'http://localhost:3000',
+      apiPreset: 'vercel',
+      platform: 'ios',
+    });
+
+    expect(resolveApiUrl()).toBe('https://wc2026-pool-api.vercel.app');
   });
 
   it('prefers configured API URLs and strips trailing slashes', async () => {

@@ -91,6 +91,7 @@ npm run dev       # API + app concurrently
 npm run api       # API only (http://localhost:3000)
 npm run app       # Expo app only
 npm run app:mobile # Expo on LAN for a physical device
+npm run app:vercel # Expo on LAN using the hosted Vercel API
 ```
 
 Or individually:
@@ -116,6 +117,14 @@ If you want to override the API host manually, set `EXPO_PUBLIC_API_URL` to some
 ```bash
 EXPO_PUBLIC_API_URL=http://192.168.1.50:3000
 ```
+
+To run the mobile app locally against the hosted API instead of a local API, use:
+
+```bash
+npm run app:vercel
+```
+
+This starts Expo on LAN with `EXPO_PUBLIC_API_PRESET=vercel`, which takes precedence over the local `EXPO_PUBLIC_API_URL` in `app/.env`.
 
 ## API
 

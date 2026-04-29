@@ -4,7 +4,7 @@ import { resolveApiUrl } from './resolveApiUrl';
 import { deleteToken, getToken } from '../store/tokenStorage';
 import { TOKEN_STORAGE_KEY } from '../store/tokenKey';
 
-const API_URL = resolveApiUrl();
+export const API_URL = resolveApiUrl();
 const LANGUAGE_STORAGE_KEY = 'wc2026.language';
 let activeLanguage: 'en' | 'es' | null = null;
 

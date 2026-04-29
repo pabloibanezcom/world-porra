@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import axios from 'axios';
 import {
   View,
   Text,
@@ -19,6 +20,7 @@ import { useAuthStore } from '../store/authStore';
 import { colors, spacing, borderRadius } from '../theme';
 import { useI18n } from '../i18n';
 import { getGoogleClientIds, getGoogleIdToken, hasGoogleClientIdForPlatform } from '../auth/googleConfig';
+import { API_URL } from '../api/client';
 
 type AuthStackParamList = {
   Login: undefined;
@@ -28,6 +30,21 @@ type AuthStackParamList = {
 WebBrowser.maybeCompleteAuthSession();
 
 const googleClientIds = getGoogleClientIds();
+
+function getPasswordLoginErrorMessage(error: unknown, t: (key: string) => string): string {
+  if (axios.isAxiosError(error)) {
+    if (error.response?.status === 401) {
+      return t('login.passwordFailed');
+    }
+
+    if (!error.response) {
+      const detail = __DEV__ ? `\n${API_URL}\n${error.message}` : '';
+      return `${t('login.networkFailed')}${detail}`;
+    }
+  }
+
+  return t('login.signInFailed');
+}
 
 export default function LoginScreen() {
   const { t } = useI18n();
@@ -55,8 +72,15 @@ export default function LoginScreen() {
     setError(null);
     try {
       await signInWithPassword(normalizedEmail, password);
-    } catch {
-      setError(t('login.passwordFailed'));
+    } catch (error) {
+      if (__DEV__) {
+        console.warn('[login] Password login failed', {
+          apiUrl: API_URL,
+          status: axios.isAxiosError(error) ? error.response?.status : undefined,
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
+      setError(getPasswordLoginErrorMessage(error, t));
     } finally {
       setIsSigningIn(false);
     }

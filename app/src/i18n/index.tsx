@@ -66,6 +66,7 @@ const translations: Record<Language, TranslationMap> = {
     'login.finePrint': 'By continuing you agree to the pool rules.\nYour picks are visible to other members.',
     'login.required': 'Email and password are required.',
     'login.passwordFailed': 'Email/password login failed. Please check your credentials.',
+    'login.networkFailed': 'Could not reach the API. Check your connection and API URL.',
     'login.signInFailed': 'Sign in failed. Please try again.',
     'login.createAccount': "Don't have an account? Create one",
 
@@ -258,6 +259,7 @@ const translations: Record<Language, TranslationMap> = {
     'login.finePrint': 'Al continuar aceptas las reglas de la polla.\nTus pronósticos son visibles para otros miembros.',
     'login.required': 'Email y contraseña son obligatorios.',
     'login.passwordFailed': 'El inicio con email/contraseña falló. Revisa tus credenciales.',
+    'login.networkFailed': 'No se pudo conectar con la API. Revisa tu conexión y la URL de la API.',
     'login.signInFailed': 'No se pudo iniciar sesión. Inténtalo de nuevo.',
     'login.createAccount': '¿No tienes cuenta? Crear una',
 
