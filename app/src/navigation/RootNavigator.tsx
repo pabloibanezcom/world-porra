@@ -13,6 +13,7 @@ import HomeScreen from '../screens/HomeScreen';
 import LeaguesScreen from '../screens/LeaguesScreen';
 import PicksScreen from '../screens/PicksScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import RulesScreen from '../screens/RulesScreen';
 import CreateLeagueScreen from '../screens/CreateLeagueScreen';
 import JoinLeagueScreen from '../screens/JoinLeagueScreen';
 import LeagueDetailScreen from '../screens/LeagueDetailScreen';
@@ -58,6 +59,7 @@ function MainTabs() {
           else if (route.name === 'Leagues') iconName = focused ? 'people' : 'people-outline';
           else if (route.name === 'Predictions') iconName = focused ? 'football' : 'football-outline';
           else if (route.name === 'Profile') iconName = focused ? 'person' : 'person-outline';
+          else if (route.name === 'Rules') iconName = focused ? 'star' : 'star-outline';
           return <Ionicons name={iconName} size={22} color={color} />;
         },
       })}
@@ -81,6 +83,11 @@ function MainTabs() {
         name="Predictions"
         component={PicksScreen}
         options={{ title: t('nav.predictions'), tabBarLabel: t('nav.predictions') }}
+      />
+      <Tab.Screen
+        name="Rules"
+        component={RulesScreen}
+        options={{ title: t('nav.rules'), tabBarLabel: t('nav.rules') }}
       />
       <Tab.Screen
         name="Profile"
