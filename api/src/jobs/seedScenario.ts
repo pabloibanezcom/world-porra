@@ -86,6 +86,17 @@ interface PredictionProfile {
 }
 
 const DEMO_PASSWORD = 'demo-password';
+const SCENARIO_COLLECTIONS = new Set([
+  'matches',
+  'countryteams',
+  'users',
+  'leagues',
+  'pushsubscriptions',
+  'predictions',
+  'grouppredictions',
+  'tournamentpredictions',
+]);
+const GENERATED_COLLECTIONS = new Set(['predictions', 'grouppredictions', 'tournamentpredictions']);
 
 const DEMO_USERS: DemoUser[] = [
   {
@@ -497,13 +508,16 @@ async function cloneDatabase(sourceDb: Db, targetDb: Db): Promise<void> {
   const collections = await sourceDb.collections();
   for (const sourceCollection of collections) {
     if (sourceCollection.collectionName.startsWith('system.')) continue;
+    if (!SCENARIO_COLLECTIONS.has(sourceCollection.collectionName)) continue;
 
     await targetDb.createCollection(sourceCollection.collectionName);
     const targetCollection = targetDb.collection(sourceCollection.collectionName);
 
-    const docs = await sourceCollection.find().toArray();
-    if (docs.length) {
-      await targetCollection.insertMany(docs, { ordered: false });
+    if (!GENERATED_COLLECTIONS.has(sourceCollection.collectionName)) {
+      const docs = await sourceCollection.find().toArray();
+      if (docs.length) {
+        await targetCollection.insertMany(docs, { ordered: false });
+      }
     }
 
     const indexes = await sourceCollection.indexes();

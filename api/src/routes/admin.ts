@@ -1,4 +1,5 @@
 import { NextFunction, Router, Request, Response } from 'express';
+import mongoose from 'mongoose';
 import { z } from 'zod';
 import { env } from '../config/env';
 import { logger } from '../config/logger';
@@ -6,6 +7,7 @@ import { syncAuthMiddleware } from '../middleware/syncAuth';
 import { processFinishedMatches, syncAllFixtures } from '../services/syncService';
 import { syncOdds } from '../services/oddsService';
 import { seedTournamentScenarios } from '../jobs/seedScenario';
+import { SCENARIOS, getDbName, getScenarioDbName, scenarioBySlug } from '../jobs/tournamentScenarios';
 
 const router = Router();
 
@@ -95,6 +97,54 @@ router.post('/scenarios/seed', syncAuthMiddleware, async (req: Request, res: Res
     const message = error instanceof Error ? redactSensitiveError(error.message) : 'Unknown scenario seed error';
     logger.error({ err: error }, 'Scenario database seed failed');
     res.status(500).json({ error: 'Scenario database seed failed', message });
+  }
+});
+
+router.post('/scenarios/status', syncAuthMiddleware, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { scenarios } = seedScenariosSchema.parse(req.body ?? {});
+    const selectedScenarios = scenarios === 'all'
+      ? SCENARIOS
+      : scenarios.map((slug) => {
+          const scenario = scenarioBySlug(slug);
+          if (!scenario) throw new Error(`Unknown scenario "${slug}"`);
+          return scenario;
+        });
+    const client = mongoose.connection.getClient();
+    const baseDbName = getDbName(env.SCENARIO_BASE_MONGODB_URI || env.MONGODB_URI);
+
+    const statuses = await Promise.all(selectedScenarios.map(async (scenario) => {
+      const dbName = getScenarioDbName(baseDbName, scenario);
+      const db = client.db(dbName);
+      const [matches, users, leagues, predictions, scoredPredictions] = await Promise.all([
+        db.collection('matches').countDocuments(),
+        db.collection('users').countDocuments(),
+        db.collection('leagues').countDocuments(),
+        db.collection('predictions').countDocuments(),
+        db.collection('predictions').countDocuments({ points: { $ne: null } }),
+      ]);
+
+      return {
+        slug: scenario.slug,
+        dbName,
+        matches,
+        users,
+        leagues,
+        predictions,
+        scoredPredictions,
+      };
+    }));
+
+    res.json({ ok: true, scenarios: statuses, ranAt: new Date().toISOString() });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: 'Invalid scenario status payload', details: error.errors });
+      return;
+    }
+
+    const message = error instanceof Error ? redactSensitiveError(error.message) : 'Unknown scenario status error';
+    logger.error({ err: error }, 'Scenario database status failed');
+    res.status(500).json({ error: 'Scenario database status failed', message });
   }
 });
 
