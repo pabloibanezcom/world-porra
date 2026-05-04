@@ -20,7 +20,7 @@ import { isGroupPredictionsLocked, isTournamentPredictionsLocked } from '../serv
 
 const router = Router();
 
-const LOCK_MINUTES_BEFORE = 15;
+const LOCK_MINUTES_BEFORE = 5;
 
 const predictionSchema = z.object({
   matchId: z.string().min(1),
@@ -246,7 +246,7 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
 
     const lockTime = new Date(match.utcDate.getTime() - LOCK_MINUTES_BEFORE * 60 * 1000);
     if (currentDate() >= lockTime) {
-      res.status(400).json({ error: 'Predictions are locked 15 minutes before kickoff.' });
+      res.status(400).json({ error: 'Predictions are locked 5 minutes before kickoff.' });
       return;
     }
 

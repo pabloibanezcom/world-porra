@@ -24,6 +24,7 @@ import {
 } from '../api/predictions';
 import { GroupPrediction, Match, Prediction, TeamInfo } from '../types';
 import PredictionSheet from '../components/PredictionSheet';
+import ResultSheet from '../components/ResultSheet';
 import MatchCard, { hasTbdTeam } from '../components/MatchCard';
 import LoadingView from '../components/ui/LoadingView';
 import Flag from '../components/ui/Flag';
@@ -31,6 +32,7 @@ import TournamentPicksSection from '../components/TournamentPicksSection';
 import { TournamentPicks, PlayerOption, TeamOption } from '../data/tournamentData';
 import { colors, fonts } from '../theme';
 import { useI18n } from '../i18n';
+import { isPredictionLocked } from '../utils/prediction';
 
 const LIVE_SCORE_REFRESH_MS = 60 * 1000;
 
@@ -123,6 +125,7 @@ export default function PicksScreen() {
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [groupPredictions, setGroupPredictions] = useState<GroupPrediction[]>([]);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
+  const [selectedResult, setSelectedResult] = useState<Match | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isDraggingGroupTeam, setIsDraggingGroupTeam] = useState(false);
@@ -358,7 +361,12 @@ export default function PicksScreen() {
                   {group.matches.map((m) => {
                     const pred = predMap[m._id];
                     const result = m.status === 'FINISHED' && pred ? getResult(pred, m) : null;
-                    const canPredict = (m.status === 'SCHEDULED' || m.status === 'LIVE') && !hasTbdTeam(m);
+                    const canPredict = !isPredictionLocked(m) && !hasTbdTeam(m);
+                    const onPress = canPredict
+                      ? () => setSelectedMatch(m)
+                      : m.status === 'FINISHED'
+                      ? () => setSelectedResult(m)
+                      : undefined;
 
                     return (
                       <MatchCard
@@ -366,7 +374,7 @@ export default function PicksScreen() {
                         match={m}
                         prediction={pred}
                         result={result}
-                        onPress={canPredict ? () => setSelectedMatch(m) : undefined}
+                        onPress={onPress}
                       />
                     );
                   })}
@@ -398,6 +406,11 @@ export default function PicksScreen() {
         }
         onSave={handleSave}
         onClose={() => setSelectedMatch(null)}
+      />
+      <ResultSheet
+        match={selectedResult}
+        prediction={selectedResult ? predMap[selectedResult._id] : null}
+        onClose={() => setSelectedResult(null)}
       />
     </SafeAreaView>
   );

@@ -8,6 +8,7 @@ import { colors, spacing, fontSize, borderRadius, fonts } from '../theme';
 import { format } from 'date-fns';
 import { hasTbdTeam } from '../components/MatchCard';
 import { useI18n } from '../i18n';
+import { isPredictionLocked } from '../utils/prediction';
 
 type RouteParams = { MatchDetail: { matchId: string } };
 
@@ -71,7 +72,7 @@ export default function MatchDetailScreen() {
     }
   };
 
-  const isLocked = match ? new Date() >= new Date(match.utcDate) : false;
+  const isLocked = match ? isPredictionLocked(match) : false;
   const teamsTbd = match ? hasTbdTeam(match) : false;
   const predictionDisabled = isLocked || teamsTbd;
 

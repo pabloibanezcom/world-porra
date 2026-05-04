@@ -15,15 +15,15 @@ import { fetchMyPredictions } from '../api/predictions';
 import { fetchMyLeagues } from '../api/leagues';
 import { Match, Prediction, League } from '../types';
 import PredictionSheet from '../components/PredictionSheet';
+import ResultSheet from '../components/ResultSheet';
 import MatchCard, { hasTbdTeam } from '../components/MatchCard';
 import LeagueCard from '../components/LeagueCard';
-import Flag from '../components/ui/Flag';
 import Avatar from '../components/ui/Avatar';
-import Badge from '../components/ui/Badge';
 import LoadingView from '../components/ui/LoadingView';
 import { colors, fonts } from '../theme';
 import { submitPrediction } from '../api/predictions';
 import { useI18n } from '../i18n';
+import { isPredictionLocked } from '../utils/prediction';
 
 const LIVE_SCORE_REFRESH_MS = 60 * 1000;
 
@@ -42,12 +42,8 @@ function getResult(pred: Prediction, match: Match): 'exact' | 'correct' | 'wrong
   return pOut === aOut ? 'correct' : 'wrong';
 }
 
-function formatDate(utcDate: string, locale: string) {
-  return new Date(utcDate).toLocaleDateString(locale, { month: 'short', day: 'numeric' });
-}
-
 export default function HomeScreen() {
-  const { language, t, locale } = useI18n();
+  const { language, t } = useI18n();
   const user = useAuthStore((s) => s.user);
   const navigation = useNavigation<any>();
   const triggerRef = useRef<() => void>(() => {});
@@ -55,6 +51,7 @@ export default function HomeScreen() {
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [leagues, setLeagues] = useState<League[]>([]);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
+  const [selectedResult, setSelectedResult] = useState<Match | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -179,7 +176,7 @@ export default function HomeScreen() {
             <View style={styles.nextMatchesList}>
               {nextMatches.map((match) => {
                 const myPred = predMap[match._id] ?? null;
-                const canPredict = !hasTbdTeam(match);
+                const canPredict = !isPredictionLocked(match) && !hasTbdTeam(match);
 
                 return (
                   <MatchCard
@@ -221,39 +218,18 @@ export default function HomeScreen() {
         {recentFinished.length > 0 && (
           <View>
             <SectionLabel>{t('home.recentResults')}</SectionLabel>
-            <View style={{ gap: 8 }}>
+            <View style={{ gap: 10 }}>
               {recentFinished.map((m) => {
                 const pred = predMap[m._id];
                 const result = pred ? getResult(pred, m) : null;
                 return (
-                  <View key={m._id} style={styles.resultCard}>
-                    <View style={styles.resultHeader}>
-                      <Text style={styles.matchMeta}>
-                        {m.group ? t('common.group', { group: m.group }) : m.stage} · {formatDate(m.utcDate, locale)}
-                      </Text>
-                      {result && <Badge result={result} />}
-                    </View>
-                    <View style={styles.matchRow}>
-                      <View style={styles.teamSide}>
-                        <Flag code={m.homeTeam.code} size={22} />
-                        <Text style={styles.teamNameSm}>{m.homeTeam.name}</Text>
-                      </View>
-                      <View style={styles.scoreCenter}>
-                        <Text style={styles.scoreResult}>
-                          {m.result!.homeGoals} – {m.result!.awayGoals}
-                        </Text>
-                        {pred && (
-                          <Text style={styles.yourPick}>
-                            {t('common.yourPick')}: {pred.homeGoals}–{pred.awayGoals}
-                          </Text>
-                        )}
-                      </View>
-                      <View style={[styles.teamSide, styles.teamSideRight]}>
-                        <Text style={styles.teamNameSm}>{m.awayTeam.name}</Text>
-                        <Flag code={m.awayTeam.code} size={22} />
-                      </View>
-                    </View>
-                  </View>
+                  <MatchCard
+                    key={m._id}
+                    match={m}
+                    prediction={pred}
+                    result={result}
+                    onPress={() => setSelectedResult(m)}
+                  />
                 );
               })}
             </View>
@@ -280,6 +256,11 @@ export default function HomeScreen() {
         onSave={handleSave}
         onClose={() => setSelectedMatch(null)}
       />
+      <ResultSheet
+        match={selectedResult}
+        prediction={selectedResult ? predMap[selectedResult._id] : null}
+        onClose={() => setSelectedResult(null)}
+      />
     </SafeAreaView>
   );
 }
@@ -300,18 +281,6 @@ const styles = StyleSheet.create({
   },
 
   nextMatchesList: { gap: 10 },
-  matchMeta: { color: colors.muted, fontSize: 11, fontFamily: fonts.body },
-  matchRow: { flexDirection: 'row', alignItems: 'center' },
-  teamSide: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  teamSideRight: { justifyContent: 'flex-end' },
-  teamNameSm: { color: colors.text, fontSize: 14, fontFamily: fonts.displayBold },
-  scoreCenter: { alignItems: 'center', paddingHorizontal: 10, minWidth: 70 },
-
-
-  resultCard: { backgroundColor: colors.card, borderRadius: 16, borderWidth: 1, borderColor: colors.border, padding: 12, paddingHorizontal: 16 },
-  resultHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  scoreResult: { color: colors.text, fontSize: 16, fontWeight: '700' },
-  yourPick: { color: colors.dim, fontSize: 10, marginTop: 1 },
 
   empty: { alignItems: 'center', paddingTop: 40 },
   emptyText: { color: colors.muted, fontSize: 16, fontWeight: '600' },
