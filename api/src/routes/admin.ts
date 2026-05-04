@@ -18,6 +18,11 @@ const seedScenariosSchema = z.object({
   scenarios: z.union([z.literal('all'), z.array(z.string().min(1)).min(1)]).default('all'),
 });
 
+function redactSensitiveError(value: string): string {
+  const withoutMongoCredentials = value.replace(/mongodb(?:\+srv)?:\/\/[^@\s]+@/gu, 'mongodb://<redacted>@');
+  return env.SYNC_API_KEY ? withoutMongoCredentials.replace(new RegExp(env.SYNC_API_KEY, 'gu'), '<redacted>') : withoutMongoCredentials;
+}
+
 router.post('/sync', syncAuthMiddleware, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { syncFixtures, processResults, syncOdds: doSyncOdds } = syncSchema.parse(req.body ?? {});
@@ -87,7 +92,9 @@ router.post('/scenarios/seed', syncAuthMiddleware, async (req: Request, res: Res
       return;
     }
 
-    next(error);
+    const message = error instanceof Error ? redactSensitiveError(error.message) : 'Unknown scenario seed error';
+    logger.error({ err: error }, 'Scenario database seed failed');
+    res.status(500).json({ error: 'Scenario database seed failed', message });
   }
 });
 
