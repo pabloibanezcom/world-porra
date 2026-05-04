@@ -81,6 +81,28 @@ function parseScore(value: string | undefined): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function stableNumber(value: string): number {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
+  }
+
+  return hash;
+}
+
+function makeMockLiveScore(match: MatchForLiveScore): LiveScore {
+  const minuteBucket = Math.floor(Date.now() / 60000);
+  const seed = stableNumber(`${match.homeTeamCode}:${match.awayTeamCode}`);
+  const homeGoals = (seed + minuteBucket) % 4;
+  const awayGoals = (Math.floor(seed / 7) + Math.floor(minuteBucket / 2)) % 3;
+
+  return {
+    homeGoals,
+    awayGoals,
+    winner: deriveWinner(homeGoals, awayGoals),
+  };
+}
+
 function mapESPNScoreboard(data: ESPNScoreboard): Map<string, LiveScore> {
   const scores = new Map<string, LiveScore>();
 
@@ -161,11 +183,11 @@ export async function applyLiveScores<T extends MatchForLiveScore>(matches: T[])
 
     const date = formatESPNDate(match.utcDate);
     const score = dateScores.get(date)?.get(scoreKey(match.homeTeamCode, match.awayTeamCode));
-    if (!score) return match;
+    if (!score && !env.MOCK_LIVE_SCORES) return match;
 
     return {
       ...match,
-      result: score,
+      result: score ?? makeMockLiveScore(match),
     };
   });
 }

@@ -33,6 +33,7 @@ const envSchema = z.object({
   ODDS_API_KEY: z.string().default(''),
   ODDS_API_SPORT_KEY: z.string().default('soccer_fifa_world_cup'),
   LIVE_SCORE_CACHE_SECONDS: z.coerce.number().int().positive().default(60),
+  MOCK_LIVE_SCORES: envBoolean,
   SYNC_API_KEY: z.string().default(''),
   VAPID_PUBLIC_KEY: z.string().default(''),
   VAPID_PRIVATE_KEY: z.string().default(''),
