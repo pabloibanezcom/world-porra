@@ -537,11 +537,13 @@ function DraggableGroupTeamRow({
       >
         {team.name}
       </Text>
-      <View style={styles.dragHandle} {...panResponder.panHandlers}>
-        <View style={styles.dragHandleLine} />
-        <View style={styles.dragHandleLine} />
-        <View style={styles.dragHandleLine} />
-      </View>
+      {!disabled && (
+        <View style={styles.dragHandle} {...panResponder.panHandlers}>
+          <View style={styles.dragHandleLine} />
+          <View style={styles.dragHandleLine} />
+          <View style={styles.dragHandleLine} />
+        </View>
+      )}
     </Animated.View>
   );
 }
