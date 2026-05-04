@@ -5,6 +5,7 @@ import { logger } from '../config/logger';
 import { syncAuthMiddleware } from '../middleware/syncAuth';
 import { processFinishedMatches, syncAllFixtures } from '../services/syncService';
 import { syncOdds } from '../services/oddsService';
+import { seedTournamentScenarios } from '../jobs/seedScenario';
 
 const router = Router();
 
@@ -75,7 +76,6 @@ router.post('/scenarios/seed', syncAuthMiddleware, async (req: Request, res: Res
   try {
     const { scenarios } = seedScenariosSchema.parse(req.body ?? {});
     const slugs = scenarios === 'all' ? ['all'] : scenarios;
-    const { seedTournamentScenarios } = await import('../jobs/seedScenario');
 
     logger.info({ scenarios: slugs }, 'Seeding tournament scenario databases');
 
