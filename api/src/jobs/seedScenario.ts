@@ -2,6 +2,7 @@ import mongoose, { Types } from 'mongoose';
 import { env } from '../config/env';
 import { calculatePoints } from '../services/scoring';
 import { MatchStage, MatchWinner } from '../models/Match';
+import { hashPassword } from '../utils/password';
 import {
   SCENARIOS,
   ScenarioDefinition,
@@ -14,6 +15,10 @@ import {
 
 type Db = ReturnType<ReturnType<typeof mongoose.connection.getClient>['db']>;
 type RawDoc = Record<string, any>;
+
+function isObjectId(value: unknown): value is Types.ObjectId {
+  return value instanceof Types.ObjectId;
+}
 
 interface MatchDoc extends RawDoc {
   _id: Types.ObjectId;
@@ -39,6 +44,100 @@ interface PredictionDoc extends RawDoc {
   qualifier?: 'HOME' | 'AWAY' | null;
 }
 
+interface DemoUser {
+  email: string;
+  name: string;
+  googleId: string;
+  profile: PredictionProfile;
+}
+
+interface ScenarioDemoResult {
+  users: number;
+  leagues: number;
+  matchPredictions: number;
+  groupPredictions: number;
+  tournamentPredictions: number;
+}
+
+export interface SeedScenarioResult {
+  slug: string;
+  label: string;
+  dbName: string;
+  mongodbUri: string;
+  tournamentNow: string;
+  matches: {
+    finished: number;
+    live: number;
+    total: number;
+  };
+  demo: ScenarioDemoResult;
+  scoring: {
+    matchesProcessed: number;
+    predictionsScored: number;
+    usersUpdated: number;
+  };
+}
+
+interface PredictionProfile {
+  coverage: number;
+  exactEvery: number;
+  outcomeBias: number;
+  volatility: number;
+}
+
+const DEMO_PASSWORD = 'demo-password';
+
+const DEMO_USERS: DemoUser[] = [
+  {
+    email: 'dev@wc2026.test',
+    name: 'Dev Player',
+    googleId: 'dev-user-001',
+    profile: { coverage: 1, exactEvery: 4, outcomeBias: 0, volatility: 1 },
+  },
+  {
+    email: 'alex@wc2026.test',
+    name: 'Alex Rivera',
+    googleId: 'scenario-demo-alex',
+    profile: { coverage: 0.98, exactEvery: 5, outcomeBias: 1, volatility: 2 },
+  },
+  {
+    email: 'marta@wc2026.test',
+    name: 'Marta Silva',
+    googleId: 'scenario-demo-marta',
+    profile: { coverage: 0.92, exactEvery: 6, outcomeBias: 2, volatility: 1 },
+  },
+  {
+    email: 'sam@wc2026.test',
+    name: 'Sam Patel',
+    googleId: 'scenario-demo-sam',
+    profile: { coverage: 0.86, exactEvery: 8, outcomeBias: 3, volatility: 2 },
+  },
+  {
+    email: 'lucia@wc2026.test',
+    name: 'Lucia Martin',
+    googleId: 'scenario-demo-lucia',
+    profile: { coverage: 0.8, exactEvery: 7, outcomeBias: 4, volatility: 3 },
+  },
+  {
+    email: 'jamie@wc2026.test',
+    name: 'Jamie Brooks',
+    googleId: 'scenario-demo-jamie',
+    profile: { coverage: 0.72, exactEvery: 10, outcomeBias: 5, volatility: 2 },
+  },
+  {
+    email: 'nina@wc2026.test',
+    name: 'Nina Kovac',
+    googleId: 'scenario-demo-nina',
+    profile: { coverage: 0.65, exactEvery: 9, outcomeBias: 6, volatility: 3 },
+  },
+  {
+    email: 'omar@wc2026.test',
+    name: 'Omar Hassan',
+    googleId: 'scenario-demo-omar',
+    profile: { coverage: 0.58, exactEvery: 12, outcomeBias: 7, volatility: 4 },
+  },
+];
+
 function usage(): string {
   return [
     'Usage: npm run seed:scenario -- <scenario|all> [more scenarios]',
@@ -49,6 +148,21 @@ function usage(): string {
   ].join('\n');
 }
 
+function deriveWinner(home: number, away: number): MatchWinner {
+  if (home > away) return 'HOME';
+  if (away > home) return 'AWAY';
+  return 'DRAW';
+}
+
+function stableStringNumber(source: string, salt: number): number {
+  let hash = 0;
+  const input = `${source}:${salt}`;
+  for (let i = 0; i < input.length; i += 1) {
+    hash = (hash * 31 + input.charCodeAt(i)) % 104729;
+  }
+  return hash;
+}
+
 function stableNumber(match: MatchDoc, salt: number): number {
   const source = `${match.externalId}:${match.homeTeamCode}:${match.awayTeamCode}:${salt}`;
   let hash = 0;
@@ -56,6 +170,13 @@ function stableNumber(match: MatchDoc, salt: number): number {
     hash = (hash * 31 + source.charCodeAt(i)) % 9973;
   }
   return hash;
+}
+
+function deterministicObjectId(seed: string): Types.ObjectId {
+  const hex = Array.from({ length: 24 }, (_, index) =>
+    (stableStringNumber(seed, index) % 16).toString(16)
+  ).join('');
+  return new Types.ObjectId(hex);
 }
 
 function makeResult(match: MatchDoc): { homeGoals: number; awayGoals: number; winner: MatchWinner } {
@@ -78,6 +199,255 @@ function sortMatches(matches: MatchDoc[]): MatchDoc[] {
     const dateDiff = new Date(a.utcDate).getTime() - new Date(b.utcDate).getTime();
     return dateDiff || a.externalId - b.externalId;
   });
+}
+
+function shouldPickMatch(userId: Types.ObjectId, match: MatchDoc, profile: PredictionProfile): boolean {
+  return stableStringNumber(`${userId}:${match.externalId}`, 1) % 100 < profile.coverage * 100;
+}
+
+function makePredictedScore(userId: Types.ObjectId, match: MatchDoc, index: number, profile: PredictionProfile) {
+  const actual = match.result ?? makeResult(match);
+  const exact = profile.exactEvery > 0 && (index + profile.outcomeBias) % profile.exactEvery === 0;
+
+  if (exact) {
+    return {
+      homeGoals: actual.homeGoals,
+      awayGoals: actual.awayGoals,
+    };
+  }
+
+  const nudgeHome = (stableStringNumber(`${userId}:${match.externalId}`, 2) % (profile.volatility + 2)) - 1;
+  const nudgeAway = (stableStringNumber(`${userId}:${match.externalId}`, 3) % (profile.volatility + 2)) - 1;
+  let homeGoals = Math.max(0, Math.min(6, actual.homeGoals + nudgeHome));
+  let awayGoals = Math.max(0, Math.min(6, actual.awayGoals + nudgeAway));
+
+  const keepOutcome = stableStringNumber(`${userId}:${match.externalId}`, 4) % 100 < 62 - profile.outcomeBias * 4;
+  if (keepOutcome && deriveWinner(homeGoals, awayGoals) !== actual.winner) {
+    if (actual.winner === 'HOME') {
+      homeGoals = Math.max(awayGoals + 1, homeGoals);
+    } else if (actual.winner === 'AWAY') {
+      awayGoals = Math.max(homeGoals + 1, awayGoals);
+    } else {
+      awayGoals = homeGoals;
+    }
+  }
+
+  return { homeGoals, awayGoals };
+}
+
+function getMatchTeamCodes(match: MatchDoc): string[] {
+  return [match.homeTeamCode, match.awayTeamCode]
+    .map((code) => code.trim().toUpperCase())
+    .filter((code) => code && code !== 'TBD');
+}
+
+function getGroupTeams(matches: MatchDoc[]): Map<string, string[]> {
+  const groups = new Map<string, Set<string>>();
+  for (const match of matches) {
+    if (match.stage !== 'GROUP' || !match.group) continue;
+    const group = groups.get(match.group) ?? new Set<string>();
+    getMatchTeamCodes(match).forEach((code) => group.add(code));
+    groups.set(match.group, group);
+  }
+
+  return new Map(
+    Array.from(groups.entries())
+      .map(([group, codes]) => [group, Array.from(codes).sort()] as const)
+      .filter(([, codes]) => codes.length >= 2)
+      .sort(([a], [b]) => a.localeCompare(b))
+  );
+}
+
+function rotate<T>(items: T[], offset: number): T[] {
+  if (!items.length) return items;
+  const normalized = offset % items.length;
+  return [...items.slice(normalized), ...items.slice(0, normalized)];
+}
+
+async function seedDemoUsersAndLeagues(db: Db): Promise<{ users: RawDoc[]; leagues: number }> {
+  const passwordHash = await hashPassword(DEMO_PASSWORD);
+  const now = new Date();
+
+  for (const demo of DEMO_USERS) {
+    await db.collection('users').updateOne(
+      { email: demo.email },
+      {
+        $set: {
+          googleId: demo.googleId,
+          name: demo.name,
+          avatarUrl: '',
+          passwordHash,
+          isMaster: demo.email === 'dev@wc2026.test',
+          updatedAt: now,
+        },
+        $setOnInsert: {
+          _id: deterministicObjectId(`user:${demo.email}`),
+          email: demo.email,
+          totalPoints: 0,
+          createdAt: now,
+        },
+      },
+      { upsert: true }
+    );
+  }
+
+  const users = await db.collection('users').find({}).sort({ email: 1 }).toArray();
+  const demoUsers = await db.collection('users').find({ email: { $in: DEMO_USERS.map((user) => user.email) } }).sort({ email: 1 }).toArray();
+  const userByEmail = new Map(users.map((user) => [user.email, user]));
+  const owner = userByEmail.get('dev@wc2026.test') ?? users[0];
+
+  const leagueSpecs = [
+    {
+      name: 'Everyone League',
+      inviteCode: 'ALL202',
+      members: users.map((user) => user._id),
+    },
+    {
+      name: 'Family Sweepstake',
+      inviteCode: 'FAM026',
+      members: ['dev@wc2026.test', 'alex@wc2026.test', 'marta@wc2026.test', 'lucia@wc2026.test']
+        .map((email) => userByEmail.get(email)?._id)
+        .filter(isObjectId),
+    },
+    {
+      name: 'Office League',
+      inviteCode: 'OFF026',
+      members: ['dev@wc2026.test', 'sam@wc2026.test', 'jamie@wc2026.test', 'nina@wc2026.test', 'omar@wc2026.test']
+        .map((email) => userByEmail.get(email)?._id)
+        .filter(isObjectId),
+    },
+    {
+      name: 'Weekend Pundits',
+      inviteCode: 'PUN026',
+      members: demoUsers
+        .filter((_, index) => index % 2 === 0)
+        .map((user) => user._id),
+    },
+  ];
+
+  for (const spec of leagueSpecs) {
+    const members = Array.from(new Set(spec.members.map((id) => id.toString()))).map((id, index) => ({
+      userId: new Types.ObjectId(id),
+      joinedAt: new Date(now.getTime() - index * 24 * 60 * 60 * 1000),
+      isAdmin: id === owner._id.toString(),
+    }));
+
+    await db.collection('leagues').updateOne(
+      { inviteCode: spec.inviteCode },
+      {
+        $set: {
+          name: spec.name,
+          ownerId: owner._id,
+          members,
+          maxMembers: 50,
+          updatedAt: now,
+        },
+        $setOnInsert: {
+          _id: deterministicObjectId(`league:${spec.inviteCode}`),
+          inviteCode: spec.inviteCode,
+          createdAt: now,
+        },
+      },
+      { upsert: true }
+    );
+  }
+
+  return { users: await db.collection('users').find({}).sort({ email: 1 }).toArray(), leagues: leagueSpecs.length };
+}
+
+async function seedDemoPredictions(db: Db, users: RawDoc[]): Promise<Omit<ScenarioDemoResult, 'users' | 'leagues'>> {
+  const matches = sortMatches(await db.collection<MatchDoc>('matches').find().toArray());
+  const groupTeams = getGroupTeams(matches);
+  const now = new Date();
+  let matchPredictions = 0;
+  let groupPredictions = 0;
+  let tournamentPredictions = 0;
+
+  const defaultProfile: PredictionProfile = { coverage: 0.75, exactEvery: 9, outcomeBias: 4, volatility: 3 };
+  const profiles = new Map(DEMO_USERS.map((user) => [user.email, user.profile]));
+
+  await Promise.all([
+    db.collection('predictions').deleteMany({}),
+    db.collection('grouppredictions').deleteMany({}),
+    db.collection('tournamentpredictions').deleteMany({}),
+  ]);
+
+  for (const [userIndex, user] of users.entries()) {
+    const profile = profiles.get(user.email) ?? {
+      ...defaultProfile,
+      outcomeBias: userIndex % 6,
+      coverage: Math.max(0.55, defaultProfile.coverage - (userIndex % 4) * 0.05),
+    };
+
+    for (const [matchIndex, match] of matches.entries()) {
+      if (!shouldPickMatch(user._id, match, profile)) continue;
+
+      const score = makePredictedScore(user._id, match, matchIndex, profile);
+      const predictedWinner = deriveWinner(score.homeGoals, score.awayGoals);
+      const isKnockout = match.stage !== 'GROUP';
+      let qualifier: 'HOME' | 'AWAY' | null = null;
+
+      if (isKnockout) {
+        if (predictedWinner === 'HOME') qualifier = 'HOME';
+        else if (predictedWinner === 'AWAY') qualifier = 'AWAY';
+        else qualifier = stableStringNumber(`${user._id}:${match.externalId}`, 5) % 2 === 0 ? 'HOME' : 'AWAY';
+      }
+
+      await db.collection('predictions').insertOne({
+        userId: user._id,
+        matchId: match._id,
+        homeGoals: score.homeGoals,
+        awayGoals: score.awayGoals,
+        predictedWinner,
+        qualifier,
+        points: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+      matchPredictions += 1;
+    }
+
+    for (const [group, teamCodes] of groupTeams.entries()) {
+      const orderedTeamCodes = rotate(teamCodes, stableStringNumber(`${user._id}:${group}`, 6) % teamCodes.length);
+      await db.collection('grouppredictions').insertOne({
+        userId: user._id,
+        group,
+        orderedTeamCodes,
+        points: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+      groupPredictions += 1;
+    }
+
+    const availableCodes = Array.from(new Set(matches.flatMap(getMatchTeamCodes))).sort();
+    const picks = rotate(availableCodes, stableStringNumber(user._id.toString(), 7) % Math.max(availableCodes.length, 1));
+    await db.collection('tournamentpredictions').insertOne({
+      userId: user._id,
+      championCode: picks[0],
+      runnerUpCode: picks[1],
+      semi1Code: picks[2],
+      semi2Code: picks[3],
+      bestPlayer: { name: 'Lionel Messi', team: 'Argentina', code: 'ARG', pos: 'FW' },
+      topScorer: { name: 'Kylian Mbappe', team: 'France', code: 'FRA', pos: 'FW' },
+      bestYoung: { name: 'Lamine Yamal', team: 'Spain', code: 'ESP', pos: 'FW' },
+      createdAt: now,
+      updatedAt: now,
+    });
+    tournamentPredictions += 1;
+  }
+
+  return { matchPredictions, groupPredictions, tournamentPredictions };
+}
+
+async function seedScenarioDemoWorld(db: Db): Promise<ScenarioDemoResult> {
+  const { users, leagues } = await seedDemoUsersAndLeagues(db);
+  const predictions = await seedDemoPredictions(db, users);
+  return {
+    users: users.length,
+    leagues,
+    ...predictions,
+  };
 }
 
 function getFinishedMatchIds(matches: MatchDoc[], scenario: ScenarioDefinition): Set<string> {
@@ -196,7 +566,11 @@ async function scorePredictions(db: Db): Promise<{ matchesProcessed: number; pre
   return { matchesProcessed: finishedMatches.length, predictionsScored, usersUpdated: totals.length };
 }
 
-async function createScenario(sourceDbName: string, scenario: ScenarioDefinition): Promise<void> {
+async function createScenario(
+  sourceDbName: string,
+  scenario: ScenarioDefinition,
+  baseMongoUri = env.SCENARIO_BASE_MONGODB_URI || env.MONGODB_URI
+): Promise<SeedScenarioResult> {
   const targetDbName = getScenarioDbName(sourceDbName, scenario);
   if (targetDbName === sourceDbName) {
     throw new Error(`Refusing to overwrite source database "${sourceDbName}"`);
@@ -208,17 +582,60 @@ async function createScenario(sourceDbName: string, scenario: ScenarioDefinition
 
   await cloneDatabase(sourceDb, targetDb);
   const matchResult = await resetAndApplyMatches(targetDb, scenario);
+  const demoResult = await seedScenarioDemoWorld(targetDb);
   const scoreResult = await scorePredictions(targetDb);
 
+  return {
+    slug: scenario.slug,
+    label: scenario.label,
+    dbName: targetDbName,
+    mongodbUri: uriWithDbName(baseMongoUri, targetDbName),
+    tournamentNow: scenario.now,
+    matches: matchResult,
+    demo: demoResult,
+    scoring: scoreResult,
+  };
+}
+
+function logScenarioResult(result: SeedScenarioResult): void {
   console.log([
     '',
-    `${scenario.label} (${scenario.slug})`,
-    `  DB: ${targetDbName}`,
-    `  MONGODB_URI=${uriWithDbName(env.MONGODB_URI, targetDbName)}`,
-    `  TOURNAMENT_NOW=${scenario.now}`,
-    `  Matches: ${matchResult.finished} finished, ${matchResult.live} live, ${matchResult.total} total`,
-    `  Scoring: ${scoreResult.predictionsScored} predictions across ${scoreResult.matchesProcessed} matches; ${scoreResult.usersUpdated} users updated`,
+    `${result.label} (${result.slug})`,
+    `  DB: ${result.dbName}`,
+    `  MONGODB_URI=${result.mongodbUri}`,
+    `  TOURNAMENT_NOW=${result.tournamentNow}`,
+    `  Matches: ${result.matches.finished} finished, ${result.matches.live} live, ${result.matches.total} total`,
+    `  Demo: ${result.demo.users} users, ${result.demo.leagues} leagues, ${result.demo.matchPredictions} match picks`,
+    `  Demo picks: ${result.demo.groupPredictions} group, ${result.demo.tournamentPredictions} tournament`,
+    `  Scoring: ${result.scoring.predictionsScored} predictions across ${result.scoring.matchesProcessed} matches; ${result.scoring.usersUpdated} users updated`,
   ].join('\n'));
+}
+
+export async function seedTournamentScenarios({
+  sourceDbName,
+  slugs,
+}: {
+  sourceDbName?: string;
+  slugs?: string[];
+} = {}): Promise<SeedScenarioResult[]> {
+  const requested = slugs?.length ? slugs : ['all'];
+  const scenarios = requested.includes('all')
+    ? SCENARIOS
+    : requested.map((slug) => {
+        const scenario = scenarioBySlug(slug);
+        if (!scenario) throw new Error(`Unknown scenario "${slug}"`);
+        return scenario;
+      });
+
+  const baseMongoUri = env.SCENARIO_BASE_MONGODB_URI || env.MONGODB_URI;
+  const baseDbName = sourceDbName ?? getDbName(baseMongoUri);
+  const results: SeedScenarioResult[] = [];
+
+  for (const scenario of scenarios) {
+    results.push(await createScenario(baseDbName, scenario, baseMongoUri));
+  }
+
+  return results;
 }
 
 async function main(): Promise<void> {
@@ -245,14 +662,16 @@ async function main(): Promise<void> {
 
   try {
     for (const scenario of scenarios) {
-      await createScenario(sourceDbName, scenario);
+      logScenarioResult(await createScenario(sourceDbName, scenario, env.MONGODB_URI));
     }
   } finally {
     await mongoose.disconnect();
   }
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
+}

@@ -14,6 +14,10 @@ const syncSchema = z.object({
   syncOdds: z.boolean().default(false),
 });
 
+const seedScenariosSchema = z.object({
+  scenarios: z.union([z.literal('all'), z.array(z.string().min(1)).min(1)]).default('all'),
+});
+
 router.post('/sync', syncAuthMiddleware, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { syncFixtures, processResults, syncOdds: doSyncOdds } = syncSchema.parse(req.body ?? {});
@@ -55,6 +59,31 @@ router.post('/sync', syncAuthMiddleware, async (req: Request, res: Response, nex
   } catch (error) {
     if (error instanceof z.ZodError) {
       res.status(400).json({ error: 'Invalid sync payload', details: error.errors });
+      return;
+    }
+
+    next(error);
+  }
+});
+
+router.post('/scenarios/seed', syncAuthMiddleware, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { scenarios } = seedScenariosSchema.parse(req.body ?? {});
+    const slugs = scenarios === 'all' ? ['all'] : scenarios;
+    const { seedTournamentScenarios } = await import('../jobs/seedScenario');
+
+    logger.info({ scenarios: slugs }, 'Seeding tournament scenario databases');
+
+    const results = await seedTournamentScenarios({ slugs });
+
+    res.json({
+      ok: true,
+      scenarios: results,
+      ranAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: 'Invalid scenario seed payload', details: error.errors });
       return;
     }
 

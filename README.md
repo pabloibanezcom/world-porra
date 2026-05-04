@@ -140,6 +140,26 @@ The app keeps using the Vercel API URL and sends `X-WC-Scenario` with each reque
 https://wc2026-pool-api.vercel.app/health?scenario=group-mid
 ```
 
+If your current network cannot connect to Atlas, deploy the API and seed the scenario databases from Vercel instead:
+
+```bash
+curl -X POST https://wc2026-pool-api.vercel.app/admin/scenarios/seed \
+  -H "x-sync-api-key: $SYNC_API_KEY" \
+  -H "content-type: application/json" \
+  -d '{"scenarios":["group-mid"]}'
+```
+
+To seed every scenario from Vercel:
+
+```bash
+curl -X POST https://wc2026-pool-api.vercel.app/admin/scenarios/seed \
+  -H "x-sync-api-key: $SYNC_API_KEY" \
+  -H "content-type: application/json" \
+  -d '{"scenarios":"all"}'
+```
+
+If Vercel times out while creating all databases, run one scenario at a time. This endpoint uses the same `SYNC_API_KEY` protection as `/admin/sync`.
+
 ### Running
 
 From the repo root:
