@@ -15,6 +15,7 @@ import {
   localizeTeam,
   getTeamCatalog,
 } from '../services/countryTeamService';
+import { currentDate } from '../utils/time';
 
 const router = Router();
 
@@ -94,7 +95,7 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
     }
 
     const lockTime = new Date(match.utcDate.getTime() - LOCK_MINUTES_BEFORE * 60 * 1000);
-    if (new Date() >= lockTime) {
+    if (currentDate() >= lockTime) {
       res.status(400).json({ error: 'Predictions are locked 15 minutes before kickoff.' });
       return;
     }
@@ -174,7 +175,7 @@ router.post('/groups', authMiddleware, async (req: AuthRequest, res: Response): 
       return;
     }
 
-    if (groupMatches.some((match) => new Date() >= match.utcDate)) {
+    if (groupMatches.some((match) => currentDate() >= match.utcDate)) {
       res.status(400).json({ error: 'This group has already started. Predictions are locked.' });
       return;
     }
@@ -235,7 +236,7 @@ router.get('/match/:matchId', authMiddleware, async (req: AuthRequest, res: Resp
   }
 
   // Only show others' predictions after kickoff
-  if (new Date() < match.utcDate) {
+  if (currentDate() < match.utcDate) {
     const own = await Prediction.findOne({ userId: req.userId, matchId: match._id }).lean();
     res.json({ predictions: own ? [own] : [] });
     return;

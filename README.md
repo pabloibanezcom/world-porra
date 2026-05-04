@@ -82,6 +82,64 @@ Use the Google Web client ID for both `GOOGLE_CLIENT_ID` on the API and `EXPO_PU
 cd api && npm run seed
 ```
 
+### Tournament Scenario Databases
+
+To test different tournament phases, clone your configured test database into deterministic scenario databases:
+
+```bash
+npm run seed:scenario -- all
+```
+
+Or create only the scenario you need:
+
+```bash
+npm run seed:scenario -- group-mid
+```
+
+Available scenarios are:
+
+```
+pre-tournament
+eve
+group-mid
+group-late
+knockout-r32
+knockout-r16
+final-eve
+complete
+```
+
+Each scenario is written to a suffixed database such as `wc2026_test_group_mid`. The command prints the `MONGODB_URI` and `TOURNAMENT_NOW` values to use when running the API against that phase. In non-production environments, `TOURNAMENT_NOW` overrides the app's server-side clock for prediction locks and post-kickoff prediction visibility.
+
+To start the API against one of those scenario databases without editing `api/.env`, run:
+
+```bash
+npm run api:scenario -- group-mid
+```
+
+This derives the scenario database name from your configured `MONGODB_URI` and applies the matching `TOURNAMENT_NOW` for that process only.
+
+For a deployed Vercel API that can serve every scenario from one URL, enable the scenario switcher in the API environment:
+
+```env
+ENABLE_SCENARIO_SWITCHER=true
+SCENARIO_BASE_MONGODB_URI=mongodb+srv://.../test?appName=Cluster0
+```
+
+`SCENARIO_BASE_MONGODB_URI` is optional; when omitted, the API derives scenario databases from `MONGODB_URI`. For example, a base DB of `test` maps `group-mid` to `test_group_mid`.
+
+Then start the mobile app against the deployed API and choose a phase:
+
+```bash
+npm run app:vercel:scenario -- group-mid
+```
+
+The app keeps using the Vercel API URL and sends `X-WC-Scenario` with each request. You can also hit the API directly with `?scenario=group-mid`, for example:
+
+```bash
+https://wc2026-pool-api.vercel.app/health?scenario=group-mid
+```
+
 ### Running
 
 From the repo root:

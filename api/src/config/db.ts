@@ -3,9 +3,10 @@ import { env } from './env';
 import { logger } from './logger';
 
 let connectionPromise: Promise<void> | null = null;
+let activeUri = '';
 
-async function _connect(): Promise<void> {
-  let uri = env.MONGODB_URI;
+async function _connect(uriOverride?: string): Promise<void> {
+  let uri = uriOverride || env.MONGODB_URI;
   let source = 'configured MongoDB';
 
   if (!uri) {
@@ -20,14 +21,23 @@ async function _connect(): Promise<void> {
   }
 
   await mongoose.connect(uri);
-  logger.info(`Connected to ${source}`);
+  activeUri = uri;
+  logger.info(`Connected to ${source} (${mongoose.connection.name})`);
 }
 
-export async function connectDB(): Promise<void> {
-  if (mongoose.connection.readyState === 1) return;
+export async function connectDB(uriOverride?: string): Promise<void> {
+  const requestedUri = uriOverride || env.MONGODB_URI;
+
+  if (mongoose.connection.readyState === 1 && (!requestedUri || requestedUri === activeUri)) return;
+
+  if (mongoose.connection.readyState === 1 && requestedUri && requestedUri !== activeUri) {
+    await mongoose.disconnect();
+    connectionPromise = null;
+    activeUri = '';
+  }
 
   if (!connectionPromise) {
-    connectionPromise = _connect().catch((error) => {
+    connectionPromise = _connect(uriOverride).catch((error) => {
       connectionPromise = null;
       logger.error({ err: error }, 'MongoDB connection error');
       throw error;

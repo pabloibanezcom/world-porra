@@ -5,6 +5,7 @@ import { deleteToken, getToken } from '../store/tokenStorage';
 import { TOKEN_STORAGE_KEY } from '../store/tokenKey';
 
 export const API_URL = resolveApiUrl();
+const API_SCENARIO = process.env.EXPO_PUBLIC_API_SCENARIO?.trim();
 const LANGUAGE_STORAGE_KEY = 'wc2026.language';
 let activeLanguage: 'en' | 'es' | null = null;
 
@@ -29,13 +30,16 @@ export const apiClient = axios.create({
 });
 
 if (__DEV__) {
-  console.log(`[api] Using base URL: ${API_URL}`);
+  console.log(`[api] Using base URL: ${API_URL}${API_SCENARIO ? ` (${API_SCENARIO})` : ''}`);
 }
 
 apiClient.interceptors.request.use(async (config) => {
   const token = await getToken(TOKEN_STORAGE_KEY);
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+  if (API_SCENARIO) {
+    config.headers['X-WC-Scenario'] = API_SCENARIO;
   }
   const savedLanguage = activeLanguage ?? await getToken(LANGUAGE_STORAGE_KEY);
   config.headers['Accept-Language'] = savedLanguage === 'es' || savedLanguage === 'en' ? savedLanguage : getDeviceLanguage();

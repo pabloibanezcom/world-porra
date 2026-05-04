@@ -11,6 +11,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { fetchMatches } from '../api/matches';
 import {
   fetchMyGroupPredictions,
@@ -154,6 +155,12 @@ export default function PicksScreen() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
 
   useEffect(() => {
     fetchTournamentPrediction().then(setTournamentPicks).catch(() => {});

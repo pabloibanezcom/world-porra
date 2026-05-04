@@ -8,10 +8,13 @@
   ],
   "scripts": {
     "api": "npm run dev --workspace=api",
+    "api:scenario": "npm run dev:scenario --workspace=api --",
     "app": "npm run start --workspace=app",
     "app:mobile": "npm run start:lan --workspace=app",
     "app:vercel": "npm run start:vercel --workspace=app",
-    "dev": "concurrently --names api,app -c blue,green \"npm run api\" \"npm run app\""
+    "app:vercel:scenario": "npm run start:vercel:scenario --workspace=app --",
+    "dev": "concurrently --names api,app -c blue,green \"npm run api\" \"npm run app\"",
+    "seed:scenario": "npm run seed:scenario --workspace=api --"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"

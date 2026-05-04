@@ -4,11 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "tsx watch src/index.ts",
+    "dev:scenario": "tsx src/jobs/runScenarioApi.ts",
     "build": "tsc",
     "start": "node dist/index.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "seed": "tsx src/jobs/seedMatches.ts",
+    "seed:scenario": "tsx src/jobs/seedScenario.ts",
     "seed:league-points": "tsx src/jobs/seedLeaguePoints.ts",
     "seed:odds": "tsx src/jobs/seedOdds.ts",
     "seed:team-colors": "tsx src/jobs/seedTeamColors.ts"
