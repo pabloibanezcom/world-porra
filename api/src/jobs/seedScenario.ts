@@ -268,28 +268,31 @@ async function seedDemoUsersAndLeagues(db: Db): Promise<{ users: RawDoc[]; leagu
   const passwordHash = await hashPassword(DEMO_PASSWORD);
   const now = new Date();
 
-  for (const demo of DEMO_USERS) {
-    await db.collection('users').updateOne(
-      { email: demo.email },
-      {
-        $set: {
-          googleId: demo.googleId,
-          name: demo.name,
-          avatarUrl: '',
-          passwordHash,
-          isMaster: demo.email === 'dev@wc2026.test',
-          updatedAt: now,
+  await db.collection('users').bulkWrite(
+    DEMO_USERS.map((demo) => ({
+      updateOne: {
+        filter: { email: demo.email },
+        update: {
+          $set: {
+            googleId: demo.googleId,
+            name: demo.name,
+            avatarUrl: '',
+            passwordHash,
+            isMaster: demo.email === 'dev@wc2026.test',
+            updatedAt: now,
+          },
+          $setOnInsert: {
+            _id: deterministicObjectId(`user:${demo.email}`),
+            email: demo.email,
+            totalPoints: 0,
+            createdAt: now,
+          },
         },
-        $setOnInsert: {
-          _id: deterministicObjectId(`user:${demo.email}`),
-          email: demo.email,
-          totalPoints: 0,
-          createdAt: now,
-        },
+        upsert: true,
       },
-      { upsert: true }
-    );
-  }
+    })),
+    { ordered: false }
+  );
 
   const users = await db.collection('users').find({}).sort({ email: 1 }).toArray();
   const demoUsers = await db.collection('users').find({ email: { $in: DEMO_USERS.map((user) => user.email) } }).sort({ email: 1 }).toArray();
@@ -325,32 +328,37 @@ async function seedDemoUsersAndLeagues(db: Db): Promise<{ users: RawDoc[]; leagu
     },
   ];
 
-  for (const spec of leagueSpecs) {
-    const members = Array.from(new Set(spec.members.map((id) => id.toString()))).map((id, index) => ({
-      userId: new Types.ObjectId(id),
-      joinedAt: new Date(now.getTime() - index * 24 * 60 * 60 * 1000),
-      isAdmin: id === owner._id.toString(),
-    }));
+  await db.collection('leagues').bulkWrite(
+    leagueSpecs.map((spec) => {
+      const members = Array.from(new Set(spec.members.map((id) => id.toString()))).map((id, index) => ({
+        userId: new Types.ObjectId(id),
+        joinedAt: new Date(now.getTime() - index * 24 * 60 * 60 * 1000),
+        isAdmin: id === owner._id.toString(),
+      }));
 
-    await db.collection('leagues').updateOne(
-      { inviteCode: spec.inviteCode },
-      {
-        $set: {
-          name: spec.name,
-          ownerId: owner._id,
-          members,
-          maxMembers: 50,
-          updatedAt: now,
+      return {
+        updateOne: {
+          filter: { inviteCode: spec.inviteCode },
+          update: {
+            $set: {
+              name: spec.name,
+              ownerId: owner._id,
+              members,
+              maxMembers: 50,
+              updatedAt: now,
+            },
+            $setOnInsert: {
+              _id: deterministicObjectId(`league:${spec.inviteCode}`),
+              inviteCode: spec.inviteCode,
+              createdAt: now,
+            },
+          },
+          upsert: true,
         },
-        $setOnInsert: {
-          _id: deterministicObjectId(`league:${spec.inviteCode}`),
-          inviteCode: spec.inviteCode,
-          createdAt: now,
-        },
-      },
-      { upsert: true }
-    );
-  }
+      };
+    }),
+    { ordered: false }
+  );
 
   return { users: await db.collection('users').find({}).sort({ email: 1 }).toArray(), leagues: leagueSpecs.length };
 }
@@ -362,6 +370,9 @@ async function seedDemoPredictions(db: Db, users: RawDoc[]): Promise<Omit<Scenar
   let matchPredictions = 0;
   let groupPredictions = 0;
   let tournamentPredictions = 0;
+  const matchPredictionDocs: RawDoc[] = [];
+  const groupPredictionDocs: RawDoc[] = [];
+  const tournamentPredictionDocs: RawDoc[] = [];
 
   const defaultProfile: PredictionProfile = { coverage: 0.75, exactEvery: 9, outcomeBias: 4, volatility: 3 };
   const profiles = new Map(DEMO_USERS.map((user) => [user.email, user.profile]));
@@ -393,7 +404,7 @@ async function seedDemoPredictions(db: Db, users: RawDoc[]): Promise<Omit<Scenar
         else qualifier = stableStringNumber(`${user._id}:${match.externalId}`, 5) % 2 === 0 ? 'HOME' : 'AWAY';
       }
 
-      await db.collection('predictions').insertOne({
+      matchPredictionDocs.push({
         userId: user._id,
         matchId: match._id,
         homeGoals: score.homeGoals,
@@ -409,7 +420,7 @@ async function seedDemoPredictions(db: Db, users: RawDoc[]): Promise<Omit<Scenar
 
     for (const [group, teamCodes] of groupTeams.entries()) {
       const orderedTeamCodes = rotate(teamCodes, stableStringNumber(`${user._id}:${group}`, 6) % teamCodes.length);
-      await db.collection('grouppredictions').insertOne({
+      groupPredictionDocs.push({
         userId: user._id,
         group,
         orderedTeamCodes,
@@ -422,7 +433,7 @@ async function seedDemoPredictions(db: Db, users: RawDoc[]): Promise<Omit<Scenar
 
     const availableCodes = Array.from(new Set(matches.flatMap(getMatchTeamCodes))).sort();
     const picks = rotate(availableCodes, stableStringNumber(user._id.toString(), 7) % Math.max(availableCodes.length, 1));
-    await db.collection('tournamentpredictions').insertOne({
+    tournamentPredictionDocs.push({
       userId: user._id,
       championCode: picks[0],
       runnerUpCode: picks[1],
@@ -436,6 +447,18 @@ async function seedDemoPredictions(db: Db, users: RawDoc[]): Promise<Omit<Scenar
     });
     tournamentPredictions += 1;
   }
+
+  await Promise.all([
+    matchPredictionDocs.length
+      ? db.collection('predictions').insertMany(matchPredictionDocs, { ordered: false })
+      : Promise.resolve(),
+    groupPredictionDocs.length
+      ? db.collection('grouppredictions').insertMany(groupPredictionDocs, { ordered: false })
+      : Promise.resolve(),
+    tournamentPredictionDocs.length
+      ? db.collection('tournamentpredictions').insertMany(tournamentPredictionDocs, { ordered: false })
+      : Promise.resolve(),
+  ]);
 
   return { matchPredictions, groupPredictions, tournamentPredictions };
 }
@@ -506,20 +529,24 @@ async function resetAndApplyMatches(db: Db, scenario: ScenarioDefinition): Promi
     liveMatchId = matches.find((match) => !finishedIds.has(match._id.toString()))?._id ?? null;
   }
 
-  for (const match of matches) {
+  if (matches.length) {
+    await db.collection('matches').bulkWrite(matches.map((match) => {
     const isFinished = finishedIds.has(match._id.toString());
     const isLive = liveMatchId?.equals(match._id) ?? false;
 
-    await db.collection('matches').updateOne(
-      { _id: match._id },
-      {
-        $set: {
-          status: isFinished ? 'FINISHED' : isLive ? 'LIVE' : 'SCHEDULED',
-          result: isFinished ? makeResult(match) : null,
-          scoresProcessed: false,
+    return {
+      updateOne: {
+        filter: { _id: match._id },
+        update: {
+          $set: {
+            status: isFinished ? 'FINISHED' : isLive ? 'LIVE' : 'SCHEDULED',
+            result: isFinished ? makeResult(match) : null,
+            scoresProcessed: false,
+          },
         },
-      }
-    );
+      },
+    };
+    }), { ordered: false });
   }
 
   return { finished: finishedIds.size, live: liveMatchId ? 1 : 0, total: matches.length };
@@ -530,6 +557,8 @@ async function scorePredictions(db: Db): Promise<{ matchesProcessed: number; pre
 
   const finishedMatches = await db.collection<MatchDoc>('matches').find({ status: 'FINISHED', result: { $ne: null } }).toArray();
   let predictionsScored = 0;
+  const predictionUpdates: any[] = [];
+  const matchUpdates: any[] = [];
 
   for (const match of finishedMatches) {
     const predictions = await db.collection<PredictionDoc>('predictions').find({ matchId: match._id }).toArray();
@@ -546,12 +575,27 @@ async function scorePredictions(db: Db): Promise<{ matchesProcessed: number; pre
         actualWinner: match.result!.winner,
       });
 
-      await db.collection('predictions').updateOne({ _id: prediction._id }, { $set: { points } });
+      predictionUpdates.push({
+        updateOne: {
+          filter: { _id: prediction._id },
+          update: { $set: { points } },
+        },
+      });
     }
 
     predictionsScored += predictions.length;
-    await db.collection('matches').updateOne({ _id: match._id }, { $set: { scoresProcessed: true } });
+    matchUpdates.push({
+      updateOne: {
+        filter: { _id: match._id },
+        update: { $set: { scoresProcessed: true } },
+      },
+    });
   }
+
+  await Promise.all([
+    predictionUpdates.length ? db.collection('predictions').bulkWrite(predictionUpdates, { ordered: false }) : Promise.resolve(),
+    matchUpdates.length ? db.collection('matches').bulkWrite(matchUpdates, { ordered: false }) : Promise.resolve(),
+  ]);
 
   const totals = await db.collection('predictions').aggregate<{ _id: Types.ObjectId; total: number }>([
     { $match: { points: { $ne: null } } },
@@ -559,8 +603,16 @@ async function scorePredictions(db: Db): Promise<{ matchesProcessed: number; pre
   ]).toArray();
 
   await db.collection('users').updateMany({}, { $set: { totalPoints: 0 } });
-  for (const { _id, total } of totals) {
-    await db.collection('users').updateOne({ _id }, { $set: { totalPoints: total } });
+  if (totals.length) {
+    await db.collection('users').bulkWrite(
+      totals.map(({ _id, total }) => ({
+        updateOne: {
+          filter: { _id },
+          update: { $set: { totalPoints: total } },
+        },
+      })),
+      { ordered: false }
+    );
   }
 
   return { matchesProcessed: finishedMatches.length, predictionsScored, usersUpdated: totals.length };
