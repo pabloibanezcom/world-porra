@@ -65,6 +65,16 @@ describe('resolveApiUrl', () => {
     expect(resolveApiUrl()).toBe('https://api.example.test');
   });
 
+  it('uses the hosted API for production web builds when the configured URL is local', async () => {
+    const { resolveApiUrl } = await loadResolveApiUrl({
+      apiUrl: 'http://localhost:3000',
+      platform: 'web',
+      dev: false,
+    });
+
+    expect(resolveApiUrl()).toBe('https://wc2026-pool-api.vercel.app');
+  });
+
   it('derives a LAN API URL from Expo host URI', async () => {
     const { resolveApiUrl } = await loadResolveApiUrl({
       hostUri: '192.168.1.25:8081',
