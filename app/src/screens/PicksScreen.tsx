@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { fetchMatches } from '../api/matches';
-import { fetchPollConfig, PollConfig } from '../api/config';
+import { fetchPollConfig, fetchTournamentCatalog, PollConfig } from '../api/config';
 import {
   fetchMyGroupPredictions,
   fetchMyPredictions,
@@ -29,7 +29,7 @@ import MatchCard, { hasTbdTeam } from '../components/MatchCard';
 import LoadingView from '../components/ui/LoadingView';
 import Flag from '../components/ui/Flag';
 import TournamentPicksSection from '../components/TournamentPicksSection';
-import { TournamentPicks, PlayerOption, TeamOption } from '../data/tournamentData';
+import { TournamentCatalogTeam, TournamentPicks, PlayerOption, TeamOption } from '../data/tournamentData';
 import { colors, fonts } from '../theme';
 import { useI18n } from '../i18n';
 import { isPredictionLocked } from '../utils/prediction';
@@ -84,6 +84,7 @@ interface GroupStanding {
 
 const PICK_TABS = ['upcoming', 'results', 'groups', 'finals'] as const;
 type PicksTab = typeof PICK_TABS[number];
+const FINAL_FOUR_KEYS = ['champion', 'runnerUp', 'semi1', 'semi2'] as const;
 
 function isTbdTeam(team: TeamInfo) {
   return team.code.trim().toUpperCase() === 'TBD' || team.name.trim().toUpperCase() === 'TBD';
@@ -114,6 +115,31 @@ function getGroupsFromMatches(matches: Match[]): GroupStanding[] {
     .sort((a, b) => a.id.localeCompare(b.id));
 }
 
+function getTournamentTeamsFromMatches(matches: Match[]): TournamentCatalogTeam[] {
+  const teams = new Map<string, TournamentCatalogTeam>();
+
+  matches.forEach((match) => {
+    [match.homeTeam, match.awayTeam].forEach((team) => {
+      const code = team.code.trim().toUpperCase();
+      if (code && !isTbdTeam(team)) {
+        teams.set(code, { ...team, code, players: [] });
+      }
+    });
+  });
+
+  return Array.from(teams.values()).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function mergeTournamentTeams(
+  fallbackTeams: TournamentCatalogTeam[],
+  catalogTeams: TournamentCatalogTeam[],
+): TournamentCatalogTeam[] {
+  if (catalogTeams.length === 0) return fallbackTeams;
+
+  const catalogByCode = new Map(catalogTeams.map((team) => [team.code, team]));
+  return fallbackTeams.map((team) => catalogByCode.get(team.code) ?? team);
+}
+
 export default function PicksScreen() {
   const { language, t, locale } = useI18n();
   const scrollRef = useRef<ScrollView>(null);
@@ -130,6 +156,7 @@ export default function PicksScreen() {
   const [loading, setLoading] = useState(true);
   const [isDraggingGroupTeam, setIsDraggingGroupTeam] = useState(false);
   const [pollConfig, setPollConfig] = useState<PollConfig | null>(null);
+  const [tournamentTeams, setTournamentTeams] = useState<TournamentCatalogTeam[]>([]);
 
   const [tournamentPicks, setTournamentPicks] = useState<TournamentPicks>({});
 
@@ -148,6 +175,14 @@ export default function PicksScreen() {
       setPredictions(p);
       setGroupPredictions(gp);
       setPollConfig(config);
+
+      const fallbackTeams = getTournamentTeamsFromMatches(m);
+      setTournamentTeams(fallbackTeams);
+      fetchTournamentCatalog()
+        .then((catalogTeams) => {
+          setTournamentTeams(mergeTournamentTeams(fallbackTeams, catalogTeams));
+        })
+        .catch(() => {});
     } catch {
       // silently fail
     } finally {
@@ -189,6 +224,13 @@ export default function PicksScreen() {
     (key: keyof TournamentPicks, value: TeamOption | PlayerOption) => {
       setTournamentPicks((prev) => {
         const next = { ...prev, [key]: value };
+        if (FINAL_FOUR_KEYS.includes(key as typeof FINAL_FOUR_KEYS[number])) {
+          FINAL_FOUR_KEYS.forEach((teamKey) => {
+            if (teamKey !== key && next[teamKey]?.code === value.code) {
+              delete next[teamKey];
+            }
+          });
+        }
         saveTournamentPrediction(next).catch(() => {});
         return next;
       });
@@ -331,6 +373,7 @@ export default function PicksScreen() {
         {tab === 'finals' ? (
           <TournamentPicksSection
             picks={tournamentPicks}
+            teams={tournamentTeams}
             onPickChange={tournamentPredictionsLocked ? undefined : handleTournamentPick}
           />
         ) : tab === 'groups' ? (

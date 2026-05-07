@@ -391,6 +391,7 @@ describe('tournament predictions', () => {
   it('locks tournament predictions using the global poll deadline', async () => {
     const player = await registerPlayer();
     const master = await registerPlayer('master@wc2026.test');
+    await createMatch({ externalId: 501, homeTeamCode: 'ARG', awayTeamCode: 'ESP' });
 
     const open = await requestJson('/predictions/tournament', {
       token: player.token,

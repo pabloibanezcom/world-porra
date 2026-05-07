@@ -40,6 +40,22 @@ async function createMatch(overrides: Partial<Parameters<typeof Match.create>[0]
 }
 
 describe('prediction read routes', () => {
+  it('returns tournament catalog teams and embedded players from participating match teams', async () => {
+    const { token } = await registerPlayer();
+    await createMatch({ externalId: 301, homeTeamCode: 'ARG', awayTeamCode: 'ESP' });
+
+    const response = await requestJson<{
+      teams: Array<{ code: string; name: string; players: Array<{ name: string; pos: string; age: number }> }>;
+    }>('/config/tournament-catalog?lang=es', { token });
+
+    expect(response.status).toBe(200);
+    expect(response.body.teams.map((team) => team.code).sort()).toEqual(['ARG', 'ESP']);
+    expect(response.body.teams.find((team) => team.code === 'ESP')).toMatchObject({
+      name: 'Espa\u00f1a',
+      players: [{ name: 'Lamine Yamal', pos: 'FW', age: 18 }],
+    });
+  });
+
   it('returns the current user predictions and can filter them by match stage', async () => {
     const { token, user } = await registerPlayer();
     const groupMatch = await createMatch({ externalId: 401, stage: 'GROUP' });
@@ -144,6 +160,8 @@ describe('prediction read routes', () => {
 describe('tournament predictions', () => {
   it('creates, updates, and localizes tournament picks', async () => {
     const { token } = await registerPlayer();
+    await createMatch({ externalId: 801, homeTeamCode: 'ARG', awayTeamCode: 'ESP' });
+    await createMatch({ externalId: 802, homeTeamCode: 'BRA', awayTeamCode: 'FRA' });
 
     const create = await requestJson<{ prediction: { championCode: string; runnerUpCode: string; champion: { name: string }; bestPlayer: { name: string } } }>(
       '/predictions/tournament?lang=es',
@@ -154,7 +172,7 @@ describe('tournament predictions', () => {
           runnerUp: { code: 'esp' },
           semi1: { code: 'bra' },
           semi2: { code: 'fra' },
-          bestPlayer: { name: 'Lionel Messi', team: 'Argentina', code: 'ARG', pos: 'FW' },
+          bestPlayer: { name: 'Lionel Messi', team: 'Argentina', code: 'ARG', pos: 'FW', age: 38 },
         },
       }
     );
@@ -183,8 +201,41 @@ describe('tournament predictions', () => {
 
     const invalid = await requestJson('/predictions/tournament', {
       token,
-      body: { bestPlayer: { name: '', team: 'Argentina', code: 'ARG', pos: 'FW' } },
+      body: { bestPlayer: { name: '', team: 'Argentina', code: 'ARG', pos: 'FW', age: 38 } },
     });
     expect(invalid.status).toBe(400);
+  });
+
+  it('rejects tournament picks that are not in the team and player catalog', async () => {
+    const { token } = await registerPlayer();
+    await createMatch({ externalId: 901, homeTeamCode: 'ARG', awayTeamCode: 'ESP' });
+
+    const unknownTeam = await requestJson('/predictions/tournament', {
+      token,
+      body: { champion: { code: 'BOL' } },
+    });
+    expect(unknownTeam.status).toBe(400);
+    expect(unknownTeam.body).toEqual({ error: 'Unknown tournament team "BOL"' });
+
+    const unknownPlayer = await requestJson('/predictions/tournament', {
+      token,
+      body: { bestPlayer: { name: 'Not In DB', team: 'Argentina', code: 'ARG', pos: 'FW', age: 30 } },
+    });
+    expect(unknownPlayer.status).toBe(400);
+    expect(unknownPlayer.body).toEqual({ error: 'Unknown tournament player "Not In DB"' });
+
+    const tooOld = await requestJson('/predictions/tournament', {
+      token,
+      body: { bestYoung: { name: 'Lionel Messi', team: 'Argentina', code: 'ARG', pos: 'FW', age: 38 } },
+    });
+    expect(tooOld.status).toBe(400);
+    expect(tooOld.body).toEqual({ error: 'Best young player must be 21 or younger' });
+
+    const duplicateTeam = await requestJson('/predictions/tournament', {
+      token,
+      body: { champion: { code: 'ARG' }, runnerUp: { code: 'ARG' } },
+    });
+    expect(duplicateTeam.status).toBe(400);
+    expect(duplicateTeam.body).toEqual({ error: 'Tournament final four picks must be unique (ARG)' });
   });
 });

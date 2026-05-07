@@ -13,10 +13,9 @@ import {
 import Flag from './ui/Flag';
 import { colors, fonts } from '../theme';
 import {
-  ALL_TEAMS,
-  AWARD_PLAYERS,
   PlayerOption,
   TeamOption,
+  TournamentCatalogTeam,
   TournamentPicks,
   TOURNAMENT_SLOT_KEYS,
 } from '../data/tournamentData';
@@ -25,8 +24,11 @@ import { useI18n } from '../i18n';
 
 interface TournamentPicksSectionProps {
   picks: TournamentPicks;
+  teams: TournamentCatalogTeam[];
   onPickChange?: (key: keyof TournamentPicks, value: TeamOption | PlayerOption) => void;
 }
+
+const FINAL_FOUR_KEYS = ['champion', 'runnerUp', 'semi1', 'semi2'] as const;
 
 type ActivePicker =
   | { type: 'team'; key: keyof TournamentPicks; title: string }
@@ -45,13 +47,8 @@ const POS_BG: Record<string, string> = {
   GK: 'rgba(226,59,74,0.15)',
 };
 
-function getTeamName(team: TeamOption, language: string) {
-  return language === 'es' ? team.nameEs ?? team.name : team.name;
-}
-
-function getTeamNameByCode(code: string, fallback: string, language: string) {
-  const team = ALL_TEAMS.find((option) => option.code === code);
-  return team ? getTeamName(team, language) : fallback;
+function getTeamNameByCode(teams: TeamOption[], code: string, fallback: string) {
+  return teams.find((option) => option.code === code)?.name ?? fallback;
 }
 
 function SectionLabel({ children }: { children: string }) {
@@ -74,7 +71,7 @@ function SlotCard({
   icon: string;
   onPress?: () => void;
 }) {
-  const { language, t } = useI18n();
+  const { t } = useI18n();
   return (
     <TouchableOpacity
       style={[styles.slotCard, !pick && styles.slotCardEmpty]}
@@ -90,7 +87,7 @@ function SlotCard({
         {pick ? (
           <View style={styles.slotTeamRow}>
             <Flag code={pick.code} size={20} />
-            <Text style={styles.slotTeamName}>{getTeamName(pick, language)}</Text>
+            <Text style={styles.slotTeamName}>{pick.name}</Text>
           </View>
         ) : (
           <Text style={styles.slotPlaceholder}>{t('tournament.tapToSelect')}</Text>
@@ -108,6 +105,8 @@ function AwardCard({
   icon,
   accentColor = colors.blue,
   accentBg = colors.blueDim,
+  teams,
+  disabled,
   onPress,
 }: {
   pick?: PlayerOption;
@@ -115,14 +114,16 @@ function AwardCard({
   icon: string;
   accentColor?: string;
   accentBg?: string;
+  teams: TeamOption[];
+  disabled?: boolean;
   onPress?: () => void;
 }) {
-  const { language, t } = useI18n();
+  const { t } = useI18n();
   return (
     <TouchableOpacity
-      style={[styles.slotCard, !pick && styles.awardCardEmpty]}
+      style={[styles.slotCard, !pick && styles.awardCardEmpty, disabled && styles.slotCardDisabled]}
       onPress={onPress}
-      disabled={!onPress}
+      disabled={!onPress || disabled}
       activeOpacity={0.75}
     >
       <View style={[styles.slotIcon, pick ? { backgroundColor: accentBg } : styles.slotIconEmpty]}>
@@ -135,7 +136,7 @@ function AwardCard({
             <Text style={styles.slotTeamName}>{pick.name}</Text>
             <View style={styles.playerMeta}>
               <Flag code={pick.code} size={14} />
-              <Text style={styles.playerTeam}>{getTeamNameByCode(pick.code, pick.team, language)}</Text>
+              <Text style={styles.playerTeam}>{getTeamNameByCode(teams, pick.code, pick.team)}</Text>
             </View>
           </View>
         ) : (
@@ -150,16 +151,20 @@ function AwardCard({
 // ─── TEAM PICKER MODAL ─────────────────────────────────────────
 function TeamPickerModal({
   title,
+  teams,
   selected,
+  unavailableCodes,
   onSelect,
   onClose,
 }: {
   title: string;
+  teams: TournamentCatalogTeam[];
   selected?: TeamOption;
+  unavailableCodes: Set<string>;
   onSelect: (team: TeamOption) => void;
   onClose: () => void;
 }) {
-  const { language, t } = useI18n();
+  const { t } = useI18n();
   const slideAnim = useRef(new Animated.Value(600)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const [search, setSearch] = useState('');
@@ -179,13 +184,11 @@ function TeamPickerModal({
   };
 
   const pick = (team: TeamOption) => {
-    onSelect({ ...team, name: getTeamName(team, language) });
+    onSelect(team);
     close();
   };
 
-  const filtered = ALL_TEAMS.filter((team) =>
-    `${team.name} ${team.nameEs ?? ''}`.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = teams.filter((team) => team.name.toLowerCase().includes(search.toLowerCase()));
 
   return (
     <Modal transparent visible animationType="none" onRequestClose={close}>
@@ -217,18 +220,25 @@ function TeamPickerModal({
         <ScrollView style={styles.sheetList} showsVerticalScrollIndicator={false}>
           {filtered.map((team) => {
             const isSel = selected?.code === team.code;
+            const unavailable = !isSel && unavailableCodes.has(team.code);
             return (
               <TouchableOpacity
                 key={team.code}
-                style={[styles.teamRow, isSel && styles.teamRowSelected]}
+                style={[styles.teamRow, isSel && styles.teamRowSelected, unavailable && styles.teamRowUnavailable]}
                 onPress={() => pick(team)}
+                disabled={unavailable}
                 activeOpacity={0.7}
               >
                 <Flag code={team.code} size={26} />
-                <Text style={[styles.teamRowName, isSel && styles.teamRowNameSelected]}>
-                  {getTeamName(team, language)}
+                <Text style={[
+                  styles.teamRowName,
+                  isSel && styles.teamRowNameSelected,
+                  unavailable && styles.teamRowNameUnavailable,
+                ]}>
+                  {team.name}
                 </Text>
                 {isSel && <CheckIcon />}
+                {unavailable && <Ionicons name="lock-closed" size={14} color={colors.dim} />}
               </TouchableOpacity>
             );
           })}
@@ -253,7 +263,7 @@ function PlayerPickerModal({
   onSelect: (player: PlayerOption) => void;
   onClose: () => void;
 }) {
-  const { language, t } = useI18n();
+  const { t } = useI18n();
   const slideAnim = useRef(new Animated.Value(600)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const [step, setStep] = useState<'team' | 'player'>('team');
@@ -264,10 +274,10 @@ function PlayerPickerModal({
   const teams = React.useMemo(() => {
     const seen = new Map<string, { name: string; code: string }>();
     players.forEach((p) => {
-      if (!seen.has(p.code)) seen.set(p.code, { name: getTeamNameByCode(p.code, p.team, language), code: p.code });
+      if (!seen.has(p.code)) seen.set(p.code, { name: p.team, code: p.code });
     });
     return Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name));
-  }, [players, language]);
+  }, [players]);
 
   useEffect(() => {
     Animated.parallel([
@@ -404,6 +414,7 @@ function PlayerPickerModal({
                     <Text style={[styles.teamRowName, isSel && styles.teamRowNameSelected]}>
                       {player.name}
                     </Text>
+                    <Text style={styles.playerTeamSmall}>{player.age}</Text>
                   </View>
                   <View style={[styles.posBadge, { backgroundColor: POS_BG[player.pos] }]}>
                     <Text style={[styles.posBadgeText, { color: POS_COLOR[player.pos] }]}>
@@ -425,10 +436,22 @@ function PlayerPickerModal({
 // ─── MAIN SECTION ──────────────────────────────────────────────
 export default function TournamentPicksSection({
   picks,
+  teams,
   onPickChange,
 }: TournamentPicksSectionProps) {
   const { t } = useI18n();
   const [activePicker, setActivePicker] = useState<ActivePicker | null>(null);
+  const allPlayers = React.useMemo(
+    () => teams.flatMap((team) =>
+      team.players.map((player) => ({
+        ...player,
+        team: team.name,
+        code: team.code,
+      }))
+    ),
+    [teams],
+  );
+  const bestYoungPlayers = React.useMemo(() => allPlayers.filter((player) => player.age <= 21), [allPlayers]);
 
   const doneCount = TOURNAMENT_SLOT_KEYS.filter((k) => picks[k] !== undefined).length;
   const totalCount = TOURNAMENT_SLOT_KEYS.length;
@@ -438,6 +461,16 @@ export default function TournamentPicksSection({
 
   const openPlayer = (key: keyof TournamentPicks, title: string, players: PlayerOption[]) =>
     onPickChange && setActivePicker({ type: 'player', key, title, players });
+
+  const unavailableTeamCodes = React.useMemo(() => {
+    const currentKey = activePicker?.type === 'team' ? activePicker.key : null;
+    return new Set(
+      FINAL_FOUR_KEYS
+        .filter((key) => key !== currentKey)
+        .map((key) => picks[key]?.code)
+        .filter((code): code is string => !!code)
+    );
+  }, [activePicker, picks]);
 
   return (
     <View style={styles.container}>
@@ -499,13 +532,17 @@ export default function TournamentPicksSection({
             pick={picks.bestPlayer as PlayerOption | undefined}
             label={t('tournament.bestPlayer')}
             icon="🌟"
-            onPress={() => openPlayer('bestPlayer', t('tournament.bestPlayer'), AWARD_PLAYERS.bestPlayer)}
+            teams={teams}
+            disabled={allPlayers.length === 0}
+            onPress={() => openPlayer('bestPlayer', t('tournament.bestPlayer'), allPlayers)}
           />
           <AwardCard
             pick={picks.topScorer as PlayerOption | undefined}
             label={t('tournament.topScorer')}
             icon="👟"
-            onPress={() => openPlayer('topScorer', t('tournament.topScorer'), AWARD_PLAYERS.topScorer)}
+            teams={teams}
+            disabled={allPlayers.length === 0}
+            onPress={() => openPlayer('topScorer', t('tournament.topScorer'), allPlayers)}
           />
           <AwardCard
             pick={picks.bestYoung as PlayerOption | undefined}
@@ -513,7 +550,9 @@ export default function TournamentPicksSection({
             icon="🌱"
             accentColor={colors.warning}
             accentBg="rgba(236,126,0,0.14)"
-            onPress={() => openPlayer('bestYoung', t('tournament.bestYoung'), AWARD_PLAYERS.bestYoung)}
+            teams={teams}
+            disabled={bestYoungPlayers.length === 0}
+            onPress={() => openPlayer('bestYoung', t('tournament.bestYoung'), bestYoungPlayers)}
           />
         </View>
       </View>
@@ -522,7 +561,9 @@ export default function TournamentPicksSection({
       {activePicker?.type === 'team' && (
         <TeamPickerModal
           title={activePicker.title}
+          teams={teams}
           selected={picks[activePicker.key] as TeamOption | undefined}
+          unavailableCodes={unavailableTeamCodes}
           onSelect={(team) => onPickChange?.(activePicker.key, team)}
           onClose={() => setActivePicker(null)}
         />
@@ -602,6 +643,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(73,79,223,0.04)',
     borderColor: 'rgba(73,79,223,0.22)',
   },
+  slotCardDisabled: { opacity: 0.5 },
   slotIcon: {
     width: 36,
     height: 36,
@@ -724,6 +766,7 @@ const styles = StyleSheet.create({
     marginBottom: 3,
   },
   teamRowSelected: { backgroundColor: colors.accentDim },
+  teamRowUnavailable: { opacity: 0.45 },
   teamRowName: {
     flex: 1,
     color: colors.text,
@@ -732,6 +775,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   teamRowNameSelected: { color: colors.accent, fontWeight: '700' },
+  teamRowNameUnavailable: { color: colors.dim },
 
   playerInfo: { flex: 1, minWidth: 0 },
   playerTeamSmall: { color: colors.muted, fontFamily: fonts.body, fontSize: 10, marginTop: 1 },

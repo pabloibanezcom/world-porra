@@ -13,8 +13,17 @@ export interface LocalizedTeamInfo {
   color: string;
 }
 
+export interface TournamentCatalogTeam extends LocalizedTeamInfo {
+  players: Array<{
+    name: string;
+    pos: 'FW' | 'MF' | 'DF' | 'GK';
+    age: number;
+  }>;
+}
+
 type TeamCatalogEntry = Pick<ICountryTeam, 'code' | 'crest' | 'color'> & {
   names: Map<string, string> | Record<string, string>;
+  players?: ICountryTeam['players'];
 };
 
 function normalizeCode(code: string | null | undefined): string {
@@ -59,10 +68,12 @@ export async function upsertCountryTeamFromSource({
   code,
   name,
   crest,
+  players,
 }: {
   code: string;
   name: string;
   crest?: string;
+  players?: ICountryTeam['players'];
 }): Promise<void> {
   const normalizedCode = normalizeCode(code);
   const normalizedName = name.trim() || getFallbackName(normalizedCode, 'en');
@@ -78,6 +89,7 @@ export async function upsertCountryTeamFromSource({
         },
       },
       ...(crest ? { $set: { crest } } : {}),
+      ...(players ? { $set: { players } } : {}),
     },
     { upsert: true, new: true, setDefaultsOnInsert: true }
   );
@@ -87,6 +99,38 @@ export async function getTeamCatalog(codes: string[]): Promise<Map<string, TeamC
   const normalizedCodes = Array.from(new Set(codes.map(normalizeCode)));
   const teams = await CountryTeam.find({ code: { $in: normalizedCodes } }).lean();
   return new Map(teams.map((team) => [team.code, team]));
+}
+
+function serializeCatalogTeam(team: TeamCatalogEntry, language: ApiLanguage): TournamentCatalogTeam {
+  return {
+    ...localizeTeam(team, team.code, language),
+    players: (team.players ?? []).map((player) => ({
+      name: player.name,
+      pos: player.pos,
+      age: player.age,
+    })),
+  };
+}
+
+export async function getTournamentParticipantCodes(): Promise<string[]> {
+  const [homeCodes, awayCodes] = await Promise.all([
+    Match.distinct('homeTeamCode', { homeTeamCode: { $nin: [null, '', 'TBD'] } }),
+    Match.distinct('awayTeamCode', { awayTeamCode: { $nin: [null, '', 'TBD'] } }),
+  ]);
+  return Array.from(new Set([...homeCodes, ...awayCodes].map(normalizeCode)))
+    .filter((code) => code !== 'TBD');
+}
+
+export async function getTournamentCatalog(language: ApiLanguage): Promise<TournamentCatalogTeam[]> {
+  const participatingCodes = await getTournamentParticipantCodes();
+  if (participatingCodes.length === 0) return [];
+
+  const teams = await CountryTeam.find({ code: { $in: participatingCodes } }).lean();
+  const orderedTeams = teams
+    .map((team) => serializeCatalogTeam(team, language))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  return orderedTeams;
 }
 
 export async function hydrateMatch<T extends Record<string, any>>(

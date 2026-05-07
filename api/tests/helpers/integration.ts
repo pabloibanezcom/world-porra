@@ -59,10 +59,30 @@ export async function clearDatabase(): Promise<void> {
 
 export async function seedTestCountryTeams(): Promise<void> {
   await CountryTeam.insertMany([
-    { code: 'ARG', names: { en: 'Argentina', es: 'Argentina' }, crest: '' },
-    { code: 'BRA', names: { en: 'Brazil', es: 'Brasil' }, crest: '' },
-    { code: 'ESP', names: { en: 'Spain', es: 'Espa\u00f1a' }, crest: '' },
-    { code: 'FRA', names: { en: 'France', es: 'Francia' }, crest: '' },
+    {
+      code: 'ARG',
+      names: { en: 'Argentina', es: 'Argentina' },
+      crest: '',
+      players: [{ name: 'Lionel Messi', pos: 'FW', age: 38 }],
+    },
+    {
+      code: 'BRA',
+      names: { en: 'Brazil', es: 'Brasil' },
+      crest: '',
+      players: [{ name: 'Endrick', pos: 'FW', age: 19 }],
+    },
+    {
+      code: 'ESP',
+      names: { en: 'Spain', es: 'Espa\u00f1a' },
+      crest: '',
+      players: [{ name: 'Lamine Yamal', pos: 'FW', age: 18 }],
+    },
+    {
+      code: 'FRA',
+      names: { en: 'France', es: 'Francia' },
+      crest: '',
+      players: [{ name: 'Kylian Mbappe', pos: 'FW', age: 27 }],
+    },
   ]);
 }
 

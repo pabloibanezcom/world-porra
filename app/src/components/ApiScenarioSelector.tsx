@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Modal, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { API_SCENARIOS, ApiScenarioSlug, getActiveApiScenario, getScenarioLabel, setActiveApiScenario } from '../api/scenario';
+import { setApiScenarioBaseUrl } from '../api/client';
 import { useAuthStore } from '../store/authStore';
 import { colors, fonts } from '../theme';
 import { useI18n } from '../i18n';
@@ -25,6 +26,7 @@ export default function ApiScenarioSelector() {
     if (scenario === activeScenario) return;
 
     await setActiveApiScenario(scenario);
+    setApiScenarioBaseUrl(scenario);
     await signOut();
     setActiveScenario(scenario);
 

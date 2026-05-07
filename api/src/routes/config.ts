@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { z } from 'zod';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { User } from '../models/User';
+import { getRequestLanguage, getTournamentCatalog } from '../services/countryTeamService';
 import { getPollConfig, serializePollConfig, updatePollConfig } from '../services/pollConfigService';
 
 const router = Router();
@@ -32,6 +33,11 @@ async function requireMaster(req: AuthRequest, res: Response): Promise<boolean> 
 router.get('/poll', authMiddleware, async (_req: AuthRequest, res: Response): Promise<void> => {
   const config = await getPollConfig();
   res.json({ config: serializePollConfig(config) });
+});
+
+router.get('/tournament-catalog', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  const teams = await getTournamentCatalog(getRequestLanguage(req));
+  res.json({ teams });
 });
 
 router.patch('/poll', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {

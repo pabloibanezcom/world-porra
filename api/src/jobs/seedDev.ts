@@ -3,18 +3,18 @@ import { logger } from '../config/logger';
 import { upsertCountryTeamFromSource } from '../services/countryTeamService';
 
 const teams = [
-  { name: 'United States', code: 'USA', crest: '' },
-  { name: 'Mexico', code: 'MEX', crest: '' },
-  { name: 'Canada', code: 'CAN', crest: '' },
-  { name: 'Brazil', code: 'BRA', crest: '' },
-  { name: 'Argentina', code: 'ARG', crest: '' },
-  { name: 'France', code: 'FRA', crest: '' },
-  { name: 'Germany', code: 'GER', crest: '' },
-  { name: 'Spain', code: 'ESP', crest: '' },
-  { name: 'England', code: 'ENG', crest: '' },
-  { name: 'Portugal', code: 'POR', crest: '' },
-  { name: 'Japan', code: 'JPN', crest: '' },
-  { name: 'South Korea', code: 'KOR', crest: '' },
+  { name: 'United States', code: 'USA', crest: '', players: [{ name: 'Christian Pulisic', pos: 'FW' as const, age: 27 }] },
+  { name: 'Mexico', code: 'MEX', crest: '', players: [{ name: 'Santiago Gimenez', pos: 'FW' as const, age: 25 }] },
+  { name: 'Canada', code: 'CAN', crest: '', players: [{ name: 'Alphonso Davies', pos: 'DF' as const, age: 25 }] },
+  { name: 'Brazil', code: 'BRA', crest: '', players: [{ name: 'Endrick', pos: 'FW' as const, age: 19 }] },
+  { name: 'Argentina', code: 'ARG', crest: '', players: [{ name: 'Lionel Messi', pos: 'FW' as const, age: 38 }] },
+  { name: 'France', code: 'FRA', crest: '', players: [{ name: 'Kylian Mbappe', pos: 'FW' as const, age: 27 }] },
+  { name: 'Germany', code: 'GER', crest: '', players: [{ name: 'Florian Wirtz', pos: 'MF' as const, age: 23 }] },
+  { name: 'Spain', code: 'ESP', crest: '', players: [{ name: 'Lamine Yamal', pos: 'FW' as const, age: 18 }] },
+  { name: 'England', code: 'ENG', crest: '', players: [{ name: 'Jude Bellingham', pos: 'MF' as const, age: 22 }] },
+  { name: 'Portugal', code: 'POR', crest: '', players: [{ name: 'Cristiano Ronaldo', pos: 'FW' as const, age: 41 }] },
+  { name: 'Japan', code: 'JPN', crest: '', players: [{ name: 'Takefusa Kubo', pos: 'MF' as const, age: 25 }] },
+  { name: 'South Korea', code: 'KOR', crest: '', players: [{ name: 'Son Heung-min', pos: 'FW' as const, age: 33 }] },
 ];
 
 const groups = ['A', 'B', 'C', 'D'];

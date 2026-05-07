@@ -3,14 +3,18 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 async function loadResolveApiUrl({
   apiUrl,
   apiPreset,
+  apiScenario,
   hostUri,
   platform,
+  href,
   dev = true,
 }: {
   apiUrl?: string;
   apiPreset?: string;
+  apiScenario?: string;
   hostUri?: string;
   platform: string;
+  href?: string;
   dev?: boolean;
 }) {
   vi.resetModules();
@@ -24,6 +28,16 @@ async function loadResolveApiUrl({
     delete process.env.EXPO_PUBLIC_API_PRESET;
   } else {
     process.env.EXPO_PUBLIC_API_PRESET = apiPreset;
+  }
+  if (apiScenario === undefined) {
+    delete process.env.EXPO_PUBLIC_API_SCENARIO;
+  } else {
+    process.env.EXPO_PUBLIC_API_SCENARIO = apiScenario;
+  }
+  if (href === undefined) {
+    vi.stubGlobal('window', undefined);
+  } else {
+    vi.stubGlobal('window', { location: { href } });
   }
 
   vi.doMock('expo-constants', () => ({
@@ -44,6 +58,7 @@ describe('resolveApiUrl', () => {
     vi.doUnmock('react-native');
     delete process.env.EXPO_PUBLIC_API_URL;
     delete process.env.EXPO_PUBLIC_API_PRESET;
+    delete process.env.EXPO_PUBLIC_API_SCENARIO;
   });
 
   it('prefers the Vercel API preset over configured local URLs', async () => {
@@ -73,6 +88,35 @@ describe('resolveApiUrl', () => {
     });
 
     expect(resolveApiUrl()).toBe('https://wc2026-pool-api.vercel.app');
+  });
+
+  it('uses the hosted API when a build scenario is active and the configured URL is local', async () => {
+    const { resolveApiUrl } = await loadResolveApiUrl({
+      apiUrl: 'http://localhost:3000',
+      apiScenario: 'pre-tournament',
+      platform: 'ios',
+    });
+
+    expect(resolveApiUrl()).toBe('https://wc2026-pool-api.vercel.app');
+  });
+
+  it('uses the hosted API when a web URL scenario is active and the configured URL is local', async () => {
+    const { resolveApiUrl } = await loadResolveApiUrl({
+      apiUrl: 'http://localhost:3000',
+      href: 'http://localhost:8081/?scenario=pre-tournament',
+      platform: 'web',
+    });
+
+    expect(resolveApiUrl()).toBe('https://wc2026-pool-api.vercel.app');
+  });
+
+  it('uses the hosted API for runtime scenarios when the resolved URL is local', async () => {
+    const { resolveApiUrlForScenario } = await loadResolveApiUrl({
+      apiUrl: 'http://localhost:3000',
+      platform: 'ios',
+    });
+
+    expect(resolveApiUrlForScenario('pre-tournament')).toBe('https://wc2026-pool-api.vercel.app');
   });
 
   it('derives a LAN API URL from Expo host URI', async () => {

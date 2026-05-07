@@ -20,7 +20,7 @@ import { useAuthStore } from '../store/authStore';
 import { colors, spacing, borderRadius } from '../theme';
 import { useI18n } from '../i18n';
 import { getGoogleClientIds, getGoogleIdToken, hasGoogleClientIdForPlatform } from '../auth/googleConfig';
-import { API_URL } from '../api/client';
+import { getApiBaseUrl } from '../api/client';
 import ApiScenarioSelector from '../components/ApiScenarioSelector';
 
 type AuthStackParamList = {
@@ -39,7 +39,7 @@ function getPasswordLoginErrorMessage(error: unknown, t: (key: string) => string
     }
 
     if (!error.response) {
-      const detail = __DEV__ ? `\n${API_URL}\n${error.message}` : '';
+      const detail = __DEV__ ? `\n${getApiBaseUrl()}\n${error.message}` : '';
       return `${t('login.networkFailed')}${detail}`;
     }
   }
@@ -76,7 +76,7 @@ export default function LoginScreen() {
     } catch (error) {
       if (__DEV__) {
         console.warn('[login] Password login failed', {
-          apiUrl: API_URL,
+          apiUrl: getApiBaseUrl(),
           status: axios.isAxiosError(error) ? error.response?.status : undefined,
           message: error instanceof Error ? error.message : String(error),
         });

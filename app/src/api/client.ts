@@ -1,11 +1,12 @@
 import axios from 'axios';
 import * as Localization from 'expo-localization';
-import { resolveApiUrl } from './resolveApiUrl';
+import { resolveApiUrl, resolveApiUrlForScenario } from './resolveApiUrl';
 import { getActiveApiScenario } from './scenario';
 import { deleteToken, getToken } from '../store/tokenStorage';
 import { TOKEN_STORAGE_KEY } from '../store/tokenKey';
 
-export const API_URL = resolveApiUrl();
+let apiBaseUrl = resolveApiUrl();
+export const API_URL = apiBaseUrl;
 const LANGUAGE_STORAGE_KEY = 'wc2026.language';
 let activeLanguage: 'en' | 'es' | null = null;
 
@@ -24,18 +25,36 @@ function getDeviceLanguage(): 'en' | 'es' {
 }
 
 export const apiClient = axios.create({
-  baseURL: API_URL,
+  baseURL: apiBaseUrl,
   timeout: 10000,
   headers: { 'Content-Type': 'application/json' },
 });
 
 if (__DEV__) {
-  console.log(`[api] Using base URL: ${API_URL}`);
+  console.log(`[api] Using base URL: ${apiBaseUrl}`);
+}
+
+export function getApiBaseUrl(): string {
+  return apiBaseUrl;
+}
+
+export function setApiScenarioBaseUrl(scenario: string | null | undefined): string {
+  const nextBaseUrl = resolveApiUrlForScenario(scenario);
+  if (nextBaseUrl !== apiBaseUrl) {
+    apiBaseUrl = nextBaseUrl;
+    apiClient.defaults.baseURL = nextBaseUrl;
+    if (__DEV__) {
+      console.log(`[api] Using base URL: ${apiBaseUrl}`);
+    }
+  }
+
+  return apiBaseUrl;
 }
 
 apiClient.interceptors.request.use(async (config) => {
   const token = await getToken(TOKEN_STORAGE_KEY);
   const apiScenario = await getActiveApiScenario();
+  config.baseURL = setApiScenarioBaseUrl(apiScenario);
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }

@@ -463,9 +463,9 @@ async function seedDemoPredictions(db: Db, users: RawDoc[]): Promise<Omit<Scenar
       runnerUpCode: picks[1],
       semi1Code: picks[2],
       semi2Code: picks[3],
-      bestPlayer: { name: 'Lionel Messi', team: 'Argentina', code: 'ARG', pos: 'FW' },
-      topScorer: { name: 'Kylian Mbappe', team: 'France', code: 'FRA', pos: 'FW' },
-      bestYoung: { name: 'Lamine Yamal', team: 'Spain', code: 'ESP', pos: 'FW' },
+      bestPlayer: { name: 'Lionel Messi', team: 'Argentina', code: 'ARG', pos: 'FW', age: 38 },
+      topScorer: { name: 'Kylian Mbappe', team: 'France', code: 'FRA', pos: 'FW', age: 27 },
+      bestYoung: { name: 'Lamine Yamal', team: 'Spain', code: 'ESP', pos: 'FW', age: 18 },
       createdAt: now,
       updatedAt: now,
     });

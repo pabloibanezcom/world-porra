@@ -14,6 +14,7 @@ import {
   hydrateTeamCodes,
   localizeTeam,
   getTeamCatalog,
+  getTournamentParticipantCodes,
 } from '../services/countryTeamService';
 import { currentDate } from '../utils/time';
 import { isGroupPredictionsLocked, isTournamentPredictionsLocked } from '../services/pollConfigService';
@@ -21,6 +22,7 @@ import { isGroupPredictionsLocked, isTournamentPredictionsLocked } from '../serv
 const router = Router();
 
 const LOCK_MINUTES_BEFORE = 5;
+const BEST_YOUNG_MAX_AGE = 21;
 
 const predictionSchema = z.object({
   matchId: z.string().min(1),
@@ -414,7 +416,13 @@ router.get('/match/:matchId', authMiddleware, async (req: AuthRequest, res: Resp
 
 const teamPickSchema = z.object({ name: z.string().min(1).optional(), code: z.string().min(1) }).optional();
 const playerPickSchema = z
-  .object({ name: z.string().min(1), team: z.string().min(1), code: z.string().min(1), pos: z.string().min(1) })
+  .object({
+    name: z.string().min(1),
+    team: z.string().min(1),
+    code: z.string().min(1),
+    pos: z.enum(['FW', 'MF', 'DF', 'GK']),
+    age: z.number().int().min(0).max(60),
+  })
   .optional();
 
 const tournamentPredictionSchema = z.object({
@@ -433,6 +441,53 @@ const TEAM_PICK_FIELDS = [
   ['semi1', 'semi1Code'],
   ['semi2', 'semi2Code'],
 ] as const;
+
+type TournamentPredictionInput = z.infer<typeof tournamentPredictionSchema>;
+
+function normalizePlayerName(name: string): string {
+  return name.trim().toLowerCase();
+}
+
+async function validateTournamentPredictionCatalog(data: TournamentPredictionInput): Promise<string | null> {
+  const teamCodes = TEAM_PICK_FIELDS
+    .map(([pickField]) => data[pickField]?.code)
+    .filter((code): code is string => !!code)
+    .map(normalizeCode);
+  const duplicateTeamCode = teamCodes.find((code, index) => teamCodes.indexOf(code) !== index);
+  if (duplicateTeamCode) return `Tournament final four picks must be unique (${duplicateTeamCode})`;
+
+  const playerPicks = [data.bestPlayer, data.topScorer, data.bestYoung]
+    .filter((player): player is NonNullable<typeof player> => !!player);
+  const playerCodes = playerPicks.map((player) => normalizeCode(player.code));
+  const [catalog, participantCodes] = await Promise.all([
+    getTeamCatalog([...teamCodes, ...playerCodes]),
+    getTournamentParticipantCodes(),
+  ]);
+  const participantCodeSet = new Set(participantCodes);
+
+  const missingTeamCode = teamCodes.find((code) => !catalog.has(code) || !participantCodeSet.has(code));
+  if (missingTeamCode) return `Unknown tournament team "${missingTeamCode}"`;
+
+  const nonParticipantPlayerCode = playerCodes.find((code) => !participantCodeSet.has(code));
+  if (nonParticipantPlayerCode) return `Unknown tournament team "${nonParticipantPlayerCode}"`;
+
+  const invalidPlayer = playerPicks.find((player) => {
+    const team = catalog.get(normalizeCode(player.code));
+    const players = team?.players ?? [];
+    return !players.some((catalogPlayer) => (
+      normalizePlayerName(catalogPlayer.name) === normalizePlayerName(player.name)
+      && catalogPlayer.pos === player.pos
+      && catalogPlayer.age === player.age
+    ));
+  });
+  if (invalidPlayer) return `Unknown tournament player "${invalidPlayer.name}"`;
+
+  if (data.bestYoung && data.bestYoung.age > BEST_YOUNG_MAX_AGE) {
+    return `Best young player must be ${BEST_YOUNG_MAX_AGE} or younger`;
+  }
+
+  return null;
+}
 
 async function serializeTournamentPrediction<T extends Record<string, any>>(prediction: T | null, language: ReturnType<typeof getRequestLanguage>) {
   if (!prediction) return null;
@@ -469,6 +524,12 @@ router.post('/tournament', authMiddleware, async (req: AuthRequest, res: Respons
     }
 
     const data = tournamentPredictionSchema.parse(req.body);
+    const catalogError = await validateTournamentPredictionCatalog(data);
+    if (catalogError) {
+      res.status(400).json({ error: catalogError });
+      return;
+    }
+
     const update = TEAM_PICK_FIELDS.reduce<Record<string, string | undefined>>((acc, [pickField, codeField]) => {
       acc[codeField] = data[pickField]?.code ? normalizeCode(data[pickField].code) : undefined;
       return acc;

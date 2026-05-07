@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 
 const DEFAULT_API_PORT = '3000';
 const LOCALHOST_API_URL = `http://localhost:${DEFAULT_API_PORT}`;
-const VERCEL_API_URL = 'https://wc2026-pool-api.vercel.app';
+export const VERCEL_API_URL = 'https://wc2026-pool-api.vercel.app';
 
 function stripTrailingSlash(value: string): string {
   return value.replace(/\/+$/, '');
@@ -28,12 +28,35 @@ function isLocalApiUrl(value: string): boolean {
   }
 }
 
+function normalizeScenario(value: string | null | undefined): string {
+  const normalized = value?.trim().toLowerCase();
+  return normalized && normalized !== 'base' && normalized !== 'default' ? normalized : '';
+}
+
+function getInitialApiScenario(): string {
+  const buildScenario = normalizeScenario(process.env.EXPO_PUBLIC_API_SCENARIO);
+  if (buildScenario) return buildScenario;
+
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return '';
+
+  try {
+    return normalizeScenario(new URL(window.location.href).searchParams.get('scenario'));
+  } catch {
+    return '';
+  }
+}
+
 export function resolveApiUrl(): string {
   if (process.env.EXPO_PUBLIC_API_PRESET?.trim().toLowerCase() === 'vercel') {
     return VERCEL_API_URL;
   }
 
   const configuredUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
+  const initialScenario = getInitialApiScenario();
+  if (initialScenario && (!configuredUrl || isLocalApiUrl(configuredUrl))) {
+    return VERCEL_API_URL;
+  }
+
   if (!__DEV__ && Platform.OS === 'web' && (!configuredUrl || isLocalApiUrl(configuredUrl))) {
     return VERCEL_API_URL;
   }
@@ -52,4 +75,9 @@ export function resolveApiUrl(): string {
   }
 
   return LOCALHOST_API_URL;
+}
+
+export function resolveApiUrlForScenario(scenario: string | null | undefined): string {
+  const resolvedUrl = resolveApiUrl();
+  return normalizeScenario(scenario) && isLocalApiUrl(resolvedUrl) ? VERCEL_API_URL : resolvedUrl;
 }
