@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, fonts } from '../theme';
 import { useI18n } from '../i18n';
 import Flag from '../components/ui/Flag';
+import { Ionicons } from '@expo/vector-icons';
 
 if (Platform.OS === 'android') {
   UIManager.setLayoutAnimationEnabledExperimental?.(true);
@@ -58,7 +59,8 @@ function ChevronIcon({ open }: { open: boolean }) {
 
 interface SectionCardProps {
   id: string;
-  icon: string;
+  iconName: keyof typeof Ionicons.glyphMap;
+  iconColor?: string;
   title: string;
   subtitle: string;
   accentColor?: string;
@@ -69,10 +71,11 @@ interface SectionCardProps {
 }
 
 function SectionCard({
-  id, icon, title, subtitle, accentColor = colors.accent, accentBg,
+  id, iconName, iconColor, title, subtitle, accentColor = colors.accent, accentBg,
   openId, onToggle, children,
 }: SectionCardProps) {
   const open = openId === id;
+  const resolvedIconColor = iconColor ?? accentColor;
   return (
     <View style={[styles.sectionCard, open && { borderColor: accentColor + '44' }]}>
       <TouchableOpacity
@@ -81,7 +84,7 @@ function SectionCard({
         activeOpacity={0.7}
       >
         <View style={[styles.sectionIconBox, { backgroundColor: accentBg || colors.accentDim }]}>
-          <Text style={styles.sectionIcon}>{icon}</Text>
+          <Ionicons name={iconName} size={20} color={resolvedIconColor} />
         </View>
         <View style={styles.sectionTitleBlock}>
           <Text style={styles.sectionTitle}>{title}</Text>
@@ -145,13 +148,13 @@ export default function RulesScreen() {
           <View style={styles.summaryGrid}>
             <SummaryTile value="Odds×2"  label={t('rules.summary.outcome')}    color={colors.accent} />
             <SummaryTile value="+5 pts"  label={t('rules.summary.exactBonus')} color={colors.blue} />
-            <SummaryTile value="×2 🃏"   label={t('rules.summary.jokers')}     color={colors.warning} />
+            <SummaryTile value="×2"      label={t('rules.summary.jokers')}     color={colors.warning} />
           </View>
         </View>
 
         {/* ── 1. General Rules ── */}
         <SectionCard
-          id="general" icon="📋"
+          id="general" iconName="document-text-outline" iconColor={colors.muted}
           title={t('rules.general.title')}
           subtitle={t('rules.general.subtitle')}
           accentColor={colors.muted} accentBg="rgba(255,255,255,0.06)"
@@ -159,13 +162,13 @@ export default function RulesScreen() {
         >
           <View style={styles.bulletList}>
             {([
-              { icon: '🔒', title: t('rules.general.lock.title'),    body: t('rules.general.lock.body') },
-              { icon: '🏅', title: t('rules.general.official.title'),body: t('rules.general.official.body') },
-              { icon: '📅', title: t('rules.general.honors.title'),  body: t('rules.general.honors.body') },
-              { icon: '🚫', title: t('rules.general.noPred.title'),  body: t('rules.general.noPred.body') },
-            ] as const).map(item => (
+              { iconName: 'lock-closed-outline' as const, color: colors.muted,   title: t('rules.general.lock.title'),    body: t('rules.general.lock.body') },
+              { iconName: 'ribbon-outline'       as const, color: colors.accent,  title: t('rules.general.official.title'),body: t('rules.general.official.body') },
+              { iconName: 'calendar-outline'     as const, color: colors.muted,   title: t('rules.general.honors.title'),  body: t('rules.general.honors.body') },
+              { iconName: 'close-circle-outline' as const, color: colors.muted,   title: t('rules.general.noPred.title'),  body: t('rules.general.noPred.body') },
+            ]).map(item => (
               <View key={item.title} style={styles.bulletItem}>
-                <Text style={styles.bulletIcon}>{item.icon}</Text>
+                <Ionicons name={item.iconName} size={18} color={item.color} style={styles.bulletIcon} />
                 <View style={styles.bulletText}>
                   <Text style={styles.bulletTitle}>{item.title}</Text>
                   <Text style={styles.bulletBody}>{item.body}</Text>
@@ -177,7 +180,7 @@ export default function RulesScreen() {
 
         {/* ── 2. Group Stage ── */}
         <SectionCard
-          id="group" icon="⚽"
+          id="group" iconName="football-outline"
           title={t('rules.group.title')}
           subtitle={t('rules.group.subtitle')}
           accentColor={colors.accent}
@@ -208,7 +211,7 @@ export default function RulesScreen() {
 
         {/* ── 3. Knockout Rounds ── */}
         <SectionCard
-          id="knockout" icon="🏆"
+          id="knockout" iconName="trophy-outline"
           title={t('rules.ko.title')}
           subtitle={t('rules.ko.subtitle')}
           accentColor={colors.blue} accentBg={colors.blueDim}
@@ -238,7 +241,7 @@ export default function RulesScreen() {
 
         {/* ── 4. Jokers ── */}
         <SectionCard
-          id="jokers" icon="🃏"
+          id="jokers" iconName="sparkles-outline"
           title={t('rules.jokers.title')}
           subtitle={t('rules.jokers.subtitle')}
           accentColor={colors.warning} accentBg="rgba(236,126,0,0.14)"
@@ -250,7 +253,7 @@ export default function RulesScreen() {
               { label: t('rules.jokers.knockout'), sub: t('rules.jokers.knockoutSub') },
             ] as const).map(j => (
               <View key={j.label} style={styles.jokerCard}>
-                <Text style={styles.jokerEmoji}>🃏</Text>
+                <Ionicons name="sparkles-outline" size={24} color={colors.warning} style={styles.jokerEmoji} />
                 <Text style={styles.jokerLabel}>{j.label}</Text>
                 <Text style={styles.jokerSub}>{j.sub}</Text>
               </View>
@@ -264,7 +267,7 @@ export default function RulesScreen() {
 
         {/* ── 5. Group Standings ── */}
         <SectionCard
-          id="standings" icon="📊"
+          id="standings" iconName="bar-chart-outline"
           title={t('rules.standings.title')}
           subtitle={t('rules.standings.subtitle')}
           accentColor="#f5a623" accentBg="rgba(245,166,35,0.12)"
@@ -275,7 +278,7 @@ export default function RulesScreen() {
             <TableRow left={t('rules.standings.2nd')}         right="6 pts"   color={colors.accent} />
             <TableRow left={t('rules.standings.3rd')}         right="3 pts"   color={colors.muted} />
             <TableRow left={t('rules.standings.4th')}         right="3 pts"   color={colors.muted} />
-            <TableRow left={t('rules.standings.perfect')}     right="+5 pts 🎯" color="#f5a623" highlight />
+            <TableRow left={t('rules.standings.perfect')}     right="+5 pts"    color="#f5a623" highlight />
             <TableRow left={t('rules.standings.consolation')} right="2 pts"   color={colors.dim} />
           </View>
           <Text style={[styles.tipText, { marginTop: 10 }]}>{t('rules.standings.consolationNote')}</Text>
@@ -283,7 +286,7 @@ export default function RulesScreen() {
 
         {/* ── 6. Honors Board ── */}
         <SectionCard
-          id="honors" icon="🌟"
+          id="honors" iconName="star-outline"
           title={t('rules.honors.title')}
           subtitle={t('rules.honors.subtitle')}
           openId={openId} onToggle={toggle}
@@ -302,12 +305,12 @@ export default function RulesScreen() {
           <Text style={[styles.innerSectionLabel, { marginTop: 14 }]}>{t('rules.honors.individual')}</Text>
           <View style={styles.awardsList}>
             {([
-              { icon: '👟', label: t('rules.honors.boot'),  pts: '30 pts', color: colors.accent },
-              { icon: '🌟', label: t('rules.honors.ball'),  pts: '30 pts', color: colors.blue },
-              { icon: '🌱', label: t('rules.honors.young'), pts: '20 pts', color: colors.warning },
-            ] as const).map(a => (
+              { iconName: 'football-outline' as const, label: t('rules.honors.boot'),  pts: '30 pts', color: colors.accent },
+              { iconName: 'star-outline'     as const, label: t('rules.honors.ball'),  pts: '30 pts', color: colors.blue },
+              { iconName: 'leaf-outline'     as const, label: t('rules.honors.young'), pts: '20 pts', color: colors.warning },
+            ]).map(a => (
               <View key={a.label} style={styles.awardRow}>
-                <Text style={styles.awardIcon}>{a.icon}</Text>
+                <Ionicons name={a.iconName} size={20} color={a.color} style={styles.awardIcon} />
                 <Text style={styles.awardLabel}>{a.label}</Text>
                 <Text style={[styles.awardPts, { color: a.color }]}>{a.pts}</Text>
               </View>
@@ -317,7 +320,7 @@ export default function RulesScreen() {
 
         {/* ── 7. Tiebreaker ── */}
         <SectionCard
-          id="tie" icon="⚖️"
+          id="tie" iconName="options-outline"
           title={t('rules.tie.title')}
           subtitle={t('rules.tie.subtitle')}
           accentColor={colors.dim} accentBg="rgba(255,255,255,0.06)"
@@ -415,7 +418,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexShrink: 0,
   },
-  sectionIcon: { fontSize: 20 },
   sectionTitleBlock: { flex: 1 },
   sectionTitle: {
     color: colors.text,
@@ -449,7 +451,7 @@ const styles = StyleSheet.create({
   // Bullet list (General Rules)
   bulletList: { gap: 12, paddingTop: 14 },
   bulletItem: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
-  bulletIcon: { fontSize: 18, flexShrink: 0, marginTop: 1 },
+  bulletIcon: { flexShrink: 0, marginTop: 1 },
   bulletText: { flex: 1 },
   bulletTitle: {
     color: colors.text,
@@ -638,7 +640,7 @@ const styles = StyleSheet.create({
     padding: 12,
     alignItems: 'center',
   },
-  jokerEmoji: { fontSize: 24, marginBottom: 6 },
+  jokerEmoji: { marginBottom: 6 },
   jokerLabel: {
     color: colors.text,
     fontSize: 12,
@@ -716,7 +718,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     padding: 11,
   },
-  awardIcon: { fontSize: 20, flexShrink: 0 },
+  awardIcon: { flexShrink: 0 },
   awardLabel: { flex: 1, color: colors.text, fontSize: 12, fontFamily: fonts.body },
   awardPts: { fontSize: 15, fontWeight: '800', fontFamily: fonts.display },
 

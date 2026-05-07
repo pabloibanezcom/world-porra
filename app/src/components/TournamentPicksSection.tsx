@@ -63,12 +63,14 @@ function CheckIcon() {
 function SlotCard({
   pick,
   label,
-  icon,
+  iconName,
+  iconColor = colors.accent,
   onPress,
 }: {
   pick?: TeamOption;
   label: string;
-  icon: string;
+  iconName: keyof typeof Ionicons.glyphMap;
+  iconColor?: string;
   onPress?: () => void;
 }) {
   const { t } = useI18n();
@@ -80,7 +82,7 @@ function SlotCard({
       activeOpacity={0.75}
     >
       <View style={[styles.slotIcon, pick ? styles.slotIconFilled : styles.slotIconEmpty]}>
-        <Text style={styles.slotIconText}>{icon}</Text>
+        <Ionicons name={iconName} size={18} color={iconColor} />
       </View>
       <View style={styles.slotContent}>
         <Text style={styles.slotLabel}>{label}</Text>
@@ -102,7 +104,7 @@ function SlotCard({
 function AwardCard({
   pick,
   label,
-  icon,
+  iconName,
   accentColor = colors.blue,
   accentBg = colors.blueDim,
   teams,
@@ -111,7 +113,7 @@ function AwardCard({
 }: {
   pick?: PlayerOption;
   label: string;
-  icon: string;
+  iconName: keyof typeof Ionicons.glyphMap;
   accentColor?: string;
   accentBg?: string;
   teams: TeamOption[];
@@ -127,7 +129,7 @@ function AwardCard({
       activeOpacity={0.75}
     >
       <View style={[styles.slotIcon, pick ? { backgroundColor: accentBg } : styles.slotIconEmpty]}>
-        <Text style={styles.slotIconText}>{icon}</Text>
+        <Ionicons name={iconName} size={18} color={accentColor} />
       </View>
       <View style={styles.slotContent}>
         <Text style={styles.slotLabel}>{label}</Text>
@@ -414,7 +416,6 @@ function PlayerPickerModal({
                     <Text style={[styles.teamRowName, isSel && styles.teamRowNameSelected]}>
                       {player.name}
                     </Text>
-                    <Text style={styles.playerTeamSmall}>{player.age}</Text>
                   </View>
                   <View style={[styles.posBadge, { backgroundColor: POS_BG[player.pos] }]}>
                     <Text style={[styles.posBadgeText, { color: POS_COLOR[player.pos] }]}>
@@ -494,33 +495,27 @@ export default function TournamentPicksSection({
           <SlotCard
             pick={picks.champion}
             label={t('tournament.winner')}
-            icon="🏆"
+            iconName="trophy-outline"
             onPress={() => openTeam('champion', t('tournament.winner'))}
           />
           <SlotCard
             pick={picks.runnerUp}
             label={t('tournament.runnerUp')}
-            icon="🥈"
+            iconName="ribbon-outline"
             onPress={() => openTeam('runnerUp', t('tournament.runnerUp'))}
           />
-          <View style={styles.semisRow}>
-            <View style={styles.semiCell}>
-              <SlotCard
-                pick={picks.semi1}
-                label={t('tournament.semiFinalist')}
-                icon="⚽"
-                onPress={() => openTeam('semi1', t('tournament.semiFinalist'))}
-              />
-            </View>
-            <View style={styles.semiCell}>
-              <SlotCard
-                pick={picks.semi2}
-                label={t('tournament.semiFinalist')}
-                icon="⚽"
-                onPress={() => openTeam('semi2', t('tournament.semiFinalist'))}
-              />
-            </View>
-          </View>
+          <SlotCard
+            pick={picks.semi1}
+            label={t('tournament.semiFinalist')}
+            iconName="football-outline"
+            onPress={() => openTeam('semi1', t('tournament.semiFinalist'))}
+          />
+          <SlotCard
+            pick={picks.semi2}
+            label={t('tournament.semiFinalist')}
+            iconName="football-outline"
+            onPress={() => openTeam('semi2', t('tournament.semiFinalist'))}
+          />
         </View>
       </View>
 
@@ -531,7 +526,7 @@ export default function TournamentPicksSection({
           <AwardCard
             pick={picks.bestPlayer as PlayerOption | undefined}
             label={t('tournament.bestPlayer')}
-            icon="🌟"
+            iconName="star-outline"
             teams={teams}
             disabled={allPlayers.length === 0}
             onPress={() => openPlayer('bestPlayer', t('tournament.bestPlayer'), allPlayers)}
@@ -539,7 +534,7 @@ export default function TournamentPicksSection({
           <AwardCard
             pick={picks.topScorer as PlayerOption | undefined}
             label={t('tournament.topScorer')}
-            icon="👟"
+            iconName="football-outline"
             teams={teams}
             disabled={allPlayers.length === 0}
             onPress={() => openPlayer('topScorer', t('tournament.topScorer'), allPlayers)}
@@ -547,7 +542,7 @@ export default function TournamentPicksSection({
           <AwardCard
             pick={picks.bestYoung as PlayerOption | undefined}
             label={t('tournament.bestYoung')}
-            icon="🌱"
+            iconName="rocket-outline"
             accentColor={colors.warning}
             accentBg="rgba(236,126,0,0.14)"
             teams={teams}
@@ -647,14 +642,13 @@ const styles = StyleSheet.create({
   slotIcon: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
   slotIconFilled: { backgroundColor: colors.accentDim },
   slotIconEmpty: { backgroundColor: 'rgba(255,255,255,0.05)' },
-  slotIconText: { fontSize: 17 },
   slotContent: { flex: 1, minWidth: 0 },
   slotLabel: {
     color: colors.dim,
@@ -675,9 +669,6 @@ const styles = StyleSheet.create({
 
   playerMeta: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
   playerTeam: { color: colors.muted, fontFamily: fonts.body, fontSize: 11 },
-
-  semisRow: { flexDirection: 'row', gap: 8 },
-  semiCell: { flex: 1 },
 
   // Modal overlay
   overlay: {

@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Modal, Pressable, Animated } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts } from '../theme';
 import Flag from './ui/Flag';
 import { Match, Prediction, MatchStage } from '../types';
@@ -232,9 +233,12 @@ export default function ResultSheet({ match, prediction, onClose }: Props) {
 function BreakdownRow({ earned, label, pts }: { earned: boolean; label: string; pts: number }) {
   return (
     <View style={styles.breakdownRow}>
-      <Text style={[styles.breakdownIcon, earned ? styles.earned : styles.missed]}>
-        {earned ? '✓' : '✗'}
-      </Text>
+      <Ionicons
+        name={earned ? 'checkmark-circle' : 'close-circle'}
+        size={16}
+        color={earned ? colors.accent : colors.dim}
+        style={styles.breakdownIcon}
+      />
       <Text style={[styles.breakdownLabel, !earned && styles.missed]}>{label}</Text>
       <Text style={[styles.breakdownPts, earned ? styles.earned : styles.missed]}>
         {earned ? `+${pts}` : '–'} {earned ? 'pts' : ''}
@@ -349,10 +353,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   breakdownIcon: {
-    fontSize: 13,
-    fontWeight: '700',
     width: 16,
-    textAlign: 'center',
   },
   breakdownLabel: {
     flex: 1,
