@@ -8,6 +8,7 @@ export interface SerializedPollConfig {
   tournamentPredictionsDeadline: string | null;
   groupPredictionsLocked: boolean;
   tournamentPredictionsLocked: boolean;
+  serverTime: string;
 }
 
 export interface PollConfigUpdate {
@@ -48,6 +49,7 @@ export function serializePollConfig(config: {
     tournamentPredictionsDeadline: config.tournamentPredictionsDeadline?.toISOString() ?? null,
     groupPredictionsLocked: !!config.groupPredictionsDeadline && now >= config.groupPredictionsDeadline,
     tournamentPredictionsLocked: !!config.tournamentPredictionsDeadline && now >= config.tournamentPredictionsDeadline,
+    serverTime: now.toISOString(),
   };
 }
 

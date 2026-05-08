@@ -6,6 +6,7 @@ export interface PollConfig {
   tournamentPredictionsDeadline: string | null;
   groupPredictionsLocked: boolean;
   tournamentPredictionsLocked: boolean;
+  serverTime: string;
 }
 
 export async function fetchPollConfig(): Promise<PollConfig> {

@@ -13,6 +13,7 @@ import { useAuthStore } from '../store/authStore';
 import { fetchMatches } from '../api/matches';
 import { fetchMyPredictions } from '../api/predictions';
 import { fetchMyLeagues } from '../api/leagues';
+import { fetchPollConfig, PollConfig } from '../api/config';
 import { Match, Prediction, League } from '../types';
 import PredictionSheet from '../components/PredictionSheet';
 import ResultSheet from '../components/ResultSheet';
@@ -50,6 +51,7 @@ export default function HomeScreen() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [leagues, setLeagues] = useState<League[]>([]);
+  const [pollConfig, setPollConfig] = useState<PollConfig | null>(null);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [selectedResult, setSelectedResult] = useState<Match | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -59,14 +61,16 @@ export default function HomeScreen() {
 
   const load = useCallback(async () => {
     try {
-      const [m, p, leagues] = await Promise.all([
+      const [m, p, leagues, config] = await Promise.all([
         fetchMatches({}),
         fetchMyPredictions(),
         fetchMyLeagues(),
+        fetchPollConfig(),
       ]);
       setMatches(m);
       setPredictions(p);
       setLeagues(leagues);
+      setPollConfig(config);
     } catch {
       // silently fail
     } finally {
@@ -100,11 +104,15 @@ export default function HomeScreen() {
     return () => clearInterval(interval);
   }, [load, matches]);
 
-  const now = new Date();
+  const now = new Date(pollConfig?.serverTime ?? Date.now());
   const next24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
   const upcoming = [...matches]
-    .filter((m) => m.status === 'SCHEDULED' || m.status === 'LIVE')
+    .filter((m) => {
+      if (m.status === 'LIVE') return true;
+      if (m.status !== 'SCHEDULED') return false;
+      return new Date(m.utcDate) >= now;
+    })
     .sort((a, b) => new Date(a.utcDate).getTime() - new Date(b.utcDate).getTime());
   const finished = matches.filter((m) => m.status === 'FINISHED');
   const matchesInNext24Hours = upcoming.filter((match) => {
