@@ -262,6 +262,85 @@ export default function LandingPage() {
     document.documentElement.lang = lang;
   }, [lang, t.page_title]);
 
+  useEffect(() => {
+    // Scroll reveal
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
+    document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+    // Stat counters
+    const cio = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (!e.isIntersecting) return;
+        const el = e.target as HTMLElement;
+        const target = +(el.dataset.count ?? 0);
+        const dur = 1100;
+        const t0 = performance.now();
+        function tick(t: number) {
+          const p = Math.min(1, (t - t0) / dur);
+          const eased = 1 - Math.pow(1 - p, 3);
+          el.textContent = String(Math.round(target * eased));
+          if (p < 1) requestAnimationFrame(tick);
+        }
+        requestAnimationFrame(tick);
+        cio.unobserve(el);
+      });
+    }, { threshold: 0.4 });
+    document.querySelectorAll('[data-count]').forEach(el => cio.observe(el));
+
+    // Hero phone parallax — takes over after entry animation finishes
+    const stack = document.querySelector('.phone-stack') as HTMLElement | null;
+    const p1 = document.querySelector('.phone.p1') as HTMLElement | null;
+    const p2 = document.querySelector('.phone.p2') as HTMLElement | null;
+    const p3 = document.querySelector('.phone.p3') as HTMLElement | null;
+    let ticking = false;
+    function updateParallax() {
+      if (!stack) return;
+      const r = stack.getBoundingClientRect();
+      const vh = window.innerHeight || 1;
+      const center = r.top + r.height / 2;
+      const t = Math.max(-1, Math.min(1, (center - vh / 2) / (vh / 2 + r.height / 2)));
+      if (p1) p1.style.transform = `translateY(${t * -22}px) rotate(${-7 + t * -5}deg)`;
+      if (p2) p2.style.transform = `translateX(-50%) translateY(${t * -36}px) scale(${1 - Math.abs(t) * 0.02})`;
+      if (p3) p3.style.transform = `translateY(${t * -22}px) rotate(${7 + t * 5}deg)`;
+      ticking = false;
+    }
+    function onScroll() { if (ticking) return; ticking = true; requestAnimationFrame(updateParallax); }
+    const timer = setTimeout(() => {
+      [p1, p2, p3].forEach(el => el && (el.style.animation = 'none'));
+      updateParallax();
+      window.addEventListener('scroll', onScroll, { passive: true });
+      window.addEventListener('resize', onScroll);
+    }, 1300);
+
+    // Card + showcase image parallax
+    const cardImgs = document.querySelectorAll<HTMLElement>('.card .img-wrap img, .showcase-card .phone-frame img');
+    let ticking2 = false;
+    function updateCardImgs() {
+      const vh = window.innerHeight || 1;
+      cardImgs.forEach(img => {
+        const r = img.getBoundingClientRect();
+        const t = Math.max(-1, Math.min(1, (r.top + r.height / 2 - vh / 2) / (vh / 2)));
+        img.style.transform = `translateY(${t * -14}px)`;
+      });
+    }
+    function onScrollCards() { if (ticking2) return; ticking2 = true; requestAnimationFrame(() => { updateCardImgs(); ticking2 = false; }); }
+    window.addEventListener('scroll', onScrollCards, { passive: true });
+    updateCardImgs();
+
+    return () => {
+      io.disconnect();
+      cio.disconnect();
+      clearTimeout(timer);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+      window.removeEventListener('scroll', onScrollCards);
+    };
+  }, []);
+
   const switchLang = (l: Lang) => {
     setLang(l);
     try { localStorage.setItem('wcp_lang', l); } catch { /* ignore */ }
@@ -307,15 +386,15 @@ export default function LandingPage() {
       <header className="hero">
         <div className="wrap hero-grid">
           <div>
-            <span className="eyebrow">
+            <span className="eyebrow reveal">
               <span className="eyebrow-dot" />
               {t.hero_eyebrow}
             </span>
-            <h1 className="display hero-h">
+            <h1 className="display hero-h reveal d1">
               {t.hero_h1} <em>{t.hero_h2}</em>
             </h1>
-            <p className="hero-sub">{t.hero_sub}</p>
-            <div className="hero-cta">
+            <p className="hero-sub reveal d2">{t.hero_sub}</p>
+            <div className="hero-cta reveal d3">
               <a href="#install" className="pill dark lg">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M12 2a1 1 0 0 1 1 1v10.59l3.3-3.3a1 1 0 0 1 1.4 1.42l-5 5a1 1 0 0 1-1.4 0l-5-5a1 1 0 0 1 1.4-1.42l3.3 3.3V3a1 1 0 0 1 1-1Zm-7 17h14a1 1 0 1 1 0 2H5a1 1 0 1 1 0-2Z" />
@@ -324,7 +403,7 @@ export default function LandingPage() {
               </a>
               <a href={APP_PATH} className="pill outline lg">{t.hero_cta2}</a>
             </div>
-            <div className="hero-meta">
+            <div className="hero-meta reveal d4">
               <span className="hero-meta-item">
                 <span className="hero-meta-dot" />
                 {t.hero_meta1}
@@ -347,10 +426,10 @@ export default function LandingPage() {
       <section className="strip">
         <div className="wrap">
           <div className="stat-row">
-            <div className="stat"><div className="num">104</div><div className="lbl">{t.stat_matches}</div></div>
-            <div className="stat"><div className="num">12</div><div className="lbl">{t.stat_groups}</div></div>
-            <div className="stat"><div className="num">2</div><div className="lbl">{t.stat_jokers}</div></div>
-            <div className="stat"><div className="num">∞</div><div className="lbl">{t.stat_talk}</div></div>
+            <div className="stat reveal"><div className="num" data-count="104" suppressHydrationWarning>0</div><div className="lbl">{t.stat_matches}</div></div>
+            <div className="stat reveal d1"><div className="num" data-count="12" suppressHydrationWarning>0</div><div className="lbl">{t.stat_groups}</div></div>
+            <div className="stat reveal d2"><div className="num" data-count="2" suppressHydrationWarning>0</div><div className="lbl">{t.stat_jokers}</div></div>
+            <div className="stat reveal d3"><div className="num">∞</div><div className="lbl">{t.stat_talk}</div></div>
           </div>
         </div>
       </section>
@@ -359,21 +438,21 @@ export default function LandingPage() {
       <section className="features">
         <div className="wrap">
           <div className="section-head">
-            <div>
+            <div className="reveal">
               <div className="h-eyebrow">{t.feat_kicker}</div>
               <h2>{t.feat_h}</h2>
             </div>
-            <p style={{ maxWidth: 340, color: '#505a63', fontSize: 16 }}>{t.feat_sub}</p>
+            <p className="reveal d1" style={{ maxWidth: 340, color: '#505a63', fontSize: 16 }}>{t.feat_sub}</p>
           </div>
 
           <div className="feature-grid">
-            <div className="card tall">
+            <div className="card tall reveal">
               <div className="kicker">{t.card1_kicker}</div>
               <h3>{t.card1_h1}<br />{t.card1_h2}</h3>
               <p>{t.card1_p}</p>
               <div className="img-wrap"><img src="/screenshots/crop-02-picks.png" alt="Picks screen" /></div>
             </div>
-            <div className="card dark tall">
+            <div className="card dark tall reveal d1">
               <div className="kicker">{t.card2_kicker}</div>
               <h3>{t.card2_h1}<br />{t.card2_h2}</h3>
               <p>{t.card2_p}</p>
@@ -382,7 +461,7 @@ export default function LandingPage() {
           </div>
 
           <div className="feature-row">
-            <div className="mini">
+            <div className="mini reveal">
               <div className="badge b-teal">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M3 11l9-7 9 7v9a2 2 0 0 1-2 2h-4v-7H10v7H6a2 2 0 0 1-2-2v-9z" />
@@ -391,7 +470,7 @@ export default function LandingPage() {
               <h4>{t.mini1_h}</h4>
               <p>{t.mini1_p}</p>
             </div>
-            <div className="mini">
+            <div className="mini reveal d1">
               <div className="badge b-blue">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
@@ -401,7 +480,7 @@ export default function LandingPage() {
               <h4>{t.mini2_h}</h4>
               <p>{t.mini2_p}</p>
             </div>
-            <div className="mini">
+            <div className="mini reveal d2">
               <div className="badge b-orange">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" />
@@ -418,7 +497,7 @@ export default function LandingPage() {
       {/* Showcase */}
       <section className="showcase">
         <div className="wrap">
-          <div className="showcase-card">
+          <div className="showcase-card reveal">
             <div>
               <span className="eyebrow showcase-eyebrow">{t.show_eyebrow}</span>
               <h3>{t.show_h1}<br />{t.show_h2}<br />{t.show_h3}</h3>
@@ -439,16 +518,16 @@ export default function LandingPage() {
       <section className="install" id="install">
         <div className="wrap">
           <div className="section-head">
-            <div>
+            <div className="reveal">
               <div className="h-eyebrow">{t.ins_kicker}</div>
               <h2>{t.ins_h}</h2>
             </div>
-            <p style={{ maxWidth: 380, color: '#505a63', fontSize: 16 }}>{t.ins_sub}</p>
+            <p className="reveal d1" style={{ maxWidth: 380, color: '#505a63', fontSize: 16 }}>{t.ins_sub}</p>
           </div>
 
           <div className="install-grid">
             {/* iOS */}
-            <div className="install-card">
+            <div className="install-card reveal">
               <header>
                 <div className="os-mark">
                   <svg viewBox="0 0 24 24">
@@ -479,7 +558,7 @@ export default function LandingPage() {
             </div>
 
             {/* Android */}
-            <div className="install-card">
+            <div className="install-card reveal d1">
               <header>
                 <div className="os-mark" style={{ background: '#00a87e' }}>
                   <svg viewBox="0 0 24 24">
@@ -509,7 +588,7 @@ export default function LandingPage() {
       {/* Share */}
       <section className="share">
         <div className="wrap">
-          <div className="share-card">
+          <div className="share-card reveal">
             <div>
               <div className="share-kicker">{t.share_kicker}</div>
               <h3 style={{ marginTop: 12 }}>{t.share_h1}<br />{t.share_h2}</h3>
@@ -531,7 +610,7 @@ export default function LandingPage() {
       {/* FAQ */}
       <section className="faq">
         <div className="wrap" style={{ maxWidth: 880 }}>
-          <h2 className="display faq-h">{t.faq_h}</h2>
+          <h2 className="display faq-h reveal">{t.faq_h}</h2>
           <div className="faq-list">
             {([
               [t.faq1_q, t.faq1_a, true],
