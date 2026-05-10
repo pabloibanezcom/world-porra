@@ -115,6 +115,10 @@ const translations: Record<Language, TranslationMap> = {
     'picks.noResults': 'No results yet.',
     'picks.groupsPending': 'Groups will appear once teams are confirmed.',
     'picks.groupStage': 'Group Stage',
+    'picks.loadFailed': 'Failed to refresh picks.',
+    'picks.catalogLoadFailed': 'Failed to refresh tournament teams.',
+    'picks.groupSaveFailed': 'Failed to save group picks.',
+    'picks.tournamentSaveFailed': 'Failed to save tournament picks.',
 
     'profile.rankTag': ({ rank }) => `Rank #${rank}`,
     'profile.matches': ({ count }) => `${count} matches`,
@@ -431,6 +435,10 @@ const translations: Record<Language, TranslationMap> = {
     'picks.noResults': 'Todavía no hay resultados.',
     'picks.groupsPending': 'Los grupos aparecerán cuando los equipos estén confirmados.',
     'picks.groupStage': 'Fase de grupos',
+    'picks.loadFailed': 'No se pudieron actualizar los pronósticos.',
+    'picks.catalogLoadFailed': 'No se pudieron actualizar los equipos del torneo.',
+    'picks.groupSaveFailed': 'No se pudieron guardar los pronósticos de grupo.',
+    'picks.tournamentSaveFailed': 'No se pudieron guardar los pronósticos del torneo.',
 
     'profile.rankTag': ({ rank }) => `Puesto #${rank}`,
     'profile.matches': ({ count }) => `${count} partidos`,

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
+import Toast from 'react-native-toast-message';
 import { fetchMatches } from '../api/matches';
 import { fetchPollConfig, fetchTournamentCatalog, PollConfig } from '../api/config';
 import {
@@ -21,6 +22,7 @@ import {
   TournamentPicks,
 } from '../types';
 import { useI18n } from '../i18n';
+import { getApiErrorMessage } from '../utils/apiError';
 
 const LIVE_SCORE_REFRESH_MS = 60 * 1000;
 const FINAL_FOUR_KEYS = ['champion', 'runnerUp', 'semi1', 'semi2'] as const;
@@ -85,7 +87,7 @@ function mergeTournamentTeams(
 }
 
 export function usePicksData() {
-  const { language } = useI18n();
+  const { language, t } = useI18n();
   const [matches, setMatches] = useState<Match[]>([]);
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [groupPredictions, setGroupPredictions] = useState<GroupPrediction[]>([]);
@@ -105,7 +107,15 @@ export function usePicksData() {
   );
   const groupStandings = useMemo(() => getGroupsFromMatches(matches), [matches]);
 
-  const load = useCallback(async () => {
+  const showErrorToast = useCallback((fallback: string, error?: unknown) => {
+    Toast.show({
+      type: 'error',
+      text1: t('common.error'),
+      text2: error ? getApiErrorMessage(error, fallback) : fallback,
+    });
+  }, [t]);
+
+  const load = useCallback(async (options: { notifyOnError?: boolean } = {}) => {
     try {
       const [nextMatches, nextPredictions, nextGroupPredictions, config] = await Promise.all([
         fetchMatches({}),
@@ -124,17 +134,23 @@ export function usePicksData() {
         .then((catalogTeams) => {
           setTournamentTeams(mergeTournamentTeams(fallbackTeams, catalogTeams));
         })
-        .catch(() => {});
-    } catch {
-      // Keep the current screen state if refresh fails.
+        .catch((error) => {
+          if (options.notifyOnError) {
+            showErrorToast(t('picks.catalogLoadFailed'), error);
+          }
+        });
+    } catch (error) {
+      if (options.notifyOnError) {
+        showErrorToast(t('picks.loadFailed'), error);
+      }
     } finally {
       setLoading(false);
     }
-  }, [language]);
+  }, [language, showErrorToast, t]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await load();
+    await load({ notifyOnError: true });
     setRefreshing(false);
   }, [load]);
 
@@ -159,17 +175,19 @@ export function usePicksData() {
   }, [load, matches]);
 
   useEffect(() => {
-    fetchTournamentPrediction().then(setTournamentPicks).catch(() => {});
+    fetchTournamentPrediction()
+      .then(setTournamentPicks)
+      .catch(() => {});
   }, [language]);
 
   const handleSave = useCallback(async (matchId: string, score: [number, number], qualifier?: 'HOME' | 'AWAY' | null) => {
     try {
       const prediction = await submitPrediction(matchId, score[0], score[1], qualifier);
       setPredictions((prev) => [...prev.filter((item) => item.matchId !== matchId), prediction]);
-    } catch {
-      // Keep optimistic UI quiet for now; callers preserve current behavior.
+    } catch (error) {
+      showErrorToast(t('match.failedSave'), error);
     }
-  }, []);
+  }, [showErrorToast, t]);
 
   const handleGroupOrder = useCallback(async (groupId: string, orderedTeams: TeamInfo[]) => {
     if (pollConfig?.groupPredictionsLocked) return;
@@ -193,10 +211,11 @@ export function usePicksData() {
     try {
       const saved = await submitGroupPrediction(groupId, orderedTeams);
       setGroupPredictions((prev) => [...prev.filter((prediction) => prediction.group !== groupId), saved]);
-    } catch {
+    } catch (error) {
+      showErrorToast(t('picks.groupSaveFailed'), error);
       await load();
     }
-  }, [load, pollConfig?.groupPredictionsLocked]);
+  }, [load, pollConfig?.groupPredictionsLocked, showErrorToast, t]);
 
   const handleTournamentPick = useCallback(
     (key: keyof TournamentPicks, value: TeamOption | PlayerOption) => {
@@ -209,11 +228,13 @@ export function usePicksData() {
             }
           });
         }
-        saveTournamentPrediction(next).catch(() => {});
+        saveTournamentPrediction(next).catch((error) => {
+          showErrorToast(t('picks.tournamentSaveFailed'), error);
+        });
         return next;
       });
     },
-    [],
+    [showErrorToast, t],
   );
 
   return {

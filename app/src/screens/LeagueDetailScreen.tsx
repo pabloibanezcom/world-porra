@@ -30,25 +30,12 @@ import {
   sortMembersByPoints,
 } from '../utils/league';
 import { useI18n } from '../i18n';
+import { getApiErrorMessage } from '../utils/apiError';
 
 type RouteParams = { LeagueDetail: { leagueId: string } };
 
 function SectionLabel({ children }: { children: string }) {
   return <Text style={styles.sectionLabel}>{children.toUpperCase()}</Text>;
-}
-
-function getApiErrorMessage(error: any, fallback: string): string {
-  const data = error?.response?.data;
-  if (data && typeof data === 'object' && typeof data.error === 'string') {
-    return data.error;
-  }
-  if (typeof data === 'string' && data.trim()) {
-    return data.trim();
-  }
-  if (typeof error?.message === 'string' && error.message) {
-    return error.message;
-  }
-  return fallback;
 }
 
 export default function LeagueDetailScreen() {
