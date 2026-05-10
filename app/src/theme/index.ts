@@ -1,8 +1,8 @@
 export const fonts = {
-  body: 'FIFASans-Regular',
-  bodyMedium: 'FIFASans-Medium',
-  display: 'FWC26-NormalMedium',
-  displayBold: 'FWC26-NormalMedium',
+  body: 'PoolSans-Regular',
+  bodyMedium: 'PoolSans-Medium',
+  display: 'PoolDisplay-Medium',
+  displayBold: 'PoolDisplay-Medium',
 };
 
 export const colors = {

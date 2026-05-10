@@ -34,10 +34,10 @@ This document describes the visual language used throughout the app. The source 
 
 | Token | Font file | Usage |
 |---|---|---|
-| `fonts.body` | `FIFASans-Regular` | Body copy, labels, descriptions |
-| `fonts.bodyMedium` | `FIFASans-Medium` | Semi-bold labels, badges, section caps |
-| `fonts.display` | `FWC26-NormalMedium` | Headings, scores, team names |
-| `fonts.displayBold` | `FWC26-NormalMedium` | Same family — currently same file; use for bold display text |
+| `fonts.body` | `PoolSans-Regular` | Body copy, labels, descriptions |
+| `fonts.bodyMedium` | `PoolSans-Medium` | Semi-bold labels, badges, section caps |
+| `fonts.display` | `PoolDisplay-Medium` | Headings, scores, team names |
+| `fonts.displayBold` | `PoolDisplay-Medium` | Same family — currently same file; use for bold display text |
 
 ### Size scale
 
