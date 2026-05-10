@@ -1,12 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  Animated,
-  Modal,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -21,6 +17,8 @@ import {
 } from '../types';
 import { Ionicons } from '@expo/vector-icons';
 import { useI18n } from '../i18n';
+import BottomSheet from './ui/BottomSheet';
+import SearchBar from './ui/SearchBar';
 
 interface TournamentPicksSectionProps {
   picks: TournamentPicks;
@@ -167,87 +165,56 @@ function TeamPickerModal({
   onClose: () => void;
 }) {
   const { t } = useI18n();
-  const slideAnim = useRef(new Animated.Value(600)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
   const [search, setSearch] = useState('');
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(slideAnim, { toValue: 0, duration: 280, useNativeDriver: true }),
-      Animated.timing(fadeAnim, { toValue: 1, duration: 220, useNativeDriver: true }),
-    ]).start();
-  }, []);
-
-  const close = () => {
-    Animated.parallel([
-      Animated.timing(slideAnim, { toValue: 600, duration: 260, useNativeDriver: true }),
-      Animated.timing(fadeAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
-    ]).start(() => onClose());
-  };
-
-  const pick = (team: TeamOption) => {
-    onSelect(team);
-    close();
-  };
 
   const filtered = teams.filter((team) => team.name.toLowerCase().includes(search.toLowerCase()));
 
   return (
-    <Modal transparent visible animationType="none" onRequestClose={close}>
-      <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={close} />
-      </Animated.View>
-      <Animated.View style={[styles.sheet, { transform: [{ translateY: slideAnim }] }]}>
-        <View style={styles.sheetHandle} />
-        <View style={styles.sheetHeader}>
-          <Text style={styles.sheetTitle}>{title}</Text>
-          <Text style={styles.sheetSubtitle}>{t('tournament.pickNationalTeam')}</Text>
-        </View>
-        <View style={styles.searchBar}>
-          <Ionicons name="search" size={14} color={colors.dim} />
-          <TextInput
-            style={styles.searchInput}
+    <BottomSheet onClose={onClose}>
+      {(close) => (
+        <>
+          <View style={styles.sheetHeader}>
+            <Text style={styles.sheetTitle}>{title}</Text>
+            <Text style={styles.sheetSubtitle}>{t('tournament.pickNationalTeam')}</Text>
+          </View>
+          <SearchBar
             value={search}
             onChangeText={setSearch}
             placeholder={t('tournament.searchTeam')}
-            placeholderTextColor={colors.dim}
-            autoCorrect={false}
           />
-          {search.length > 0 && (
-            <TouchableOpacity onPress={() => setSearch('')}>
-              <Ionicons name="close-circle" size={16} color={colors.dim} />
-            </TouchableOpacity>
-          )}
-        </View>
-        <ScrollView style={styles.sheetList} showsVerticalScrollIndicator={false}>
-          {filtered.map((team) => {
-            const isSel = selected?.code === team.code;
-            const unavailable = !isSel && unavailableCodes.has(team.code);
-            return (
-              <TouchableOpacity
-                key={team.code}
-                style={[styles.teamRow, isSel && styles.teamRowSelected, unavailable && styles.teamRowUnavailable]}
-                onPress={() => pick(team)}
-                disabled={unavailable}
-                activeOpacity={0.7}
-              >
-                <Flag code={team.code} size={26} />
-                <Text style={[
-                  styles.teamRowName,
-                  isSel && styles.teamRowNameSelected,
-                  unavailable && styles.teamRowNameUnavailable,
-                ]}>
-                  {team.name}
-                </Text>
-                {isSel && <CheckIcon />}
-                {unavailable && <Ionicons name="lock-closed" size={14} color={colors.dim} />}
-              </TouchableOpacity>
-            );
-          })}
-          <View style={styles.listBottomPad} />
-        </ScrollView>
-      </Animated.View>
-    </Modal>
+          <ScrollView style={styles.sheetList} showsVerticalScrollIndicator={false}>
+            {filtered.map((team) => {
+              const isSel = selected?.code === team.code;
+              const unavailable = !isSel && unavailableCodes.has(team.code);
+              return (
+                <TouchableOpacity
+                  key={team.code}
+                  style={[styles.teamRow, isSel && styles.teamRowSelected, unavailable && styles.teamRowUnavailable]}
+                  onPress={() => {
+                    onSelect(team);
+                    close();
+                  }}
+                  disabled={unavailable}
+                  activeOpacity={0.7}
+                >
+                  <Flag code={team.code} size={26} />
+                  <Text style={[
+                    styles.teamRowName,
+                    isSel && styles.teamRowNameSelected,
+                    unavailable && styles.teamRowNameUnavailable,
+                  ]}>
+                    {team.name}
+                  </Text>
+                  {isSel && <CheckIcon />}
+                  {unavailable && <Ionicons name="lock-closed" size={14} color={colors.dim} />}
+                </TouchableOpacity>
+              );
+            })}
+            <View style={styles.listBottomPad} />
+          </ScrollView>
+        </>
+      )}
+    </BottomSheet>
   );
 }
 
@@ -266,8 +233,6 @@ function PlayerPickerModal({
   onClose: () => void;
 }) {
   const { t } = useI18n();
-  const slideAnim = useRef(new Animated.Value(600)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
   const [step, setStep] = useState<'team' | 'player'>('team');
   const [selectedTeam, setSelectedTeam] = useState<{ name: string; code: string } | null>(null);
   const [search, setSearch] = useState('');
@@ -282,25 +247,11 @@ function PlayerPickerModal({
   }, [players]);
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(slideAnim, { toValue: 0, duration: 280, useNativeDriver: true }),
-      Animated.timing(fadeAnim, { toValue: 1, duration: 220, useNativeDriver: true }),
-    ]).start();
-    // Pre-select team if a player is already picked
     if (selected) {
       const match = teams.find((tm) => tm.code === selected.code);
       if (match) { setSelectedTeam(match); setStep('player'); }
     }
-  }, []);
-
-  const close = () => {
-    Animated.parallel([
-      Animated.timing(slideAnim, { toValue: 600, duration: 260, useNativeDriver: true }),
-      Animated.timing(fadeAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
-    ]).start(() => onClose());
-  };
-
-  const pick = (player: PlayerOption) => { onSelect(player); close(); };
+  }, [selected, teams]);
 
   const goBack = () => { setStep('team'); setSearch(''); setSelectedTeam(null); };
 
@@ -320,117 +271,101 @@ function PlayerPickerModal({
     : [];
 
   return (
-    <Modal transparent visible animationType="none" onRequestClose={close}>
-      <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={close} />
-      </Animated.View>
-      <Animated.View style={[styles.sheet, { transform: [{ translateY: slideAnim }] }]}>
-        <View style={styles.sheetHandle} />
-
-        {/* Header */}
-        <View style={styles.playerSheetHeader}>
-          {step === 'player' && (
-            <TouchableOpacity onPress={goBack} style={styles.backButton} activeOpacity={0.7}>
-              <Ionicons name="chevron-back" size={20} color={colors.muted} />
-            </TouchableOpacity>
-          )}
-          <View style={styles.playerSheetHeaderText}>
-            {step === 'team' ? (
-              <Text style={styles.sheetTitle}>{title}</Text>
-            ) : (
-              <View style={styles.teamHeaderRow}>
-                <Flag code={selectedTeam!.code} size={22} />
-                <Text style={styles.sheetTitle}>{selectedTeam!.name}</Text>
-              </View>
+    <BottomSheet onClose={onClose}>
+      {(close) => (
+        <>
+          <View style={styles.playerSheetHeader}>
+            {step === 'player' && (
+              <TouchableOpacity onPress={goBack} style={styles.backButton} activeOpacity={0.7}>
+                <Ionicons name="chevron-back" size={20} color={colors.muted} />
+              </TouchableOpacity>
             )}
-            <Text style={styles.sheetSubtitle}>
-              {step === 'team' ? t('tournament.selectCountry') : t('tournament.searchPlayer')}
-            </Text>
+            <View style={styles.playerSheetHeaderText}>
+              {step === 'team' ? (
+                <Text style={styles.sheetTitle}>{title}</Text>
+              ) : (
+                <View style={styles.teamHeaderRow}>
+                  <Flag code={selectedTeam!.code} size={22} />
+                  <Text style={styles.sheetTitle}>{selectedTeam!.name}</Text>
+                </View>
+              )}
+              <Text style={styles.sheetSubtitle}>
+                {step === 'team' ? t('tournament.selectCountry') : t('tournament.searchPlayer')}
+              </Text>
+            </View>
+            <View style={styles.stepDots}>
+              <View style={[styles.stepDot, step === 'team' && styles.stepDotActive]} />
+              <View style={[styles.stepDot, step === 'player' && styles.stepDotActive]} />
+            </View>
           </View>
-          {/* Step dots */}
-          <View style={styles.stepDots}>
-            <View style={[styles.stepDot, step === 'team' && styles.stepDotActive]} />
-            <View style={[styles.stepDot, step === 'player' && styles.stepDotActive]} />
-          </View>
-        </View>
 
-        {/* Search */}
-        <View style={styles.searchBar}>
-          <Ionicons name="search" size={14} color={colors.dim} />
-          <TextInput
-            key={step}
-            style={styles.searchInput}
+          <SearchBar
+            inputKey={step}
             value={search}
             onChangeText={setSearch}
             placeholder={step === 'team' ? t('tournament.searchTeam') : t('tournament.searchPlayer')}
-            placeholderTextColor={colors.dim}
-            autoCorrect={false}
           />
-          {search.length > 0 && (
-            <TouchableOpacity onPress={() => setSearch('')}>
-              <Ionicons name="close-circle" size={16} color={colors.dim} />
-            </TouchableOpacity>
+
+          {step === 'team' && (
+            <ScrollView style={styles.sheetList} showsVerticalScrollIndicator={false}>
+              {filteredTeams.map((tm) => {
+                const count = players.filter((p) => p.code === tm.code).length;
+                return (
+                  <TouchableOpacity
+                    key={tm.code}
+                    style={styles.teamRow}
+                    onPress={() => selectTeam(tm)}
+                    activeOpacity={0.7}
+                  >
+                    <Flag code={tm.code} size={26} />
+                    <View style={styles.playerInfo}>
+                      <Text style={styles.teamRowName}>{tm.name}</Text>
+                      <Text style={styles.playerTeamSmall}>
+                        {count} {count === 1 ? t('tournament.player') : t('tournament.players')}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={14} color={colors.dim} />
+                  </TouchableOpacity>
+                );
+              })}
+              <View style={styles.listBottomPad} />
+            </ScrollView>
           )}
-        </View>
 
-        {/* Step 1 — Teams */}
-        {step === 'team' && (
-          <ScrollView style={styles.sheetList} showsVerticalScrollIndicator={false}>
-            {filteredTeams.map((tm) => {
-              const count = players.filter((p) => p.code === tm.code).length;
-              return (
-                <TouchableOpacity
-                  key={tm.code}
-                  style={styles.teamRow}
-                  onPress={() => selectTeam(tm)}
-                  activeOpacity={0.7}
-                >
-                  <Flag code={tm.code} size={26} />
-                  <View style={styles.playerInfo}>
-                    <Text style={styles.teamRowName}>{tm.name}</Text>
-                    <Text style={styles.playerTeamSmall}>
-                      {count} {count === 1 ? t('tournament.player') : t('tournament.players')}
-                    </Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={14} color={colors.dim} />
-                </TouchableOpacity>
-              );
-            })}
-            <View style={styles.listBottomPad} />
-          </ScrollView>
-        )}
-
-        {/* Step 2 — Players */}
-        {step === 'player' && (
-          <ScrollView style={styles.sheetList} showsVerticalScrollIndicator={false}>
-            {filteredPlayers.map((player, i) => {
-              const isSel = selected?.name === player.name;
-              return (
-                <TouchableOpacity
-                  key={i}
-                  style={[styles.playerRow, isSel && styles.playerRowSelected]}
-                  onPress={() => pick(player)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.playerInfo}>
-                    <Text style={[styles.teamRowName, isSel && styles.teamRowNameSelected]}>
-                      {player.name}
-                    </Text>
-                  </View>
-                  <View style={[styles.posBadge, { backgroundColor: POS_BG[player.pos] }]}>
-                    <Text style={[styles.posBadgeText, { color: POS_COLOR[player.pos] }]}>
-                      {player.pos}
-                    </Text>
-                  </View>
-                  {isSel && <CheckIcon />}
-                </TouchableOpacity>
-              );
-            })}
-            <View style={styles.listBottomPad} />
-          </ScrollView>
-        )}
-      </Animated.View>
-    </Modal>
+          {step === 'player' && (
+            <ScrollView style={styles.sheetList} showsVerticalScrollIndicator={false}>
+              {filteredPlayers.map((player, i) => {
+                const isSel = selected?.name === player.name;
+                return (
+                  <TouchableOpacity
+                    key={i}
+                    style={[styles.playerRow, isSel && styles.playerRowSelected]}
+                    onPress={() => {
+                      onSelect(player);
+                      close();
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.playerInfo}>
+                      <Text style={[styles.teamRowName, isSel && styles.teamRowNameSelected]}>
+                        {player.name}
+                      </Text>
+                    </View>
+                    <View style={[styles.posBadge, { backgroundColor: POS_BG[player.pos] }]}>
+                      <Text style={[styles.posBadgeText, { color: POS_COLOR[player.pos] }]}>
+                        {player.pos}
+                      </Text>
+                    </View>
+                    {isSel && <CheckIcon />}
+                  </TouchableOpacity>
+                );
+              })}
+              <View style={styles.listBottomPad} />
+            </ScrollView>
+          )}
+        </>
+      )}
+    </BottomSheet>
   );
 }
 
@@ -670,33 +605,6 @@ const styles = StyleSheet.create({
   playerMeta: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
   playerTeam: { color: colors.muted, fontFamily: fonts.body, fontSize: 11 },
 
-  // Modal overlay
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.65)',
-  },
-  sheet: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: colors.card,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    borderTopWidth: 1,
-    borderColor: colors.border,
-    maxHeight: '82%',
-    minHeight: '60%',
-    flexDirection: 'column',
-  },
-  sheetHandle: {
-    width: 34,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    alignSelf: 'center',
-    marginTop: 14,
-  },
   sheetHeader: { padding: 14, paddingHorizontal: 20, paddingTop: 14, paddingBottom: 10 },
   playerSheetHeader: {
     flexDirection: 'row',
@@ -724,26 +632,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   sheetSubtitle: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, marginTop: 2 },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: colors.bg,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    marginHorizontal: 20,
-    marginBottom: 12,
-  },
-  searchInput: {
-    flex: 1,
-    color: colors.text,
-    fontFamily: fonts.body,
-    fontSize: 13,
-    padding: 0,
-  },
   sheetList: { flex: 1, paddingHorizontal: 12 },
   listBottomPad: { height: 32 },
 

@@ -13,7 +13,8 @@
     "generate:icons": "bash scripts/generate-logo-assets.sh",
     "build:web": "expo export -p web && node scripts/inject-pwa-tags.js",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@react-navigation/bottom-tabs": "^7.15.9",
