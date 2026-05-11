@@ -56,6 +56,7 @@ nav.top .links { display: flex; align-items: center; gap: 8px; }
 .icon-link:hover { background: rgba(15,17,21,0.06); }
 .icon-link svg { width: 20px; height: 20px; fill: currentColor; }
 @media (max-width: 520px) { .icon-link { width: 36px; height: 36px; } }
+@media (max-width: 720px) { nav.top .lang-toggle { display: none; } }
 
 .lang-toggle {
   display: inline-flex; padding: 4px;
@@ -74,7 +75,7 @@ nav.top .links { display: flex; align-items: center; gap: 8px; }
 .pill {
   display: inline-flex; align-items: center; gap: 8px;
   padding: 12px 22px;
-  border-radius: 9999px;
+  border-radius: 12px;
   font-weight: 500; font-size: 15px;
   border: 2px solid transparent;
   cursor: pointer;
@@ -88,6 +89,7 @@ nav.top .links { display: flex; align-items: center; gap: 8px; }
 .pill.light { background: #fff; color: #0f1115; border-color: #fff; }
 .pill.outline { background: transparent; color: #0f1115; border-color: #0f1115; }
 .pill.ghost { background: rgba(15,17,21,0.06); color: #0f1115; }
+.pill.sm { padding: 8px 14px; font-size: 13px; }
 .pill.lg { padding: 16px 28px; font-size: 16px; }
 @media (max-width: 720px) { .pill { padding: 11px 18px; font-size: 14px; } .pill.lg { padding: 14px 22px; font-size: 15px; } }
 
@@ -116,7 +118,7 @@ header.hero { padding: 80px 0 40px; position: relative; overflow: hidden; }
 
 h1.hero-h {
   font-family: 'PoolDisplay', sans-serif; font-weight: 500;
-  font-size: clamp(48px, 7.5vw, 112px);
+  font-size: clamp(40px, 6vw, 88px);
   line-height: 0.92; letter-spacing: -0.025em;
   color: #0f1115;
 }
