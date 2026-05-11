@@ -62,8 +62,8 @@ describe('auth store', () => {
     expect(useAuthStore.getState().token).toBe('google-token');
 
     mockedLoginDev.mockResolvedValueOnce({ token: 'dev-token', user: { ...user, id: 'dev-user' } });
-    await useAuthStore.getState().signInDev();
-    expect(mockedLoginDev).toHaveBeenCalledOnce();
+    await useAuthStore.getState().signInDev('dev@example.test');
+    expect(mockedLoginDev).toHaveBeenCalledWith('dev@example.test');
     expect(useAuthStore.getState()).toMatchObject({
       token: 'dev-token',
       user: { id: 'dev-user' },

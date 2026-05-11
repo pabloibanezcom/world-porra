@@ -51,6 +51,7 @@ export default function LoginScreen() {
   const { t } = useI18n();
   const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
   const signInWithPassword = useAuthStore((s) => s.signInWithPassword);
+  const signInDev = useAuthStore((s) => s.signInDev);
   const [isSigningIn, setIsSigningIn] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [email, setEmail] = React.useState('');
@@ -76,6 +77,27 @@ export default function LoginScreen() {
     } catch (error) {
       if (__DEV__) {
         console.warn('[login] Password login failed', {
+          apiUrl: getApiBaseUrl(),
+          status: axios.isAxiosError(error) ? error.response?.status : undefined,
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
+      setError(getPasswordLoginErrorMessage(error, t));
+    } finally {
+      setIsSigningIn(false);
+    }
+  };
+
+  const handleDevLogin = async () => {
+    const normalizedEmail = email.trim().toLowerCase();
+
+    setIsSigningIn(true);
+    setError(null);
+    try {
+      await signInDev(normalizedEmail || undefined);
+    } catch (error) {
+      if (__DEV__) {
+        console.warn('[login] Dev login failed', {
           apiUrl: getApiBaseUrl(),
           status: axios.isAxiosError(error) ? error.response?.status : undefined,
           message: error instanceof Error ? error.message : String(error),
@@ -153,6 +175,17 @@ export default function LoginScreen() {
                 <Text style={styles.passwordBtnText}>{t('login.continueEmail')}</Text>
               )}
             </TouchableOpacity>
+            {__DEV__ ? (
+              <TouchableOpacity
+                style={[styles.devBtn, isSigningIn && styles.googleBtnDisabled]}
+                onPress={handleDevLogin}
+                disabled={isSigningIn}
+              >
+                <Text style={styles.devBtnText}>
+                  {email.trim() ? 'Dev: switch to email' : 'Dev: sign in'}
+                </Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
 
           <View style={styles.dividerRow}>
@@ -338,6 +371,21 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 15,
     fontWeight: '600',
+  },
+  devBtn: {
+    minHeight: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 18,
+  },
+  devBtnText: {
+    color: colors.accent,
+    fontSize: 14,
+    fontWeight: '700',
   },
   dividerRow: {
     flexDirection: 'row',

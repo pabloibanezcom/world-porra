@@ -47,6 +47,35 @@ describe('misc app and auth routes', () => {
     });
   });
 
+  it('supports dev login as an existing test user by email', async () => {
+    await User.create({
+      email: 'switchable@wc2026.test',
+      name: 'Switchable Player',
+      avatarUrl: '',
+      passwordHash: null,
+    });
+
+    const response = await requestJson<{ token: string; user: { email: string; name: string } }>('/auth/dev', {
+      body: { email: 'SWITCHABLE@WC2026.TEST' },
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.token).toEqual(expect.any(String));
+    expect(response.body.user).toMatchObject({
+      email: 'switchable@wc2026.test',
+      name: 'Switchable Player',
+    });
+  });
+
+  it('does not create arbitrary users during dev impersonation', async () => {
+    const response = await requestJson('/auth/dev', {
+      body: { email: 'missing@wc2026.test' },
+    });
+
+    expect(response.status).toBe(404);
+    expect(response.body).toEqual({ error: 'Dev user not found' });
+  });
+
   it('creates a user from a valid Google token payload', async () => {
     googleMocks.verifyIdToken.mockResolvedValueOnce({
       getPayload: () => ({

@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { OAuth2Client } from 'google-auth-library';
 import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
 import { z } from 'zod';
 import { User } from '../models/User';
 import { env } from '../config/env';
@@ -25,6 +26,15 @@ const googleAuthSchema = z.object({
   idToken: z.string().min(1),
 });
 
+const devLoginSchema = z
+  .object({
+    email: z.string().email().optional(),
+    userId: z.string().min(1).optional(),
+  })
+  .refine((value) => !value.email || !value.userId, {
+    message: 'Provide email or userId, not both',
+  });
+
 const updateProfileSchema = z.object({
   name: z.string().trim().min(1).max(40),
 });
@@ -44,6 +54,13 @@ function isLeagueCreatorEmail(email: string): boolean {
     .filter(Boolean);
 
   return allowedEmails.includes(normalizeEmail(email));
+}
+
+function isDevAuthAllowed(): boolean {
+  if (env.NODE_ENV === 'production') return false;
+  if (env.NODE_ENV === 'test' || env.USE_IN_MEMORY_DB) return true;
+
+  return mongoose.connection.name.startsWith('test_');
 }
 
 export function canUserCreateLeagues(user: { email: string; isMaster?: boolean; canCreateLeagues?: boolean }): boolean {
@@ -203,25 +220,53 @@ router.post('/google', async (req, res: Response): Promise<void> => {
   }
 });
 
-// Dev-only: mock login without Google
-if (env.NODE_ENV !== 'production') {
-  router.post('/dev', async (_req, res: Response): Promise<void> => {
-    const user = await User.findOneAndUpdate(
-      { googleId: 'dev-user-001' },
-      {
-        googleId: 'dev-user-001',
-        email: 'dev@wc2026.test',
-        name: 'Dev Player',
-        avatarUrl: '',
-        isMaster: isMasterEmail('dev@wc2026.test'),
-      },
-      { upsert: true, new: true }
-    );
+// Test-DB-only: mock login without Google/password for fast QA switching.
+router.post('/dev', async (req, res: Response): Promise<void> => {
+  if (!isDevAuthAllowed()) {
+    res.status(403).json({ error: 'Dev login is only available for test databases' });
+    return;
+  }
+
+  try {
+    const { email, userId } = devLoginSchema.parse(req.body ?? {});
+    let user;
+
+    if (email) {
+      user = await User.findOne({ email: normalizeEmail(email) });
+    } else if (userId) {
+      user = await User.findById(userId);
+    } else {
+      user = await User.findOneAndUpdate(
+        { googleId: 'dev-user-001' },
+        {
+          googleId: 'dev-user-001',
+          email: 'dev@wc2026.test',
+          name: 'Dev Player',
+          avatarUrl: '',
+          isMaster: isMasterEmail('dev@wc2026.test'),
+        },
+        { upsert: true, new: true }
+      );
+    }
+
+    if (!user) {
+      res.status(404).json({ error: 'Dev user not found' });
+      return;
+    }
+
+    user.isMaster = user.isMaster || isMasterEmail(user.email);
+    await user.save();
 
     const token = signToken(user);
     res.json({ token, user: serializeUser(user) });
-  });
-}
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: 'Invalid dev login data', details: error.errors });
+      return;
+    }
+    throw error;
+  }
+});
 
 router.get('/me', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   const user = await User.findById(req.userId).select('-__v');

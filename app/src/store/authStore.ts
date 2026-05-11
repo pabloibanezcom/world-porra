@@ -11,7 +11,7 @@ interface AuthState {
   register: (email: string, name: string, password: string) => Promise<void>;
   signInWithPassword: (email: string, password: string) => Promise<void>;
   signInWithGoogle: (idToken: string) => Promise<void>;
-  signInDev: () => Promise<void>;
+  signInDev: (email?: string) => Promise<void>;
   restoreSession: () => Promise<void>;
   updateProfileName: (name: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -40,8 +40,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ user, token, isLoading: false });
   },
 
-  signInDev: async () => {
-    const { token, user } = await loginDev();
+  signInDev: async (email?: string) => {
+    const { token, user } = await loginDev(email);
     await setToken(TOKEN_STORAGE_KEY, token);
     set({ user, token, isLoading: false });
   },

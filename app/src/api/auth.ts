@@ -21,8 +21,8 @@ export async function loginWithGoogle(idToken: string): Promise<AuthResponse> {
   return data;
 }
 
-export async function loginDev(): Promise<AuthResponse> {
-  const { data } = await apiClient.post<AuthResponse>('/auth/dev');
+export async function loginDev(email?: string): Promise<AuthResponse> {
+  const { data } = await apiClient.post<AuthResponse>('/auth/dev', email ? { email } : undefined);
   return data;
 }
 

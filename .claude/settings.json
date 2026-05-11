@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C /Users/pablo/Projects/wc2026-app diff web/.gitignore)",
+      "Bash(git -C /Users/pablo/Projects/wc2026-app add web/.gitignore web/src/app/globals.css web/src/app/page.tsx)",
+      "Bash(git -C /Users/pablo/Projects/wc2026-app commit -m ' *)",
+      "Bash(git -C /Users/pablo/Projects/wc2026-app push)"
+    ]
+  }
+}

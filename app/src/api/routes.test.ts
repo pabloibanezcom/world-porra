@@ -41,7 +41,11 @@ describe('API route helpers', () => {
 
     mockedApiClient.post.mockResolvedValueOnce({ data: authResponse });
     await expect(loginDev()).resolves.toBe(authResponse);
-    expect(mockedApiClient.post).toHaveBeenCalledWith('/auth/dev');
+    expect(mockedApiClient.post).toHaveBeenCalledWith('/auth/dev', undefined);
+
+    mockedApiClient.post.mockResolvedValueOnce({ data: authResponse });
+    await expect(loginDev('player@example.test')).resolves.toBe(authResponse);
+    expect(mockedApiClient.post).toHaveBeenCalledWith('/auth/dev', { email: 'player@example.test' });
 
     mockedApiClient.get.mockResolvedValueOnce({ data: { user: authResponse.user } });
     await expect(getMe()).resolves.toBe(authResponse.user);
