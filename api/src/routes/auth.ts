@@ -57,7 +57,6 @@ function isLeagueCreatorEmail(email: string): boolean {
 }
 
 function isDevAuthAllowed(): boolean {
-  if (env.NODE_ENV === 'production') return false;
   if (env.NODE_ENV === 'test' || env.USE_IN_MEMORY_DB) return true;
 
   return mongoose.connection.name.startsWith('test_');
