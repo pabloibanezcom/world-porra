@@ -8,13 +8,13 @@ type Lang = 'en' | 'es';
 
 const I18N = {
   en: {
-    page_title: 'World Cup Pool — Predict every match',
-    brand: 'World Cup Pool',
+    page_title: 'World Porra — Predict every match',
+    brand: 'World Porra',
     nav_open: 'Open app →',
     hero_eyebrow: 'FIFA World Cup 2026 · Live',
     hero_h1: 'Predict every match.',
     hero_h2: 'Beat your friends.',
-    hero_sub: 'A private prediction pool for the 2026 World Cup. Lock in your picks, climb the leaderboard, settle every group-stage debate before kickoff. 104 matches. One champion.',
+    hero_sub: 'A private porra for the 2026 World Cup. Lock in your picks, climb the leaderboard, settle every group-stage debate before kickoff. 104 matches. One champion.',
     hero_cta1: 'Install the app',
     hero_cta2: 'See the demo',
     hero_meta1: 'Free for friends & family',
@@ -85,7 +85,7 @@ const I18N = {
     faq4_a: "Once installed as a Progressive Web App, the interface works offline. Picks sync the next time you connect — but make sure they're submitted before the lock.",
     faq5_q: 'Is this an official FIFA app?',
     faq5_a: 'No. This is an independent prediction pool for friends, not affiliated with or endorsed by FIFA. Match data and team names are used for sporting reference only.',
-    foot_blurb: 'A private prediction pool for the 2026 FIFA World Cup. Built for friends, family and the office.',
+    foot_blurb: 'A private porra for the 2026 FIFA World Cup. Built for friends, family and the office.',
     foot_app: 'App',
     foot_open: 'Open app',
     foot_install: 'Install',
@@ -94,12 +94,12 @@ const I18N = {
     foot_d1: 'Jun 11 — Opening match',
     foot_d2: 'Jun 12 – Jun 27 — Group stage',
     foot_d3: 'Jul 19 — Grand final',
-    foot_copy: '© 2026 · World Cup Pool · A friends-only prediction game.',
+    foot_copy: '© 2026 · World Porra · A friends-only prediction game.',
     foot_disclaimer: 'Not affiliated with FIFA. Made with caffeine and arguments.',
   },
   es: {
-    page_title: 'World Cup Pool — Predice cada partido',
-    brand: 'World Cup Pool',
+    page_title: 'World Porra — Predice cada partido',
+    brand: 'World Porra',
     nav_open: 'Abrir app →',
     hero_eyebrow: 'Mundial FIFA 2026 · En vivo',
     hero_h1: 'Predice cada partido.',
@@ -184,7 +184,7 @@ const I18N = {
     foot_d1: '11 jun — Partido inaugural',
     foot_d2: '12 jun – 27 jun — Fase de grupos',
     foot_d3: '19 jul — Gran final',
-    foot_copy: '© 2026 · World Cup Pool · Una porra solo para amigos.',
+    foot_copy: '© 2026 · World Porra · Una porra solo para amigos.',
     foot_disclaimer: 'Sin afiliación a FIFA. Hecho con cafeína y discusiones.',
   },
 } as const;
@@ -635,7 +635,7 @@ export default function LandingPage() {
             <div>
               <a href="#" className="brand">
                 <img src="/favicon.png" width={32} height={32} alt="" className="brand-mark" />
-                <span>World Cup Pool</span>
+                <span>World Porra</span>
               </a>
               <p style={{ color: '#505a63', marginTop: 14, fontSize: 14, maxWidth: 340 }}>{t.foot_blurb}</p>
             </div>
@@ -665,4 +665,3 @@ export default function LandingPage() {
     </>
   );
 }
-

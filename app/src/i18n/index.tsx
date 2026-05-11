@@ -54,7 +54,7 @@ const translations: Record<Language, TranslationMap> = {
     'nav.joinLeague': 'Join League',
     'nav.match': 'Match',
 
-    'login.title': 'World Cup Pool',
+    'login.title': 'World Porra',
     'login.subtitle': '2026 FIFA · USA · Canada · Mexico',
     'login.email': 'Email',
     'login.password': 'Password',
@@ -156,7 +156,7 @@ const translations: Record<Language, TranslationMap> = {
     'league.pointsRace': 'Points Race',
     'league.rankings': 'Rankings',
     'league.notifyTitle': ({ name }) => `Notify ${name}`,
-    'league.shareMessage': ({ name, code }) => `Join my WC 2026 prediction league "${name}"! Use invite code: ${code}`,
+    'league.shareMessage': ({ name, code }) => `Join my World Porra league "${name}"! Use invite code: ${code}`,
 
     'createLeague.name': 'League Name',
     'createLeague.placeholder': 'e.g. Office Champions',
@@ -255,7 +255,7 @@ const translations: Record<Language, TranslationMap> = {
     'tournament.players': 'players',
 
     'rules.title': 'Scoring Rules',
-    'rules.subtitle': 'How points are earned in the World Cup Pool',
+    'rules.subtitle': 'How points are earned in World Porra',
     'rules.quickSummary': 'AT A GLANCE',
     'rules.summary.outcome': 'Outcome pts',
     'rules.summary.exactBonus': 'Exact score bonus',
@@ -374,7 +374,7 @@ const translations: Record<Language, TranslationMap> = {
     'nav.joinLeague': 'Unirse a liga',
     'nav.match': 'Partido',
 
-    'login.title': 'Polla Mundialista',
+    'login.title': 'World Porra',
     'login.subtitle': 'FIFA 2026 · EE. UU. · Canadá · México',
     'login.email': 'Email',
     'login.password': 'Contraseña',
@@ -476,7 +476,7 @@ const translations: Record<Language, TranslationMap> = {
     'league.pointsRace': 'Carrera de puntos',
     'league.rankings': 'Clasificación',
     'league.notifyTitle': ({ name }) => `Notificar a ${name}`,
-    'league.shareMessage': ({ name, code }) => `Únete a mi liga de pronósticos WC 2026 "${name}". Usa el código: ${code}`,
+    'league.shareMessage': ({ name, code }) => `Únete a mi liga de World Porra "${name}". Usa el código: ${code}`,
 
     'createLeague.name': 'Nombre de la liga',
     'createLeague.placeholder': 'ej. Campeones de la oficina',

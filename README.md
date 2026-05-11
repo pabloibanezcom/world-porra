@@ -1,4 +1,4 @@
-# WC2026 Predict
+# World Porra
 
 A mobile-first app for predicting FIFA World Cup 2026 match results. Compete in private leagues with friends and track your accuracy across the tournament.
 

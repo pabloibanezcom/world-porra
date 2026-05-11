@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "WC2026 Predict",
-  "short_name": "WC2026",
+  "name": "World Porra",
+  "short_name": "Porra",
   "description": "Predict FIFA World Cup 2026 match results and compete in private leagues with friends.",
   "start_url": "/",
   "scope": "/",

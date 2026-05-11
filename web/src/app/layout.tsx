@@ -5,8 +5,8 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
-  title: 'World Cup Pool — Predict every match',
-  description: 'A private prediction pool for the 2026 FIFA World Cup. Lock in your picks, climb the leaderboard, settle every group-stage debate before kickoff.',
+  title: 'World Porra — Predict every match',
+  description: 'A private porra for the 2026 FIFA World Cup. Lock in your picks, climb the leaderboard, settle every group-stage debate before kickoff.',
   icons: {
     icon: '/favicon.png',
     apple: '/icon-192.png',

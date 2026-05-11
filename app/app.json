@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "WC2026 Predict",
-    "slug": "wc2026-predict",
+    "name": "World Porra",
+    "slug": "world-porra",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -14,7 +14,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.wc2026.predict"
+      "bundleIdentifier": "com.worldporra.app"
     },
     "android": {
       "adaptiveIcon": {
@@ -23,14 +23,14 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.wc2026.predict"
+      "package": "com.worldporra.app"
     },
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro",
       "output": "single",
-      "name": "WC2026 Predict",
-      "shortName": "WC2026",
+      "name": "World Porra",
+      "shortName": "Porra",
       "description": "Predict FIFA World Cup 2026 match results and compete in private leagues with friends.",
       "lang": "en",
       "themeColor": "#00a87e",
