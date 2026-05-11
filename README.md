@@ -6,7 +6,7 @@ A mobile-first app for predicting FIFA World Cup 2026 match results. Compete in 
 
 - **Match predictions** — submit score predictions before kickoff; locked server-side once the match starts
 - **Points system** — earn points for exact scores, correct goal differences, or correct winners, with stage multipliers
-- **Private leagues** — create leagues, invite friends with a 6-character code, and track a live leaderboard
+- **Private leagues** — create leagues, invite friends with an 8-character code, and track a live leaderboard
 - **Google auth** — sign in with Google; dev login available for local testing
 
 ## Points System

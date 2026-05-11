@@ -49,11 +49,13 @@ describe('league membership', () => {
     expect(forbidden.status).toBe(403);
 
     const league = await createLeague(master.token);
-    expect(league.inviteCode).toHaveLength(6);
+    expect(league.inviteCode).toHaveLength(8);
+    expect(league.inviteCode).toMatch(/^[A-Z2-9]+$/);
 
     await User.findByIdAndUpdate(member.user.id, { canCreateLeagues: true });
     const memberLeague = await createLeague(member.token, 'Member League');
-    expect(memberLeague.inviteCode).toHaveLength(6);
+    expect(memberLeague.inviteCode).toHaveLength(8);
+    expect(memberLeague.inviteCode).toMatch(/^[A-Z2-9]+$/);
 
     const joined = await requestJson<{ league: { members: unknown[] } }>('/leagues/join', {
       token: member.token,

@@ -167,7 +167,7 @@ const translations: Record<Language, TranslationMap> = {
     'createLeague.failed': 'Failed to create league',
 
     'joinLeague.inviteCode': 'Invite Code',
-    'joinLeague.invalidCode': 'Invite code must be 6 characters',
+    'joinLeague.invalidCode': 'Invite code must be 6 to 8 characters',
     'joinLeague.successTitle': 'Joined!',
     'joinLeague.welcome': ({ name }) => `Welcome to ${name}`,
     'joinLeague.failed': 'Failed to join league',
@@ -487,7 +487,7 @@ const translations: Record<Language, TranslationMap> = {
     'createLeague.failed': 'No se pudo crear la liga',
 
     'joinLeague.inviteCode': 'Código de invitación',
-    'joinLeague.invalidCode': 'El código debe tener 6 caracteres',
+    'joinLeague.invalidCode': 'El código debe tener entre 6 y 8 caracteres',
     'joinLeague.successTitle': 'Te uniste',
     'joinLeague.welcome': ({ name }) => `Bienvenido a ${name}`,
     'joinLeague.failed': 'No se pudo unir a la liga',

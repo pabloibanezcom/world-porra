@@ -326,26 +326,30 @@ async function seedDemoUsersAndLeagues(db: Db): Promise<{ users: RawDoc[]; leagu
   const leagueSpecs = [
     {
       name: 'Everyone League',
-      inviteCode: 'ALL202',
+      legacyInviteCode: 'ALL202',
+      inviteCode: 'K7M9Q2RX',
       members: users.map((user) => user._id),
     },
     {
       name: 'Family Sweepstake',
-      inviteCode: 'FAM026',
+      legacyInviteCode: 'FAM026',
+      inviteCode: 'F4V8M2QA',
       members: ['dev@worldporra.test', 'alex@worldporra.test', 'marta@worldporra.test', 'lucia@worldporra.test']
         .map((email) => userByEmail.get(email)?._id)
         .filter(isObjectId),
     },
     {
       name: 'Office League',
-      inviteCode: 'OFF026',
+      legacyInviteCode: 'OFF026',
+      inviteCode: 'P9H3T7WK',
       members: ['dev@worldporra.test', 'sam@worldporra.test', 'jamie@worldporra.test', 'nina@worldporra.test', 'omar@worldporra.test']
         .map((email) => userByEmail.get(email)?._id)
         .filter(isObjectId),
     },
     {
       name: 'Weekend Pundits',
-      inviteCode: 'PUN026',
+      legacyInviteCode: 'PUN026',
+      inviteCode: 'N6Q4R8YL',
       members: demoUsers
         .filter((_, index) => index % 2 === 0)
         .map((user) => user._id),
@@ -354,6 +358,7 @@ async function seedDemoUsersAndLeagues(db: Db): Promise<{ users: RawDoc[]; leagu
 
   await db.collection('leagues').bulkWrite(
     leagueSpecs.map((spec) => {
+      const leagueId = deterministicObjectId(`league:${spec.legacyInviteCode}`);
       const members = Array.from(new Set(spec.members.map((id) => id.toString()))).map((id, index) => ({
         userId: new Types.ObjectId(id),
         joinedAt: new Date(now.getTime() - index * 24 * 60 * 60 * 1000),
@@ -362,18 +367,18 @@ async function seedDemoUsersAndLeagues(db: Db): Promise<{ users: RawDoc[]; leagu
 
       return {
         updateOne: {
-          filter: { inviteCode: spec.inviteCode },
+          filter: { _id: leagueId },
           update: {
             $set: {
               name: spec.name,
+              inviteCode: spec.inviteCode,
               ownerId: owner._id,
               members,
               maxMembers: 50,
               updatedAt: now,
             },
             $setOnInsert: {
-              _id: deterministicObjectId(`league:${spec.inviteCode}`),
-              inviteCode: spec.inviteCode,
+              _id: leagueId,
               createdAt: now,
             },
           },

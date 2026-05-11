@@ -72,7 +72,7 @@ npm run android          # Run on Android emulator
 Group x1, R32 x1.5, R16 x2, QF x2.5, SF x3, Third Place/Final x4
 
 ### Leagues
-- Private leagues with 6-char invite codes
+- Private leagues with 8-character invite codes
 - Max 50 members per league
 - Predictions locked server-side after kickoff
 - `scoresProcessed` flag prevents double-scoring

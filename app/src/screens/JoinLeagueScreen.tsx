@@ -5,6 +5,9 @@ import { joinLeague } from '../api/leagues';
 import { colors, spacing, fontSize, borderRadius } from '../theme';
 import { useI18n } from '../i18n';
 
+const INVITE_CODE_MIN_LENGTH = 6;
+const INVITE_CODE_MAX_LENGTH = 8;
+
 export default function JoinLeagueScreen() {
   const { t } = useI18n();
   const [code, setCode] = useState('');
@@ -12,14 +15,15 @@ export default function JoinLeagueScreen() {
   const navigation = useNavigation<any>();
 
   const handleJoin = async () => {
-    if (code.trim().length !== 6) {
+    const inviteCode = code.trim().toUpperCase();
+    if (inviteCode.length < INVITE_CODE_MIN_LENGTH || inviteCode.length > INVITE_CODE_MAX_LENGTH) {
       Alert.alert(t('common.error'), t('joinLeague.invalidCode'));
       return;
     }
 
     setLoading(true);
     try {
-      const league = await joinLeague(code.trim().toUpperCase());
+      const league = await joinLeague(inviteCode);
       Alert.alert(t('joinLeague.successTitle'), t('joinLeague.welcome', { name: league.name }), [
         {
           text: t('common.ok'),
@@ -46,9 +50,9 @@ export default function JoinLeagueScreen() {
       <TextInput
         style={styles.input}
         value={code}
-        onChangeText={(text) => setCode(text.toUpperCase())}
-        placeholder="e.g. A1B2C3"
-        maxLength={6}
+        onChangeText={(text) => setCode(text.replace(/[^a-z0-9]/gi, '').toUpperCase())}
+        placeholder="e.g. K7M9Q2RX"
+        maxLength={INVITE_CODE_MAX_LENGTH}
         autoCapitalize="characters"
         autoFocus
       />

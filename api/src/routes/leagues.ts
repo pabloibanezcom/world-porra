@@ -12,8 +12,26 @@ import { canUserCreateLeagues } from './auth';
 
 const router = Router();
 
-function generateInviteCode(): string {
-  return crypto.randomBytes(3).toString('hex').toUpperCase();
+const INVITE_CODE_LENGTH = 8;
+const INVITE_CODE_MIN_LENGTH = 6;
+const INVITE_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+export function generateInviteCode(): string {
+  return Array.from({ length: INVITE_CODE_LENGTH }, () =>
+    INVITE_CODE_ALPHABET[crypto.randomInt(INVITE_CODE_ALPHABET.length)]
+  ).join('');
+}
+
+async function generateUniqueInviteCode(): Promise<string> {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const inviteCode = generateInviteCode();
+    const existingLeague = await League.exists({ inviteCode });
+    if (!existingLeague) {
+      return inviteCode;
+    }
+  }
+
+  throw new Error('Unable to generate a unique invite code');
 }
 
 function isLeagueAdmin(
@@ -32,7 +50,7 @@ const createLeagueSchema = z.object({
 });
 
 const joinLeagueSchema = z.object({
-  inviteCode: z.string().length(6),
+  inviteCode: z.string().trim().min(INVITE_CODE_MIN_LENGTH).max(INVITE_CODE_LENGTH).transform((code) => code.toUpperCase()),
 });
 
 const setAdminSchema = z.object({
@@ -56,7 +74,7 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
 
     const league = await League.create({
       name,
-      inviteCode: generateInviteCode(),
+      inviteCode: await generateUniqueInviteCode(),
       ownerId: req.userId,
       maxMembers: LEAGUE_MAX_MEMBERS,
       members: [{ userId: req.userId, isAdmin: true }],
@@ -76,7 +94,7 @@ router.post('/join', authMiddleware, async (req: AuthRequest, res: Response): Pr
   try {
     const { inviteCode } = joinLeagueSchema.parse(req.body);
 
-    const league = await League.findOne({ inviteCode: inviteCode.toUpperCase() });
+    const league = await League.findOne({ inviteCode });
     if (!league) {
       res.status(404).json({ error: 'League not found' });
       return;
