@@ -1,6 +1,11 @@
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
-    "strict": true
-  }
+    "strict": true,
+    "baseUrl": ".",
+    "paths": {
+      "@world-porra/shared": ["../shared/src/index"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.tsx", "../shared/src/**/*.ts"]
 }
