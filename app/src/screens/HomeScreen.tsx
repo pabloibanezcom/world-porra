@@ -133,15 +133,11 @@ export default function HomeScreen() {
   const homeLeagues = leagues.slice(0, 2);
 
   const handleSave = async (matchId: string, score: [number, number], qualifier?: 'HOME' | 'AWAY' | null) => {
-    try {
-      const pred = await submitPrediction(matchId, score[0], score[1], qualifier);
-      setPredictions((prev) => {
-        const filtered = prev.filter((p) => p.matchId !== matchId);
-        return [...filtered, pred];
-      });
-    } catch {
-      // silently fail
-    }
+    const pred = await submitPrediction(matchId, score[0], score[1], qualifier);
+    setPredictions((prev) => {
+      const filtered = prev.filter((p) => p.matchId !== matchId);
+      return [...filtered, pred];
+    });
   };
 
   const hour = new Date().getHours();

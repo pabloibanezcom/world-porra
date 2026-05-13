@@ -7,6 +7,7 @@ import {
   Modal,
   Pressable,
   Animated,
+  ActivityIndicator,
 } from 'react-native';
 import { colors, fonts, borderRadius } from '../theme';
 import Flag from './ui/Flag';
@@ -45,7 +46,7 @@ const KNOCKOUT_EXACT_BONUS: Record<MatchStage, number> = {
 interface PredictionSheetProps {
   match: Match | null;
   existing?: { score: [number, number]; qualifier?: 'HOME' | 'AWAY' | null };
-  onSave: (matchId: string, score: [number, number], qualifier?: 'HOME' | 'AWAY' | null) => void;
+  onSave: (matchId: string, score: [number, number], qualifier?: 'HOME' | 'AWAY' | null) => Promise<void>;
   onClose: () => void;
 }
 
@@ -86,6 +87,7 @@ export default function PredictionSheet({ match, existing, onSave, onClose }: Pr
   const { t, locale } = useI18n();
   const [score, setScore] = useState<[number, number]>(existing?.score || [0, 0]);
   const [qualifier, setQualifier] = useState<'HOME' | 'AWAY' | null>(existing?.qualifier ?? null);
+  const [saving, setSaving] = useState(false);
   const slideAnim = React.useRef(new Animated.Value(400)).current;
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
 
@@ -101,6 +103,7 @@ export default function PredictionSheet({ match, existing, onSave, onClose }: Pr
 
   useEffect(() => {
     if (match) {
+      setSaving(false);
       const initScore = existing?.score || [0, 0];
       setScore(initScore);
       if (knockout) {
@@ -125,12 +128,17 @@ export default function PredictionSheet({ match, existing, onSave, onClose }: Pr
     ]).start(() => onClose());
   };
 
-  const save = () => {
-    if (!match) return;
+  const save = async () => {
+    if (!match || saving) return;
     if (hasTbdTeam(match)) return;
-    if (knockout && !qualifier) return; // require qualifier for knockout
-    onSave(match._id, score, knockout ? qualifier : null);
-    close();
+    if (knockout && !qualifier) return;
+    setSaving(true);
+    try {
+      await onSave(match._id, score, knockout ? qualifier : null);
+      close();
+    } catch {
+      setSaving(false);
+    }
   };
 
   if (!match) return null;
@@ -192,7 +200,7 @@ export default function PredictionSheet({ match, existing, onSave, onClose }: Pr
   return (
     <Modal transparent visible={!!match} animationType="none" onRequestClose={close}>
       <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={close} />
+        <Pressable style={StyleSheet.absoluteFill} onPress={saving ? undefined : close} />
       </Animated.View>
       <Animated.View style={[styles.sheet, { transform: [{ translateY: slideAnim }] }]}>
         <View style={styles.handle} />
@@ -357,11 +365,15 @@ export default function PredictionSheet({ match, existing, onSave, onClose }: Pr
         ) : null}
 
         <TouchableOpacity
-          style={[styles.saveBtn, !canSave && styles.saveBtnDisabled]}
+          style={[styles.saveBtn, (!canSave || saving) && styles.saveBtnDisabled]}
           onPress={save}
-          disabled={!canSave}
+          disabled={!canSave || saving}
         >
-          <Text style={styles.saveBtnText}>{t('predictionSheet.save')}</Text>
+          {saving ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={styles.saveBtnText}>{t('predictionSheet.save')}</Text>
+          )}
         </TouchableOpacity>
       </Animated.View>
     </Modal>
