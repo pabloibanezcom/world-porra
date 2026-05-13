@@ -22,6 +22,7 @@ jobs:
       SOURCE_DB: test
       PROD_DB: world-porra
       STG_DB: world-porra-stg
+      DUMP_PATH: /tmp/world-porra-dump
 
     steps:
       - name: Install MongoDB tools
@@ -38,7 +39,17 @@ jobs:
           mongodump \
             --uri="$MONGODB_URI" \
             --db="$SOURCE_DB" \
-            --out=/tmp/world-porra-dump
+            --out="$DUMP_PATH"
+
+          # Remove user-generated collections from the dump before restoring
+          for col in users leagues predictions grouppredictions tournamentpredictions pushsubscriptions; do
+            rm -f "$DUMP_PATH/$SOURCE_DB/${col}.bson"
+            rm -f "$DUMP_PATH/$SOURCE_DB/${col}.metadata.json"
+            echo "Excluded $col from dump"
+          done
+
+          echo "Collections to restore:"
+          ls "$DUMP_PATH/$SOURCE_DB/"
 
       - name: Restore to production
         if: ${{ inputs.target == 'both' || inputs.target == 'production' }}
@@ -48,22 +59,10 @@ jobs:
           BASE_URI=$(echo "$MONGODB_URI" | grep -oE 'mongodb\+srv://[^/]+')
           mongorestore \
             --uri="$BASE_URI/$PROD_DB?appName=Cluster0" \
-            --nsFrom="${SOURCE_DB}.*" \
-            --nsTo="${PROD_DB}.*" \
+            --db="$PROD_DB" \
             --drop \
-            /tmp/world-porra-dump
+            "$DUMP_PATH/$SOURCE_DB"
           echo "Restored to $PROD_DB"
-
-      - name: Drop user data from production
-        if: ${{ inputs.target == 'both' || inputs.target == 'production' }}
-        env:
-          MONGODB_URI: ${{ secrets.MONGODB_URI }}
-        run: |
-          BASE_URI=$(echo "$MONGODB_URI" | grep -oE 'mongodb\+srv://[^/]+')
-          for col in users leagues predictions grouppredictions tournamentpredictions pushsubscriptions; do
-            mongosh "$BASE_URI/$PROD_DB?appName=Cluster0" --quiet --eval "db.${col}.drop()" || true
-            echo "Dropped $col from $PROD_DB"
-          done
 
       - name: Restore to staging
         if: ${{ inputs.target == 'both' || inputs.target == 'staging' }}
@@ -73,22 +72,10 @@ jobs:
           BASE_URI=$(echo "$MONGODB_URI" | grep -oE 'mongodb\+srv://[^/]+')
           mongorestore \
             --uri="$BASE_URI/$STG_DB?appName=Cluster0" \
-            --nsFrom="${SOURCE_DB}.*" \
-            --nsTo="${STG_DB}.*" \
+            --db="$STG_DB" \
             --drop \
-            /tmp/world-porra-dump
+            "$DUMP_PATH/$SOURCE_DB"
           echo "Restored to $STG_DB"
-
-      - name: Drop user data from staging
-        if: ${{ inputs.target == 'both' || inputs.target == 'staging' }}
-        env:
-          MONGODB_URI: ${{ secrets.MONGODB_URI }}
-        run: |
-          BASE_URI=$(echo "$MONGODB_URI" | grep -oE 'mongodb\+srv://[^/]+')
-          for col in users leagues predictions grouppredictions tournamentpredictions pushsubscriptions; do
-            mongosh "$BASE_URI/$STG_DB?appName=Cluster0" --quiet --eval "db.${col}.drop()" || true
-            echo "Dropped $col from $STG_DB"
-          done
 
       - name: Summary
         run: |
@@ -97,4 +84,4 @@ jobs:
           echo "**Target:** ${{ inputs.target }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Reference data copied:** countryteams, matches, pollconfigs" >> $GITHUB_STEP_SUMMARY
-          echo "**User data dropped:** users, leagues, predictions, grouppredictions, tournamentpredictions, pushsubscriptions" >> $GITHUB_STEP_SUMMARY
+          echo "**User data excluded:** users, leagues, predictions, grouppredictions, tournamentpredictions, pushsubscriptions" >> $GITHUB_STEP_SUMMARY
