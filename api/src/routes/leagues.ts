@@ -133,6 +133,28 @@ router.post('/join', authMiddleware, async (req: AuthRequest, res: Response): Pr
   }
 });
 
+router.get('/invite/:inviteCode', async (req, res: Response): Promise<void> => {
+  try {
+    const { inviteCode } = joinLeagueSchema.parse({ inviteCode: req.params.inviteCode });
+    const league = await League.findOne({ inviteCode: new RegExp(`^${escapeRegex(inviteCode)}$`, 'i') })
+      .select('name inviteCode')
+      .lean();
+
+    if (!league) {
+      res.status(404).json({ error: 'League not found' });
+      return;
+    }
+
+    res.json({ league: { name: league.name, inviteCode: league.inviteCode } });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: 'Invalid invite code' });
+      return;
+    }
+    throw error;
+  }
+});
+
 router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   const leagues = await League.find({ 'members.userId': req.userId })
     .populate('ownerId', 'name avatarUrl')

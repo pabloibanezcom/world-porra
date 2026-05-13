@@ -162,8 +162,22 @@ const translations: Record<Language, TranslationMap> = {
     'league.pointsRace': 'Points Race',
     'league.rankings': 'Rankings',
     'league.notifyTitle': ({ name }) => `Notify ${name}`,
-    'league.shareMessage': ({ name, code }) => `Join my World Porra league "${name}"! Use invite code: ${code}`,
-    'league.inviteHint': 'Share this code with friends to invite them to your league.',
+    'league.shareMessage': ({ name, code, url }) => `Join my World Porra league "${name}": ${url}\nInvite code: ${code}`,
+    'league.inviteHint': 'Share this link with friends to invite them to your league.',
+    'invite.pendingTitle': 'League invite ready',
+    'invite.pendingLoginMessage': ({ code, leagueName }) =>
+      leagueName
+        ? `Sign in and we'll add you to "${leagueName}" automatically. Invite code: ${code}`
+        : `Sign in and we'll add you to the league automatically. Invite code: ${code}`,
+    'invite.pendingRegisterMessage': ({ code, leagueName }) =>
+      leagueName
+        ? `Create your account and we'll add you to "${leagueName}" automatically. Invite code: ${code}`
+        : `Create your account and we'll add you to the league automatically. Invite code: ${code}`,
+    'install.title': 'Add World Porra to your phone',
+    'install.iosBody': 'In Safari, tap Share, then Add to Home Screen. Your invite will still be ready when you open it.',
+    'install.androidBody': 'Install it from Chrome so your pool opens like an app and your invite stays ready.',
+    'install.action': 'Install app',
+    'install.dismiss': 'Maybe later',
 
     'createLeague.name': 'League Name',
     'createLeague.placeholder': 'e.g. Office Champions',
@@ -489,8 +503,22 @@ const translations: Record<Language, TranslationMap> = {
     'league.pointsRace': 'Carrera de puntos',
     'league.rankings': 'Clasificación',
     'league.notifyTitle': ({ name }) => `Notificar a ${name}`,
-    'league.shareMessage': ({ name, code }) => `Únete a mi liga de World Porra "${name}". Usa el código: ${code}`,
-    'league.inviteHint': 'Comparte este código con tus amigos para invitarlos a tu liga.',
+    'league.shareMessage': ({ name, code, url }) => `Únete a mi liga de World Porra "${name}": ${url}\nCódigo: ${code}`,
+    'league.inviteHint': 'Comparte este enlace con tus amigos para invitarlos a tu liga.',
+    'invite.pendingTitle': 'Invitación lista',
+    'invite.pendingLoginMessage': ({ code, leagueName }) =>
+      leagueName
+        ? `Inicia sesión y te añadiremos automáticamente a "${leagueName}". Código: ${code}`
+        : `Inicia sesión y te añadiremos automáticamente a la liga. Código: ${code}`,
+    'invite.pendingRegisterMessage': ({ code, leagueName }) =>
+      leagueName
+        ? `Crea tu cuenta y te añadiremos automáticamente a "${leagueName}". Código: ${code}`
+        : `Crea tu cuenta y te añadiremos automáticamente a la liga. Código: ${code}`,
+    'install.title': 'Añade World Porra a tu móvil',
+    'install.iosBody': 'En Safari, toca Compartir y luego Añadir a pantalla de inicio. Tu invitación seguirá lista al abrirla.',
+    'install.androidBody': 'Instálala desde Chrome para abrir tu liga como una app y conservar la invitación.',
+    'install.action': 'Instalar app',
+    'install.dismiss': 'Más tarde',
 
     'createLeague.name': 'Nombre de la liga',
     'createLeague.placeholder': 'ej. Campeones de la oficina',

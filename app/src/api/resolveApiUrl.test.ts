@@ -80,6 +80,15 @@ describe('resolveApiUrl', () => {
     expect(resolveApiUrl()).toBe('https://api.example.test');
   });
 
+  it('normalizes the retired Vercel API URL to the active hosted API', async () => {
+    const { resolveApiUrl } = await loadResolveApiUrl({
+      apiUrl: 'https://wc2026-pool-api.vercel.app///',
+      platform: 'web',
+    });
+
+    expect(resolveApiUrl()).toBe('https://world-porra-api.vercel.app');
+  });
+
   it('uses the hosted API for production web builds when the configured URL is local', async () => {
     const { resolveApiUrl } = await loadResolveApiUrl({
       apiUrl: 'http://localhost:3000',
@@ -127,30 +136,30 @@ describe('resolveApiUrl', () => {
     expect(resolveApiUrlForScenario('pre-tournament')).toBe('https://world-porra-api.vercel.app');
   });
 
-  it('derives a LAN API URL from Expo host URI', async () => {
+  it('uses the hosted API instead of deriving a LAN URL by default', async () => {
     const { resolveApiUrl } = await loadResolveApiUrl({
       hostUri: '192.168.1.25:8081',
       platform: 'ios',
     });
 
-    expect(resolveApiUrl()).toBe('http://192.168.1.25:3000');
+    expect(resolveApiUrl()).toBe('https://world-porra-api.vercel.app');
   });
 
-  it('uses the Android emulator host during local development', async () => {
+  it('uses the hosted API for Android local development by default', async () => {
     const { resolveApiUrl } = await loadResolveApiUrl({
       hostUri: 'localhost:8081',
       platform: 'android',
     });
 
-    expect(resolveApiUrl()).toBe('http://10.0.2.2:3000');
+    expect(resolveApiUrl()).toBe('https://world-porra-api.vercel.app');
   });
 
-  it('falls back to localhost for non-Android local development', async () => {
+  it('uses the hosted API for non-Android local development by default', async () => {
     const { resolveApiUrl } = await loadResolveApiUrl({
       hostUri: 'localhost:8081',
       platform: 'ios',
     });
 
-    expect(resolveApiUrl()).toBe('http://localhost:3000');
+    expect(resolveApiUrl()).toBe('https://world-porra-api.vercel.app');
   });
 });

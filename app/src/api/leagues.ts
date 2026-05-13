@@ -37,6 +37,13 @@ export async function joinLeague(inviteCode: string): Promise<League> {
   return data.league;
 }
 
+export async function fetchLeagueInvitePreview(inviteCode: string): Promise<{ name: string; inviteCode: string }> {
+  const { data } = await apiClient.get<{ league: { name: string; inviteCode: string } }>(
+    `/leagues/invite/${encodeURIComponent(inviteCode)}`
+  );
+  return data.league;
+}
+
 export async function fetchMyLeagues(): Promise<League[]> {
   const { data } = await apiClient.get<{ leagues: League[] }>('/leagues');
   return data.leagues;

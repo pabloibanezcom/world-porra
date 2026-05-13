@@ -2,6 +2,7 @@
   "expo": {
     "name": "World Porra",
     "slug": "world-porra",
+    "scheme": "worldporra",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

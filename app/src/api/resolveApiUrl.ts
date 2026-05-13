@@ -1,21 +1,19 @@
-import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
-const DEFAULT_API_PORT = '3000';
-const LOCALHOST_API_URL = `http://localhost:${DEFAULT_API_PORT}`;
 export const VERCEL_API_URL = 'https://world-porra-api.vercel.app';
+const LEGACY_VERCEL_API_HOSTS = new Set(['wc2026-pool-api.vercel.app']);
 
 function stripTrailingSlash(value: string): string {
   return value.replace(/\/+$/, '');
 }
 
-function extractHostname(hostUri: string): string | null {
+function normalizeApiUrl(value: string): string {
+  const strippedUrl = stripTrailingSlash(value);
   try {
-    const normalized = hostUri.includes('://') ? hostUri : `http://${hostUri}`;
-    return new URL(normalized).hostname;
+    const url = new URL(strippedUrl);
+    return LEGACY_VERCEL_API_HOSTS.has(url.hostname) ? VERCEL_API_URL : strippedUrl;
   } catch {
-    const fallback = hostUri.match(/^([^/:]+)/);
-    return fallback?.[1] ?? null;
+    return strippedUrl;
   }
 }
 
@@ -62,19 +60,10 @@ export function resolveApiUrl(): string {
   }
 
   if (configuredUrl) {
-    return stripTrailingSlash(configuredUrl);
+    return normalizeApiUrl(configuredUrl);
   }
 
-  const expoHost = Constants.expoConfig?.hostUri ? extractHostname(Constants.expoConfig.hostUri) : null;
-  if (expoHost && expoHost !== 'localhost' && expoHost !== '127.0.0.1') {
-    return `http://${expoHost}:${DEFAULT_API_PORT}`;
-  }
-
-  if (__DEV__ && Platform.OS === 'android') {
-    return `http://10.0.2.2:${DEFAULT_API_PORT}`;
-  }
-
-  return LOCALHOST_API_URL;
+  return VERCEL_API_URL;
 }
 
 export function resolveApiUrlForScenario(scenario: string | null | undefined): string {

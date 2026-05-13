@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { colors, fonts } from '../theme';
 import { useI18n } from '../i18n';
+import { buildInviteUrl } from '../utils/inviteLinks';
 
 interface InviteSheetProps {
   visible: boolean;
@@ -41,8 +42,10 @@ export default function InviteSheet({ visible, leagueName, inviteCode, onClose }
   };
 
   const handleShare = async () => {
+    const inviteUrl = buildInviteUrl(inviteCode, leagueName);
     await Share.share({
-      message: t('league.shareMessage', { name: leagueName, code: inviteCode }),
+      message: t('league.shareMessage', { name: leagueName, code: inviteCode, url: inviteUrl }),
+      url: inviteUrl,
     });
   };
 

@@ -194,19 +194,18 @@ cd app && npx expo start
 
 ### Using a Physical Phone
 
-When you run the app in Expo Go on a phone, the app now auto-detects the Expo dev server host and uses that machine's IP on port `3000` for the API. That means:
+By default, the local Expo app uses the hosted Vercel API. To run Expo Go on a phone against a local API instead:
 
 - Start the API locally with `npm run api`
 - Start Expo on LAN with `npm run app:mobile`
 - Keep your phone and computer on the same Wi-Fi network
-
-If you want to override the API host manually, set `EXPO_PUBLIC_API_URL` to something like:
+- Set `EXPO_PUBLIC_API_URL` to your computer's LAN address, for example:
 
 ```bash
 EXPO_PUBLIC_API_URL=http://192.168.1.50:3000
 ```
 
-To run the mobile app locally against the hosted API instead of a local API, use:
+To make the hosted API explicit while starting on LAN, use:
 
 ```bash
 npm run app:vercel

@@ -1,11 +1,14 @@
-import React, { useEffect } from 'react';
-import { ActivityIndicator, View } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import React, { useEffect, useRef } from 'react';
+import { ActivityIndicator, Alert, Linking, Platform, View } from 'react-native';
+import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/authStore';
 import { colors, fonts } from '../theme';
+import { fetchLeagueInvitePreview, joinLeague } from '../api/leagues';
+import { usePendingInviteStore } from '../store/pendingInviteStore';
+import { parseInviteFromUrl } from '../utils/inviteLinks';
 
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
@@ -99,11 +102,72 @@ function MainTabs() {
 
 export default function RootNavigator() {
   const { user, isLoading, restoreSession } = useAuthStore();
+  const navigationRef = useNavigationContainerRef();
+  const pendingInviteCode = usePendingInviteStore((s) => s.pendingInviteCode);
+  const hydratePendingInvite = usePendingInviteStore((s) => s.hydratePendingInvite);
+  const setPendingInvite = usePendingInviteStore((s) => s.setPendingInvite);
+  const clearPendingInviteCode = usePendingInviteStore((s) => s.clearPendingInviteCode);
   const { t } = useI18n();
+  const handledInviteRef = useRef<string | null>(null);
 
   useEffect(() => {
     restoreSession();
+    hydratePendingInvite();
   }, []);
+
+  useEffect(() => {
+    const handleUrl = (url: string | null) => {
+      const invite = parseInviteFromUrl(url);
+      if (invite) {
+        setPendingInvite(invite.code, invite.leagueName).catch(() => {});
+        if (!invite.leagueName) {
+          fetchLeagueInvitePreview(invite.code)
+            .then((league) => setPendingInvite(invite.code, league.name))
+            .catch(() => {});
+        }
+      }
+    };
+
+    Linking.getInitialURL().then(handleUrl).catch(() => {});
+
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      handleUrl(window.location.href);
+    }
+
+    const subscription = Linking.addEventListener('url', ({ url }) => handleUrl(url));
+    return () => subscription.remove();
+  }, [setPendingInvite]);
+
+  useEffect(() => {
+    if (!user || !pendingInviteCode || handledInviteRef.current === pendingInviteCode) return;
+
+    handledInviteRef.current = pendingInviteCode;
+    joinLeague(pendingInviteCode)
+      .then(async (league) => {
+        await clearPendingInviteCode();
+        if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location.pathname.startsWith('/join/')) {
+          window.history.replaceState({}, '', '/');
+        }
+        const rootNavigation = navigationRef as unknown as { navigate: (screen: string, params?: object) => void };
+        rootNavigation.navigate('Main', {
+          screen: 'Leagues',
+          params: {
+            screen: 'LeagueDetail',
+            params: { leagueId: league._id },
+          },
+        });
+      })
+      .catch((error: { response?: { data?: { error?: string } } }) => {
+        Alert.alert(t('common.error'), error.response?.data?.error || t('joinLeague.failed'));
+      });
+  }, [user, pendingInviteCode, clearPendingInviteCode, navigationRef, t]);
+
+  useEffect(() => {
+    if (isLoading || user || !pendingInviteCode) return;
+
+    const rootNavigation = navigationRef as unknown as { navigate: (screen: string, params?: object) => void };
+    rootNavigation.navigate('Register');
+  }, [isLoading, user, pendingInviteCode, navigationRef]);
 
   if (isLoading) {
     return (
@@ -114,7 +178,7 @@ export default function RootNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {user ? (
           <>

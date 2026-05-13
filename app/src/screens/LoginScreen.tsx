@@ -22,6 +22,8 @@ import { useI18n } from '../i18n';
 import { getGoogleClientIds, getGoogleIdToken, hasGoogleClientIdForPlatform } from '../auth/googleConfig';
 import { getApiBaseUrl } from '../api/client';
 import ApiScenarioSelector from '../components/ApiScenarioSelector';
+import { usePendingInviteStore } from '../store/pendingInviteStore';
+import PwaInstallPrompt from '../components/PwaInstallPrompt';
 
 type AuthStackParamList = {
   Login: undefined;
@@ -52,6 +54,8 @@ export default function LoginScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
   const signInWithPassword = useAuthStore((s) => s.signInWithPassword);
   const signInDev = useAuthStore((s) => s.signInDev);
+  const pendingInviteCode = usePendingInviteStore((s) => s.pendingInviteCode);
+  const pendingInviteLeagueName = usePendingInviteStore((s) => s.pendingInviteLeagueName);
   const [isSigningIn, setIsSigningIn] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [email, setEmail] = React.useState('');
@@ -136,6 +140,20 @@ export default function LoginScreen() {
         </View>
 
         <ApiScenarioSelector />
+
+        {pendingInviteCode ? (
+          <View style={styles.inviteBanner}>
+            <Text style={styles.inviteTitle}>{t('invite.pendingTitle')}</Text>
+            <Text style={styles.inviteText}>
+              {t('invite.pendingLoginMessage', {
+                code: pendingInviteCode,
+                leagueName: pendingInviteLeagueName ?? '',
+              })}
+            </Text>
+          </View>
+        ) : null}
+
+        {pendingInviteCode ? <PwaInstallPrompt /> : null}
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -330,6 +348,27 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 12,
     fontSize: 13,
+  },
+  inviteBanner: {
+    backgroundColor: 'rgba(0,168,126,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(0,168,126,0.35)',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 14,
+    gap: 4,
+  },
+  inviteTitle: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  inviteText: {
+    color: colors.muted,
+    fontSize: 12,
+    lineHeight: 17,
+    textAlign: 'center',
   },
 
   ctaSection: {

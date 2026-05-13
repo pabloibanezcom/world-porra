@@ -83,6 +83,21 @@ describe('league membership', () => {
     expect(detail.body.league.members).toHaveLength(2);
   });
 
+  it('returns a public league invite preview by invite code', async () => {
+    const master = await registerPlayer('master@worldporra.test', 'Master');
+    const league = await createLeague(master.token, 'Office Champions');
+
+    const preview = await requestJson<{ league: { name: string; inviteCode: string } }>(
+      `/leagues/invite/${league.inviteCode.toLowerCase()}`
+    );
+
+    expect(preview.status).toBe(200);
+    expect(preview.body.league).toEqual({
+      name: 'Office Champions',
+      inviteCode: league.inviteCode,
+    });
+  });
+
   it('closes league creation one day before the tournament kickoff', async () => {
     const master = await registerPlayer('master@worldporra.test', 'Master');
     await Match.create({

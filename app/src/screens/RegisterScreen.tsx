@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import axios from 'axios';
 import {
   View,
   Text,
@@ -16,16 +17,41 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuthStore } from '../store/authStore';
 import { colors, spacing, borderRadius } from '../theme';
 import { useI18n } from '../i18n';
+import { usePendingInviteStore } from '../store/pendingInviteStore';
+import { getApiBaseUrl } from '../api/client';
+import PwaInstallPrompt from '../components/PwaInstallPrompt';
 
 type AuthStackParamList = {
   Login: undefined;
   Register: undefined;
 };
 
+function getRegisterErrorMessage(error: unknown, t: (key: string) => string): string {
+  if (axios.isAxiosError(error)) {
+    if (error.response?.status === 409) {
+      return t('register.emailTaken');
+    }
+
+    const responseError = error.response?.data?.error;
+    if (typeof responseError === 'string') {
+      return responseError;
+    }
+
+    if (!error.response) {
+      const detail = __DEV__ ? `\n${getApiBaseUrl()}\n${error.message}` : '';
+      return `${t('login.networkFailed')}${detail}`;
+    }
+  }
+
+  return t('register.failed');
+}
+
 export default function RegisterScreen() {
   const { t } = useI18n();
   const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
   const register = useAuthStore((s) => s.register);
+  const pendingInviteCode = usePendingInviteStore((s) => s.pendingInviteCode);
+  const pendingInviteLeagueName = usePendingInviteStore((s) => s.pendingInviteLeagueName);
 
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -57,13 +83,16 @@ export default function RegisterScreen() {
     setError(null);
     try {
       await register(normalizedEmail, trimmedName, password);
-    } catch (err: unknown) {
-      const status = (err as { response?: { status?: number } })?.response?.status;
-      if (status === 409) {
-        setError(t('register.emailTaken'));
-      } else {
-        setError(t('register.failed'));
+    } catch (error: unknown) {
+      if (__DEV__) {
+        console.warn('[register] Registration failed', {
+          apiUrl: getApiBaseUrl(),
+          status: axios.isAxiosError(error) ? error.response?.status : undefined,
+          body: axios.isAxiosError(error) ? error.response?.data : undefined,
+          message: error instanceof Error ? error.message : String(error),
+        });
       }
+      setError(getRegisterErrorMessage(error, t));
     } finally {
       setIsSubmitting(false);
     }
@@ -93,6 +122,20 @@ export default function RegisterScreen() {
               <Text style={styles.subtitle}>{t('register.subtitle')}</Text>
             </View>
           </View>
+
+          {pendingInviteCode ? (
+            <View style={styles.inviteBanner}>
+              <Text style={styles.inviteTitle}>{t('invite.pendingTitle')}</Text>
+              <Text style={styles.inviteText}>
+                {t('invite.pendingRegisterMessage', {
+                  code: pendingInviteCode,
+                  leagueName: pendingInviteLeagueName ?? '',
+                })}
+              </Text>
+            </View>
+          ) : null}
+
+          {pendingInviteCode ? <PwaInstallPrompt /> : null}
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -219,6 +262,27 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 12,
     fontSize: 13,
+  },
+  inviteBanner: {
+    backgroundColor: 'rgba(0,168,126,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(0,168,126,0.35)',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 14,
+    gap: 4,
+  },
+  inviteTitle: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  inviteText: {
+    color: colors.muted,
+    fontSize: 12,
+    lineHeight: 17,
+    textAlign: 'center',
   },
 
   ctaSection: {
