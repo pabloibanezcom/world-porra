@@ -35,7 +35,7 @@ export function resolveRuntimeScenario(req: IncomingMessage): RuntimeScenario | 
   if (!slug) return null;
 
   if (!env.ENABLE_SCENARIO_SWITCHER) {
-    throw new Error('Scenario switcher is disabled');
+    return null;
   }
 
   const scenario = scenarioBySlug(slug);
