@@ -248,6 +248,97 @@ describe('league membership', () => {
     expect(sent.body).toEqual({ ok: true });
   });
 
+  it('allows admins to set payment rules before kickoff and track paid members', async () => {
+    const master = await registerPlayer('master@worldporra.test', 'Master');
+    const member = await registerPlayer('member@worldporra.test', 'Member');
+    const league = await createLeague(master.token);
+    await requestJson('/leagues/join', { token: member.token, body: { inviteCode: league.inviteCode } });
+
+    const invalidSplit = await requestJson(`/leagues/${league._id}/payments`, {
+      method: 'PATCH',
+      token: master.token,
+      body: {
+        entryFee: 25,
+        payoutSplits: [
+          { position: 1, amount: 40 },
+          { position: 2, amount: 20 },
+        ],
+      },
+    });
+    expect(invalidSplit.status).toBe(400);
+
+    const updatedSettings = await requestJson<{
+      league: { paymentSettings: { entryFee: number; payoutSplits: Array<{ position: number; amount: number }> } };
+    }>(`/leagues/${league._id}/payments`, {
+      method: 'PATCH',
+      token: master.token,
+      body: {
+        entryFee: 25,
+        payoutSplits: [
+          { position: 1, amount: 35 },
+          { position: 2, amount: 10 },
+          { position: 3, amount: 5 },
+        ],
+      },
+    });
+    expect(updatedSettings.status).toBe(200);
+    expect(updatedSettings.body.league.paymentSettings).toMatchObject({
+      entryFee: 25,
+      payoutSplits: [
+        { position: 1, amount: 35 },
+        { position: 2, amount: 10 },
+        { position: 3, amount: 5 },
+      ],
+    });
+
+    const nonAdminPayment = await requestJson(`/leagues/${league._id}/members/${master.user.id}/payment`, {
+      method: 'PATCH',
+      token: member.token,
+      body: { hasPaid: true },
+    });
+    expect(nonAdminPayment.status).toBe(403);
+
+    const paid = await requestJson<{ league: { members: Array<{ userId: { _id: string }; hasPaid: boolean; paidAt: string | null }> } }>(
+      `/leagues/${league._id}/members/${member.user.id}/payment`,
+      { method: 'PATCH', token: master.token, body: { hasPaid: true } }
+    );
+    expect(paid.status).toBe(200);
+    const paidMember = paid.body.league.members.find((entry) => String(entry.userId._id) === member.user.id);
+    expect(paidMember?.hasPaid).toBe(true);
+    expect(paidMember?.paidAt).toBeTruthy();
+  });
+
+  it('locks payment rules after the tournament starts', async () => {
+    const master = await registerPlayer('master@worldporra.test', 'Master');
+    const league = await createLeague(master.token);
+    await Match.create({
+      externalId: 650,
+      stage: 'GROUP',
+      group: 'A',
+      matchday: 1,
+      homeTeamCode: 'ARG',
+      awayTeamCode: 'ESP',
+      utcDate: new Date(Date.now() - 60 * 60 * 1000),
+      status: 'FINISHED',
+      result: { homeGoals: 1, awayGoals: 0, winner: 'HOME' },
+    });
+
+    const locked = await requestJson(`/leagues/${league._id}/payments`, {
+      method: 'PATCH',
+      token: master.token,
+      body: {
+        entryFee: 25,
+        payoutSplits: [
+          { position: 1, amount: 25 },
+          { position: 2, amount: 0 },
+          { position: 3, amount: 0 },
+        ],
+      },
+    });
+    expect(locked.status).toBe(400);
+    expect(locked.body).toEqual({ error: 'Payment rules are locked after the tournament starts' });
+  });
+
   it('lets non-owner members leave but keeps the owner in the league', async () => {
     const master = await registerPlayer('master@worldporra.test', 'Master');
     const member = await registerPlayer('member@worldporra.test', 'Member');

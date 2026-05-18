@@ -119,3 +119,8 @@ export async function isLeagueCreationLocked(): Promise<boolean> {
   const leagueCreationDeadline = await getLeagueCreationDeadline();
   return !!leagueCreationDeadline && currentDate() >= leagueCreationDeadline;
 }
+
+export async function isTournamentStarted(): Promise<boolean> {
+  const firstGroupMatch = await Match.findOne({ stage: 'GROUP' }).sort({ utcDate: 1 }).select('utcDate').lean();
+  return !!firstGroupMatch?.utcDate && currentDate() >= firstGroupMatch.utcDate;
+}

@@ -9,6 +9,15 @@ export function getApiErrorMessage(error: unknown, fallback: string): string {
   }
 
   if (typeof responseData === 'string' && responseData.trim()) {
+    const htmlRouteMiss = responseData.match(/<pre>Cannot\s+([A-Z]+)\s+([^<]+)<\/pre>/i);
+    if (htmlRouteMiss) {
+      return `API route unavailable: ${htmlRouteMiss[1].toUpperCase()} ${htmlRouteMiss[2]}`;
+    }
+
+    if (/<\/?[a-z][\s\S]*>/i.test(responseData)) {
+      return fallback;
+    }
+
     return responseData.trim();
   }
 
