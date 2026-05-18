@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import { League, Match, MatchResult } from '../types';
+import { League, LeaguePaymentSettings, Match, MatchResult } from '../types';
 
 export interface MemberMatchPrediction {
   _id: string;
@@ -27,8 +27,8 @@ export interface MemberPredictionsResponse {
   upcomingMatches: MemberUpcomingMatch[];
 }
 
-export async function createLeague(name: string): Promise<League> {
-  const { data } = await apiClient.post<{ league: League }>('/leagues', { name });
+export async function createLeague(name: string, paymentSettings?: LeaguePaymentSettings): Promise<League> {
+  const { data } = await apiClient.post<{ league: League }>('/leagues', { name, paymentSettings });
   return data.league;
 }
 
@@ -64,6 +64,26 @@ export async function deleteLeague(id: string): Promise<void> {
 
 export async function notifyLeagueMembers(id: string, title: string, body: string): Promise<void> {
   await apiClient.post(`/leagues/${id}/notify`, { title, body });
+}
+
+export async function updateLeaguePaymentSettings(
+  id: string,
+  paymentSettings: LeaguePaymentSettings
+): Promise<League> {
+  const { data } = await apiClient.patch<{ league: League }>(`/leagues/${id}/payments`, paymentSettings);
+  return data.league;
+}
+
+export async function updateLeagueMemberPayment(
+  leagueId: string,
+  userId: string,
+  hasPaid: boolean
+): Promise<League> {
+  const { data } = await apiClient.patch<{ league: League }>(
+    `/leagues/${leagueId}/members/${userId}/payment`,
+    { hasPaid }
+  );
+  return data.league;
 }
 
 export async function fetchMemberPredictions(

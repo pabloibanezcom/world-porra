@@ -7,7 +7,7 @@ import { Prediction } from '../models/Prediction';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { User } from '../models/User';
 import { getRequestLanguage, hydrateMatches } from '../services/countryTeamService';
-import { isLeagueCreationLocked } from '../services/pollConfigService';
+import { isLeagueCreationLocked, isTournamentStarted } from '../services/pollConfigService';
 import { canUserCreateLeagues } from './auth';
 
 const router = Router();
@@ -55,6 +55,20 @@ function isLeagueAdmin(
 
 const createLeagueSchema = z.object({
   name: z.string().min(1).max(50),
+  paymentSettings: z
+    .object({
+      entryFee: z.coerce.number().min(0).max(100000),
+      payoutSplits: z
+        .array(
+          z.object({
+            position: z.coerce.number().int().min(1).max(10),
+            amount: z.coerce.number().min(0).max(100000),
+          })
+        )
+        .min(1)
+        .max(10),
+    })
+    .optional(),
 });
 
 const joinLeagueSchema = z.object({
@@ -65,9 +79,61 @@ const setAdminSchema = z.object({
   userId: z.string().min(1),
 });
 
+const paymentSettingsSchema = z.object({
+  entryFee: z.coerce.number().min(0).max(100000),
+  payoutSplits: z
+    .array(
+      z.object({
+        position: z.coerce.number().int().min(1).max(10),
+        amount: z.coerce.number().min(0).max(100000),
+      })
+    )
+    .min(1)
+    .max(10),
+});
+
+const setMemberPaymentSchema = z.object({
+  hasPaid: z.boolean(),
+});
+
+function validatePayoutSplits(
+  splits: Array<{ position: number; amount: number }>,
+  entryFee: number,
+  memberCount: number
+) {
+  const positions = new Set<number>();
+  for (const split of splits) {
+    if (positions.has(split.position)) {
+      throw new z.ZodError([
+        {
+          code: z.ZodIssueCode.custom,
+          path: ['payoutSplits'],
+          message: 'Payout positions must be unique',
+        },
+      ]);
+    }
+    positions.add(split.position);
+  }
+
+  const totalPayout = splits.reduce((sum, split) => sum + split.amount, 0);
+  const pot = entryFee * memberCount;
+  if (totalPayout > pot) {
+    throw new z.ZodError([
+      {
+        code: z.ZodIssueCode.custom,
+        path: ['payoutSplits'],
+        message: 'Payout amounts cannot exceed the league pot',
+      },
+    ]);
+  }
+}
+
 router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { name } = createLeagueSchema.parse(req.body);
+    const { name, paymentSettings } = createLeagueSchema.parse(req.body);
+    if (paymentSettings) {
+      validatePayoutSplits(paymentSettings.payoutSplits, paymentSettings.entryFee, 1);
+    }
     const user = await User.findById(req.userId);
 
     if (!user || !canUserCreateLeagues(user)) {
@@ -85,7 +151,8 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
       inviteCode: await generateUniqueInviteCode(),
       ownerId: req.userId,
       maxMembers: LEAGUE_MAX_MEMBERS,
-      members: [{ userId: req.userId, isAdmin: true }],
+      members: [{ userId: req.userId, isAdmin: true, hasPaid: false }],
+      ...(paymentSettings ? { paymentSettings } : {}),
     });
 
     res.status(201).json({ league });
@@ -120,7 +187,7 @@ router.post('/join', authMiddleware, async (req: AuthRequest, res: Response): Pr
       return;
     }
 
-    league.members.push({ userId: req.userId as any, joinedAt: new Date(), isAdmin: false });
+    league.members.push({ userId: req.userId as any, joinedAt: new Date(), isAdmin: false, hasPaid: false });
     await league.save();
 
     res.json({ league });
@@ -205,6 +272,84 @@ router.delete('/:id', authMiddleware, async (req: AuthRequest, res: Response): P
 
   await league.deleteOne();
   res.json({ message: 'League deleted successfully' });
+});
+
+router.patch('/:id/payments', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const paymentSettings = paymentSettingsSchema.parse(req.body);
+
+    const league = await League.findById(req.params.id);
+    if (!league) {
+      res.status(404).json({ error: 'League not found' });
+      return;
+    }
+
+    if (!isLeagueAdmin(league, req.userId!)) {
+      res.status(403).json({ error: 'Only league admins can manage payments' });
+      return;
+    }
+
+    if (await isTournamentStarted()) {
+      res.status(400).json({ error: 'Payment rules are locked after the tournament starts' });
+      return;
+    }
+
+    validatePayoutSplits(paymentSettings.payoutSplits, paymentSettings.entryFee, league.members.length);
+
+    league.paymentSettings = paymentSettings;
+    await league.save();
+    const updatedLeague = await League.findById(league._id)
+      .populate('members.userId', 'name avatarUrl totalPoints')
+      .populate('ownerId', 'name avatarUrl')
+      .lean();
+
+    res.json({ league: updatedLeague });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: 'Invalid payment settings', details: error.errors });
+      return;
+    }
+    throw error;
+  }
+});
+
+router.patch('/:id/members/:userId/payment', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { hasPaid } = setMemberPaymentSchema.parse(req.body);
+    const league = await League.findById(req.params.id);
+    if (!league) {
+      res.status(404).json({ error: 'League not found' });
+      return;
+    }
+
+    if (!isLeagueAdmin(league, req.userId!)) {
+      res.status(403).json({ error: 'Only league admins can manage payments' });
+      return;
+    }
+
+    const member = league.members.find((entry) => entry.userId.toString() === req.params.userId);
+    if (!member) {
+      res.status(404).json({ error: 'League member not found' });
+      return;
+    }
+
+    member.hasPaid = hasPaid;
+    member.paidAt = hasPaid ? new Date() : null;
+    await league.save();
+
+    const updatedLeague = await League.findById(league._id)
+      .populate('members.userId', 'name avatarUrl totalPoints')
+      .populate('ownerId', 'name avatarUrl')
+      .lean();
+
+    res.json({ league: updatedLeague });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: 'Invalid payment payload', details: error.errors });
+      return;
+    }
+    throw error;
+  }
 });
 
 router.post('/:id/admins', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
