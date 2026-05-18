@@ -4,7 +4,11 @@
       "Bash(git -C /Users/pablo/Projects/world-porra diff web/.gitignore)",
       "Bash(git -C /Users/pablo/Projects/world-porra add web/.gitignore web/src/app/globals.css web/src/app/page.tsx)",
       "Bash(git -C /Users/pablo/Projects/world-porra commit -m ' *)",
-      "Bash(git -C /Users/pablo/Projects/world-porra push)"
+      "Bash(git -C /Users/pablo/Projects/world-porra push)",
+      "Bash(mongodump --version)",
+      "Bash(chmod +x /Users/pablo/Projects/world-porra/scripts/setup-db.sh)",
+      "Bash(./scripts/setup-db.sh)",
+      "Bash(curl -s https://api.ipify.org)"
     ]
   }
 }

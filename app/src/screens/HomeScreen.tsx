@@ -56,6 +56,7 @@ export default function HomeScreen() {
   const [selectedResult, setSelectedResult] = useState<Match | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   const predMap = Object.fromEntries(predictions.map((p) => [p.matchId, p]));
 
@@ -71,8 +72,9 @@ export default function HomeScreen() {
       setPredictions(p);
       setLeagues(leagues);
       setPollConfig(config);
+      setLoadFailed(false);
     } catch {
-      // silently fail
+      setLoadFailed(true);
     } finally {
       setLoading(false);
     }
@@ -129,7 +131,8 @@ export default function HomeScreen() {
       : upcoming.slice(0, 3);
   const recentFinished = [...finished].reverse().slice(0, 4);
 
-  const totalPoints = user?.totalPoints ?? 0;
+  const totalPoints = predictions.reduce((sum, prediction) => sum + (prediction.points ?? 0), 0);
+  const pointsSummary = loadFailed ? `- ${t('common.points')}` : `${totalPoints} ${t('common.points')}`;
   const homeLeagues = leagues.slice(0, 2);
 
   const handleSave = async (matchId: string, score: [number, number], qualifier?: 'HOME' | 'AWAY' | null) => {
@@ -168,7 +171,7 @@ export default function HomeScreen() {
             <Text style={styles.greeting}>{greeting},</Text>
             <View style={styles.headerTitleRow}>
               <Text style={styles.userName}>{firstName}</Text>
-              <Text style={styles.pointsSummary}>{totalPoints} {t('common.points')}</Text>
+              <Text style={styles.pointsSummary}>{pointsSummary}</Text>
             </View>
           </View>
         </View>
