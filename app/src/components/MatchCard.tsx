@@ -164,6 +164,8 @@ interface Props {
   match: Match;
   prediction?: Prediction | null;
   result?: Result | null;
+  locked?: boolean;
+  lockLabel?: string | null;
   onPress?: () => void;
 }
 
@@ -205,7 +207,7 @@ function getCardState(match: Match, prediction?: Prediction | null): MatchCardSt
   return prediction ? 'predicted' : 'empty';
 }
 
-export default function MatchCard({ match, prediction, result, onPress }: Props) {
+export default function MatchCard({ match, prediction, result, locked, lockLabel, onPress }: Props) {
   const { t, locale } = useI18n();
   const ctx = useScrollTriggerContext();
 
@@ -274,7 +276,9 @@ export default function MatchCard({ match, prediction, result, onPress }: Props)
 
   let action: React.ReactNode = null;
   if (state === 'empty') {
-    action = (
+    action = locked ? (
+      <Text style={styles.lockedBadge}>{t('deadline.locked')}</Text>
+    ) : (
       <View style={styles.predictBtn}>
         <Text style={styles.predictBtnText}>{t('matchCard.predict')}</Text>
       </View>
@@ -332,6 +336,12 @@ export default function MatchCard({ match, prediction, result, onPress }: Props)
           </Text>
           {action}
         </View>
+
+        {!!lockLabel && match.status === 'SCHEDULED' && (
+          <View style={styles.lockInfoRow}>
+            <Text style={[styles.lockInfoText, locked && styles.lockInfoTextLocked]}>{lockLabel}</Text>
+          </View>
+        )}
 
         <View style={styles.matchRow}>
           <View style={styles.teamSide}>
@@ -478,6 +488,22 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontFamily: fonts.bodyMedium,
   },
+  lockedBadge: {
+    color: colors.muted,
+    fontSize: 11,
+    fontWeight: '700',
+    fontFamily: fonts.bodyMedium,
+  },
+  lockInfoRow: {
+    marginTop: -5,
+    marginBottom: 10,
+  },
+  lockInfoText: {
+    color: colors.muted,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 10,
+  },
+  lockInfoTextLocked: { color: colors.warning },
   livePill: {
     backgroundColor: 'rgba(226,59,74,0.14)',
     paddingHorizontal: 10,

@@ -141,6 +141,10 @@ const translations: Record<Language, TranslationMap> = {
     'scenario.label': 'Tournament phase',
     'scenario.select': 'Select tournament phase',
     'scenario.switchHint': 'Switching phase signs you out because each scenario has its own users and predictions.',
+    'deadline.locked': 'Locked',
+    'deadline.locksIn': ({ time }) => `Locks in ${time}`,
+    'deadline.groupPicks': 'Group picks',
+    'deadline.tournamentPicks': 'Tournament picks',
 
     'league.notFound': 'League not found',
     'league.playersGroupStage': ({ count }) => `${count} players · Group Stage`,
@@ -501,6 +505,10 @@ const translations: Record<Language, TranslationMap> = {
     'scenario.label': 'Fase del torneo',
     'scenario.select': 'Seleccionar fase del torneo',
     'scenario.switchHint': 'Cambiar de fase cierra la sesión porque cada escenario tiene sus propios usuarios y pronósticos.',
+    'deadline.locked': 'Cerrado',
+    'deadline.locksIn': ({ time }) => `Cierra en ${time}`,
+    'deadline.groupPicks': 'Pronósticos de grupos',
+    'deadline.tournamentPicks': 'Pronósticos del torneo',
 
     'league.notFound': 'Liga no encontrada',
     'league.playersGroupStage': ({ count }) => `${count} jugadores · Fase de grupos`,

@@ -18,7 +18,8 @@ import PicksTabs, { PicksTab } from '../components/PicksTabs';
 import GroupPredictionCard from '../components/GroupPredictionCard';
 import { colors, fonts } from '../theme';
 import { useI18n } from '../i18n';
-import { isPredictionLocked } from '../utils/prediction';
+import { getPredictionLockTime, isPredictionLocked } from '../utils/prediction';
+import { formatLockStatus } from '../utils/deadline';
 import { usePicksData } from '../hooks/usePicksData';
 
 function getResult(pred: Prediction, match: Match): 'exact' | 'correct' | 'wrong' | null {
@@ -70,8 +71,10 @@ export default function PicksScreen() {
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [selectedResult, setSelectedResult] = useState<Match | null>(null);
   const [isDraggingGroupTeam, setIsDraggingGroupTeam] = useState(false);
+  const [now, setNow] = useState(() => new Date());
   const {
     groupPredMap,
+    groupPredictionsDeadline,
     groupPredictionsLocked,
     groupStandings,
     handleGroupOrder,
@@ -83,6 +86,7 @@ export default function PicksScreen() {
     predMap,
     refreshing,
     tournamentPicks,
+    tournamentPredictionsDeadline,
     tournamentPredictionsLocked,
     tournamentTeams,
   } = usePicksData();
@@ -90,6 +94,11 @@ export default function PicksScreen() {
   useEffect(() => {
     scrollRef.current?.scrollTo({ y: 0, animated: false });
   }, [tab]);
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   const upcoming = useMemo(
     () => matches.filter((m) => m.status === 'SCHEDULED' || m.status === 'LIVE'),
@@ -107,6 +116,8 @@ export default function PicksScreen() {
     [finished, tab, upcoming],
   );
   const matchGroups = useMemo(() => groupMatchesByDay(shown, locale), [locale, shown]);
+  const groupLockStatus = formatLockStatus(groupPredictionsDeadline, now, t);
+  const tournamentLockStatus = formatLockStatus(tournamentPredictionsDeadline, now, t);
   if (loading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
@@ -137,13 +148,25 @@ export default function PicksScreen() {
         scrollEventThrottle={200}
       >
         {tab === 'finals' ? (
-          <TournamentPicksSection
-            picks={tournamentPicks}
-            teams={tournamentTeams}
-            onPickChange={tournamentPredictionsLocked ? undefined : handleTournamentPick}
-          />
+          <>
+            <DeadlineNotice
+              title={t('deadline.tournamentPicks')}
+              status={tournamentLockStatus}
+              locked={tournamentPredictionsLocked}
+            />
+            <TournamentPicksSection
+              picks={tournamentPicks}
+              teams={tournamentTeams}
+              onPickChange={tournamentPredictionsLocked ? undefined : handleTournamentPick}
+            />
+          </>
         ) : tab === 'groups' ? (
           <View style={styles.groupCards}>
+            <DeadlineNotice
+              title={t('deadline.groupPicks')}
+              status={groupLockStatus}
+              locked={groupPredictionsLocked}
+            />
             {groupStandings.map((group) => (
               <GroupPredictionCard
                 key={group.id}
@@ -170,7 +193,9 @@ export default function PicksScreen() {
                   {group.matches.map((m) => {
                     const pred = predMap[m._id];
                     const result = m.status === 'FINISHED' && pred ? getResult(pred, m) : null;
-                    const canPredict = !isPredictionLocked(m) && !hasTbdTeam(m);
+                    const locked = isPredictionLocked(m);
+                    const canPredict = !locked && !hasTbdTeam(m);
+                    const lockLabel = formatLockStatus(getPredictionLockTime(m), now, t);
                     const onPress = canPredict
                       ? () => setSelectedMatch(m)
                       : m.status === 'FINISHED'
@@ -183,6 +208,8 @@ export default function PicksScreen() {
                         match={m}
                         prediction={pred}
                         result={result}
+                        locked={locked}
+                        lockLabel={lockLabel}
                         onPress={onPress}
                       />
                     );
@@ -225,6 +252,25 @@ export default function PicksScreen() {
   );
 }
 
+function DeadlineNotice({
+  title,
+  status,
+  locked,
+}: {
+  title: string;
+  status: string | null;
+  locked: boolean;
+}) {
+  if (!status) return null;
+
+  return (
+    <View style={[styles.deadlineNotice, locked && styles.deadlineNoticeLocked]}>
+      <Text style={styles.deadlineTitle}>{title}</Text>
+      <Text style={[styles.deadlineStatus, locked && styles.deadlineStatusLocked]}>{status}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   fixedHeader: {
@@ -251,6 +297,35 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyMedium,
   },
   matchList: { gap: 10 },
+  deadlineNotice: {
+    backgroundColor: colors.card,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  deadlineNoticeLocked: {
+    borderColor: 'rgba(236,126,0,0.28)',
+    backgroundColor: 'rgba(236,126,0,0.08)',
+  },
+  deadlineTitle: {
+    color: colors.muted,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  deadlineStatus: {
+    color: colors.accent,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  deadlineStatusLocked: { color: colors.warning },
 
   empty: { alignItems: 'center', paddingTop: 40 },
   emptyText: { color: colors.muted, fontSize: 14 },
