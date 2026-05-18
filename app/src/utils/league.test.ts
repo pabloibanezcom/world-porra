@@ -49,6 +49,20 @@ describe('league utilities', () => {
     expect(memberPoints(fullMember)).toBe(42);
   });
 
+  it('handles league members whose user record is missing', () => {
+    const missingUserMember: LeagueMember = {
+      userId: null,
+      joinedAt: '2026-01-01T00:00:00.000Z',
+      isAdmin: false,
+    };
+
+    expect(memberId(missingUserMember)).toBe('');
+    expect(memberName(missingUserMember)).toBe('Player');
+    expect(memberAvatarUrl(missingUserMember)).toBe('');
+    expect(memberInitials(missingUserMember)).toBe('P');
+    expect(memberPoints(missingUserMember)).toBe(0);
+  });
+
   it('detects the current member and ranks members by points', () => {
     const members = [
       member({ id: 'low', name: 'Low', totalPoints: 2 }),

@@ -239,6 +239,7 @@ export function usePicksData() {
 
   return {
     groupPredMap,
+    groupPredictionsDeadline: pollConfig?.groupPredictionsDeadline ?? null,
     groupPredictionsLocked: !!pollConfig?.groupPredictionsLocked,
     groupStandings,
     handleGroupOrder,
@@ -250,6 +251,7 @@ export function usePicksData() {
     predMap,
     refreshing,
     tournamentPicks,
+    tournamentPredictionsDeadline: pollConfig?.tournamentPredictionsDeadline ?? null,
     tournamentPredictionsLocked: !!pollConfig?.tournamentPredictionsLocked,
     tournamentTeams,
   };

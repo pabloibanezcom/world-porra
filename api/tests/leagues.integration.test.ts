@@ -1,10 +1,16 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { clearDatabase, requestJson, seedTestCountryTeams, startIntegrationServer, stopIntegrationServer } from './helpers/integration';
 import { Types } from 'mongoose';
 import { League } from '../src/models/League';
 import { Match } from '../src/models/Match';
 import { Prediction } from '../src/models/Prediction';
 import { User } from '../src/models/User';
+
+const pushMocks = vi.hoisted(() => ({
+  sendToUsers: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../src/services/pushService', () => pushMocks);
 
 beforeAll(async () => {
   await startIntegrationServer();
@@ -13,6 +19,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   await clearDatabase();
   await seedTestCountryTeams();
+  vi.clearAllMocks();
 });
 
 afterAll(async () => {
@@ -306,6 +313,128 @@ describe('league membership', () => {
     const paidMember = paid.body.league.members.find((entry) => String(entry.userId._id) === member.user.id);
     expect(paidMember?.hasPaid).toBe(true);
     expect(paidMember?.paidAt).toBeTruthy();
+  });
+
+  it('allows admins to remind unpaid members only', async () => {
+    const master = await registerPlayer('master@worldporra.test', 'Master');
+    const paidMember = await registerPlayer('paid@worldporra.test', 'Paid');
+    const unpaidMember = await registerPlayer('unpaid@worldporra.test', 'Unpaid');
+    const league = await createLeague(master.token);
+    await requestJson('/leagues/join', { token: paidMember.token, body: { inviteCode: league.inviteCode } });
+    await requestJson('/leagues/join', { token: unpaidMember.token, body: { inviteCode: league.inviteCode } });
+
+    const forbidden = await requestJson(`/leagues/${league._id}/payments/remind-unpaid`, {
+      token: unpaidMember.token,
+      body: {},
+    });
+    expect(forbidden.status).toBe(403);
+
+    await requestJson(`/leagues/${league._id}/members/${master.user.id}/payment`, {
+      method: 'PATCH',
+      token: master.token,
+      body: { hasPaid: true },
+    });
+    await requestJson(`/leagues/${league._id}/members/${paidMember.user.id}/payment`, {
+      method: 'PATCH',
+      token: master.token,
+      body: { hasPaid: true },
+    });
+
+    const reminded = await requestJson<{ ok: true; recipients: number }>(
+      `/leagues/${league._id}/payments/remind-unpaid`,
+      { token: master.token, body: {} }
+    );
+    expect(reminded.status).toBe(200);
+    expect(reminded.body).toEqual({ ok: true, recipients: 1 });
+    expect(pushMocks.sendToUsers).toHaveBeenCalledWith(
+      [unpaidMember.user.id],
+      expect.objectContaining({
+        title: 'Friends League: payment reminder',
+        url: '/',
+      })
+    );
+
+    await requestJson(`/leagues/${league._id}/members/${unpaidMember.user.id}/payment`, {
+      method: 'PATCH',
+      token: master.token,
+      body: { hasPaid: true },
+    });
+    const allPaid = await requestJson(`/leagues/${league._id}/payments/remind-unpaid`, {
+      token: master.token,
+      body: {},
+    });
+    expect(allPaid.status).toBe(400);
+    expect(allPaid.body).toEqual({ error: 'All league members are marked as paid' });
+  });
+
+  it('allows admins to remind members missing picks for matches locking soon', async () => {
+    const master = await registerPlayer('master@worldporra.test', 'Master');
+    const pickedMember = await registerPlayer('picked@worldporra.test', 'Picked');
+    const missingMember = await registerPlayer('missing@worldporra.test', 'Missing');
+    const league = await createLeague(master.token);
+    await requestJson('/leagues/join', { token: pickedMember.token, body: { inviteCode: league.inviteCode } });
+    await requestJson('/leagues/join', { token: missingMember.token, body: { inviteCode: league.inviteCode } });
+
+    const match = await Match.create({
+      externalId: 660,
+      stage: 'GROUP',
+      group: 'A',
+      matchday: 1,
+      homeTeamCode: 'ARG',
+      awayTeamCode: 'ESP',
+      utcDate: new Date(Date.now() + 2 * 60 * 60 * 1000),
+      status: 'SCHEDULED',
+    });
+    await Match.create({
+      externalId: 661,
+      stage: 'GROUP',
+      group: 'A',
+      matchday: 1,
+      homeTeamCode: 'BRA',
+      awayTeamCode: 'FRA',
+      utcDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+      status: 'SCHEDULED',
+    });
+
+    await Prediction.create([
+      { userId: master.user.id, matchId: match._id, homeGoals: 1, awayGoals: 0, predictedWinner: 'HOME' },
+      { userId: pickedMember.user.id, matchId: match._id, homeGoals: 1, awayGoals: 1, predictedWinner: 'DRAW' },
+    ]);
+
+    const forbidden = await requestJson(`/leagues/${league._id}/picks/remind-missing`, {
+      token: missingMember.token,
+      body: {},
+    });
+    expect(forbidden.status).toBe(403);
+
+    const reminded = await requestJson<{ ok: true; recipients: number; matches: number }>(
+      `/leagues/${league._id}/picks/remind-missing`,
+      { token: master.token, body: {} }
+    );
+    expect(reminded.status).toBe(200);
+    expect(reminded.body).toEqual({ ok: true, recipients: 1, matches: 1 });
+    expect(pushMocks.sendToUsers).toHaveBeenCalledWith(
+      [missingMember.user.id],
+      expect.objectContaining({
+        title: 'Friends League: picks reminder',
+        url: '/',
+      })
+    );
+
+    await Prediction.create({
+      userId: missingMember.user.id,
+      matchId: match._id,
+      homeGoals: 2,
+      awayGoals: 1,
+      predictedWinner: 'HOME',
+    });
+
+    const upToDate = await requestJson(`/leagues/${league._id}/picks/remind-missing`, {
+      token: master.token,
+      body: {},
+    });
+    expect(upToDate.status).toBe(400);
+    expect(upToDate.body).toEqual({ error: 'All league members have picks for upcoming matches' });
   });
 
   it('locks payment rules after the tournament starts', async () => {

@@ -8,7 +8,8 @@ import { colors, spacing, fontSize, borderRadius, fonts } from '../theme';
 import { format } from 'date-fns';
 import { hasTbdTeam } from '../components/MatchCard';
 import { useI18n } from '../i18n';
-import { isPredictionLocked } from '../utils/prediction';
+import { getPredictionLockTime, isPredictionLocked } from '../utils/prediction';
+import { formatLockStatus } from '../utils/deadline';
 
 type RouteParams = { MatchDetail: { matchId: string } };
 
@@ -23,6 +24,7 @@ export default function MatchDetailScreen() {
   const [awayGoals, setAwayGoals] = useState(0);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
     setLoading(true);
@@ -38,6 +40,11 @@ export default function MatchDetailScreen() {
 
     return () => clearInterval(interval);
   }, [match?.status, route.params.matchId, language]);
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   const loadMatch = async () => {
     try {
@@ -75,6 +82,7 @@ export default function MatchDetailScreen() {
   const isLocked = match ? isPredictionLocked(match) : false;
   const teamsTbd = match ? hasTbdTeam(match) : false;
   const predictionDisabled = isLocked || teamsTbd;
+  const lockStatus = match ? formatLockStatus(getPredictionLockTime(match), now, t) : null;
 
   if (loading) {
     return (
@@ -99,6 +107,9 @@ export default function MatchDetailScreen() {
           {match.stage.replace(/_/g, ' ')}{match.group ? ` - ${t('common.group', { group: match.group })}` : ''}
         </Text>
         <Text style={styles.date}>{format(new Date(match.utcDate), 'EEE, MMM d · HH:mm')}</Text>
+        {match.status === 'SCHEDULED' && !!lockStatus && (
+          <Text style={[styles.lockStatus, isLocked && styles.lockStatusLocked]}>{lockStatus}</Text>
+        )}
       </View>
 
       <View style={styles.teams}>
@@ -210,6 +221,9 @@ export default function MatchDetailScreen() {
             {teamsTbd ? t('match.predictionsTbd') : t('match.locked')}
           </Text>
         )}
+        {isLocked && prediction && (
+          <Text style={styles.lockedText}>{t('match.locked')}</Text>
+        )}
       </View>
     </View>
   );
@@ -221,6 +235,14 @@ const styles = StyleSheet.create({
   matchHeader: { alignItems: 'center', padding: spacing.lg, backgroundColor: colors.primary },
   stage: { color: colors.accent, fontSize: fontSize.sm, fontWeight: '600', textTransform: 'uppercase' },
   date: { color: 'rgba(255,255,255,0.7)', fontSize: fontSize.sm, marginTop: spacing.xs },
+  lockStatus: {
+    color: colors.accent,
+    fontFamily: fonts.bodyMedium,
+    fontSize: fontSize.xs,
+    fontWeight: '700',
+    marginTop: spacing.xs,
+  },
+  lockStatusLocked: { color: colors.warning },
   teams: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: spacing.xl, backgroundColor: colors.surface },
   team: { flex: 1, alignItems: 'center' },
   teamCode: { fontSize: fontSize.xxl, fontWeight: '800', color: colors.text },

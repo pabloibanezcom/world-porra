@@ -66,6 +66,26 @@ export async function notifyLeagueMembers(id: string, title: string, body: strin
   await apiClient.post(`/leagues/${id}/notify`, { title, body });
 }
 
+export async function remindUnpaidLeagueMembers(id: string): Promise<{ recipients: number }> {
+  const { data } = await apiClient.post<{ ok: true; recipients: number }>(`/leagues/${id}/payments/remind-unpaid`);
+  return { recipients: data.recipients };
+}
+
+export async function remindMissingPickMembers(id: string): Promise<{ recipients: number; matches: number }> {
+  const { data } = await apiClient.post<{ ok: true; recipients: number; matches: number }>(
+    `/leagues/${id}/picks/remind-missing`
+  );
+  return { recipients: data.recipients, matches: data.matches };
+}
+
+export async function addLeagueAdmin(id: string, userId: string): Promise<void> {
+  await apiClient.post(`/leagues/${id}/admins`, { userId });
+}
+
+export async function removeLeagueAdmin(id: string, userId: string): Promise<void> {
+  await apiClient.delete(`/leagues/${id}/admins/${userId}`);
+}
+
 export async function updateLeaguePaymentSettings(
   id: string,
   paymentSettings: LeaguePaymentSettings

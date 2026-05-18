@@ -18,16 +18,21 @@ import LeaveConfirmModal from '../components/LeaveConfirmModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CommonActions, RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import {
+  addLeagueAdmin,
   deleteLeague,
   fetchLeague,
   leaveLeague,
+  remindMissingPickMembers,
   notifyLeagueMembers,
+  remindUnpaidLeagueMembers,
+  removeLeagueAdmin,
   updateLeagueMemberPayment,
   updateLeaguePaymentSettings,
 } from '../api/leagues';
 import { League, LeagueMember, LeaguePaymentSettings } from '../types';
 import { colors, fonts } from '../theme';
 import Avatar from '../components/ui/Avatar';
+import BottomSheet from '../components/ui/BottomSheet';
 import LeagueRaceStrip from '../components/LeagueRaceStrip';
 import { useAuthStore } from '../store/authStore';
 import {
@@ -72,9 +77,13 @@ export default function LeagueDetailScreen() {
   const [notifyModalVisible, setNotifyModalVisible] = useState(false);
   const [inviteSheetVisible, setInviteSheetVisible] = useState(false);
   const [leaveModalVisible, setLeaveModalVisible] = useState(false);
+  const [settingsSheetVisible, setSettingsSheetVisible] = useState(false);
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
   const [paymentSaving, setPaymentSaving] = useState(false);
   const [paymentUpdatingMemberId, setPaymentUpdatingMemberId] = useState<string | null>(null);
+  const [adminUpdatingMemberId, setAdminUpdatingMemberId] = useState<string | null>(null);
+  const [remindingUnpaid, setRemindingUnpaid] = useState(false);
+  const [remindingMissingPicks, setRemindingMissingPicks] = useState(false);
 
   const loadLeague = useCallback(async () => {
     try {
@@ -171,6 +180,55 @@ export default function LeagueDetailScreen() {
     }
   };
 
+  const handleToggleAdmin = async (member: LeagueMember) => {
+    const id = memberId(member);
+    if (!id || adminUpdatingMemberId) return;
+    setAdminUpdatingMemberId(id);
+    try {
+      if (member.isAdmin) {
+        await removeLeagueAdmin(league._id, id);
+      } else {
+        await addLeagueAdmin(league._id, id);
+      }
+      await loadLeague();
+    } catch (err: any) {
+      Alert.alert(t('common.error'), getApiErrorMessage(err, t('league.adminUpdateFailed')));
+    } finally {
+      setAdminUpdatingMemberId(null);
+    }
+  };
+
+  const handleRemindUnpaid = async () => {
+    if (remindingUnpaid) return;
+
+    setRemindingUnpaid(true);
+    try {
+      const result = await remindUnpaidLeagueMembers(league._id);
+      Alert.alert(t('payments.reminderSentTitle'), t('payments.reminderSentBody', { count: result.recipients }));
+    } catch (err: any) {
+      Alert.alert(t('common.error'), getApiErrorMessage(err, t('payments.reminderFailed')));
+    } finally {
+      setRemindingUnpaid(false);
+    }
+  };
+
+  const handleRemindMissingPicks = async () => {
+    if (remindingMissingPicks) return;
+
+    setRemindingMissingPicks(true);
+    try {
+      const result = await remindMissingPickMembers(league._id);
+      Alert.alert(
+        t('picksReminder.sentTitle'),
+        t('picksReminder.sentBody', { count: result.recipients, matches: result.matches })
+      );
+    } catch (err: any) {
+      Alert.alert(t('common.error'), getApiErrorMessage(err, t('picksReminder.failed')));
+    } finally {
+      setRemindingMissingPicks(false);
+    }
+  };
+
   const handleSavePaymentSettings = async (settings: LeaguePaymentSettings) => {
     setPaymentSaving(true);
     try {
@@ -213,6 +271,11 @@ export default function LeagueDetailScreen() {
           <TouchableOpacity style={styles.shareIconBtn} onPress={() => setInviteSheetVisible(true)} activeOpacity={0.7}>
             <Ionicons name="share-outline" size={20} color={colors.muted} />
           </TouchableOpacity>
+          {isAdmin && (
+            <TouchableOpacity style={styles.shareIconBtn} onPress={() => setSettingsSheetVisible(true)} activeOpacity={0.7}>
+              <Ionicons name="settings-outline" size={20} color={colors.muted} />
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={styles.statsRow}>
@@ -220,18 +283,6 @@ export default function LeagueDetailScreen() {
           <StatCard label={t('league.yourPoints')} value={`${myPoints}`} color={colors.text} />
           <StatCard label={t('league.leader')} value={leader ? `${memberPoints(leader)} ${t('common.pointsShort')}` : '—'} color={colors.text} />
         </View>
-
-        {isAdmin && (
-          <TouchableOpacity style={styles.notifyBtn} onPress={() => setNotifyModalVisible(true)} activeOpacity={0.85}>
-            <Text style={styles.notifyBtnText}>{t('league.notifyMembers')}</Text>
-          </TouchableOpacity>
-        )}
-
-        {isOwner && (
-          <TouchableOpacity style={styles.deleteBtn} onPress={handleDeleteLeague} activeOpacity={0.85}>
-            <Text style={styles.deleteBtnText}>{t('league.deleteAction')}</Text>
-          </TouchableOpacity>
-        )}
 
         <View style={styles.raceCard}>
           <SectionLabel>{t('league.pointsRace')}</SectionLabel>
@@ -279,7 +330,7 @@ export default function LeagueDetailScreen() {
             {isAdmin && (
               <TouchableOpacity
                 style={styles.smallIconButton}
-                onPress={() => setPaymentModalVisible(true)}
+                onPress={() => setSettingsSheetVisible(true)}
                 activeOpacity={0.75}
               >
                 <Ionicons name="settings-outline" size={16} color={colors.muted} />
@@ -333,7 +384,7 @@ export default function LeagueDetailScreen() {
           )}
         </View>
 
-        {!isOwner && (
+        {!isOwner && !isAdmin && (
           <TouchableOpacity style={styles.leaveBtn} onPress={() => setLeaveModalVisible(true)} activeOpacity={0.85}>
             <Text style={styles.deleteBtnText}>{t('league.leaveAction')}</Text>
           </TouchableOpacity>
@@ -358,6 +409,39 @@ export default function LeagueDetailScreen() {
         onClose={() => setLeaveModalVisible(false)}
         onConfirm={handleLeaveConfirm}
       />
+      {settingsSheetVisible && (
+        <LeagueSettingsSheet
+          league={league}
+          isOwner={isOwner}
+          adminUpdatingMemberId={adminUpdatingMemberId}
+          remindingUnpaid={remindingUnpaid}
+          remindingMissingPicks={remindingMissingPicks}
+          onClose={() => setSettingsSheetVisible(false)}
+          onInvite={() => {
+            setSettingsSheetVisible(false);
+            setInviteSheetVisible(true);
+          }}
+          onNotify={() => {
+            setSettingsSheetVisible(false);
+            setNotifyModalVisible(true);
+          }}
+          onEditPayments={() => {
+            setSettingsSheetVisible(false);
+            setPaymentModalVisible(true);
+          }}
+          onRemindUnpaid={handleRemindUnpaid}
+          onRemindMissingPicks={handleRemindMissingPicks}
+          onToggleAdmin={handleToggleAdmin}
+          onDeleteLeague={() => {
+            setSettingsSheetVisible(false);
+            handleDeleteLeague();
+          }}
+          onLeaveLeague={() => {
+            setSettingsSheetVisible(false);
+            setLeaveModalVisible(true);
+          }}
+        />
+      )}
       <PaymentSettingsModal
         visible={paymentModalVisible}
         settings={paymentSettings}
@@ -450,6 +534,163 @@ function RankingRow({
             </Text>
           )}
         </TouchableOpacity>
+      )}
+    </TouchableOpacity>
+  );
+}
+
+function LeagueSettingsSheet({
+  league,
+  isOwner,
+  adminUpdatingMemberId,
+  remindingUnpaid,
+  remindingMissingPicks,
+  onClose,
+  onInvite,
+  onNotify,
+  onEditPayments,
+  onRemindUnpaid,
+  onRemindMissingPicks,
+  onToggleAdmin,
+  onDeleteLeague,
+  onLeaveLeague,
+}: {
+  league: League;
+  isOwner: boolean;
+  adminUpdatingMemberId: string | null;
+  remindingUnpaid: boolean;
+  remindingMissingPicks: boolean;
+  onClose: () => void;
+  onInvite: () => void;
+  onNotify: () => void;
+  onEditPayments: () => void;
+  onRemindUnpaid: () => void;
+  onRemindMissingPicks: () => void;
+  onToggleAdmin: (member: LeagueMember) => void;
+  onDeleteLeague: () => void;
+  onLeaveLeague: () => void;
+}) {
+  const { t } = useI18n();
+  const ownerId = league.ownerId?.id || (league.ownerId as any)?._id || '';
+  const unpaidCount = league.members.filter((member) => !member.hasPaid).length;
+
+  return (
+    <BottomSheet onClose={onClose}>
+      <ScrollView style={styles.settingsSheet} contentContainerStyle={styles.settingsContent}>
+        <Text style={styles.settingsTitle}>{t('league.settingsTitle')}</Text>
+        <Text style={styles.settingsSubtitle}>{league.name}</Text>
+
+        <View style={styles.settingsSection}>
+          <SettingsActionRow icon="share-outline" label={t('league.inviteMembers')} onPress={onInvite} />
+          <SettingsActionRow icon="notifications-outline" label={t('league.notifyMembers')} onPress={onNotify} />
+          <SettingsActionRow
+            icon="alarm-outline"
+            label={t('picksReminder.remindMissing')}
+            detail={t('picksReminder.next24h')}
+            loading={remindingMissingPicks}
+            disabled={remindingMissingPicks}
+            onPress={onRemindMissingPicks}
+          />
+          <SettingsActionRow icon="card-outline" label={t('payments.editTitle')} onPress={onEditPayments} />
+          <SettingsActionRow
+            icon="mail-unread-outline"
+            label={t('payments.remindUnpaid')}
+            detail={unpaidCount > 0 ? t('payments.unpaidCount', { count: unpaidCount }) : t('payments.allPaid')}
+            loading={remindingUnpaid}
+            disabled={unpaidCount === 0 || remindingUnpaid}
+            onPress={onRemindUnpaid}
+          />
+        </View>
+
+        <View style={styles.settingsSection}>
+          <Text style={styles.settingsSectionLabel}>{t('league.admins')}</Text>
+          {league.members.map((member, index) => {
+            const id = memberId(member);
+            const memberIsOwner = id === ownerId;
+            const updating = adminUpdatingMemberId === id;
+
+            return (
+              <View
+                key={id || String(index)}
+                style={[styles.adminRow, index < league.members.length - 1 && styles.adminRowBorder]}
+              >
+                <Avatar name={memberName(member)} color={avatarColor(id || String(index))} imageUrl={memberAvatarUrl(member)} size={32} />
+                <View style={styles.adminInfo}>
+                  <Text style={styles.adminName} numberOfLines={1}>{memberName(member)}</Text>
+                  <Text style={styles.adminMeta}>
+                    {memberIsOwner ? t('league.owner') : member.isAdmin ? t('common.admin') : t('common.member')}
+                  </Text>
+                </View>
+                {memberIsOwner ? (
+                  <View style={styles.ownerPill}>
+                    <Text style={styles.ownerPillText}>{t('league.owner')}</Text>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={[styles.adminToggle, member.isAdmin && styles.adminToggleOn]}
+                    onPress={() => onToggleAdmin(member)}
+                    disabled={updating}
+                    activeOpacity={0.75}
+                  >
+                    {updating ? (
+                      <ActivityIndicator color={colors.text} size="small" />
+                    ) : (
+                      <Text style={[styles.adminToggleText, member.isAdmin && styles.adminToggleTextOn]}>
+                        {member.isAdmin ? t('league.removeAdmin') : t('league.makeAdmin')}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                )}
+              </View>
+            );
+          })}
+        </View>
+
+        <View style={styles.settingsSection}>
+          {isOwner ? (
+            <SettingsActionRow icon="trash-outline" label={t('league.deleteAction')} danger onPress={onDeleteLeague} />
+          ) : (
+            <SettingsActionRow icon="exit-outline" label={t('league.leaveAction')} danger onPress={onLeaveLeague} />
+          )}
+        </View>
+      </ScrollView>
+    </BottomSheet>
+  );
+}
+
+function SettingsActionRow({
+  icon,
+  label,
+  detail,
+  danger,
+  disabled,
+  loading,
+  onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  detail?: string;
+  danger?: boolean;
+  disabled?: boolean;
+  loading?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      style={[styles.settingsActionRow, disabled && styles.settingsActionRowDisabled]}
+      onPress={onPress}
+      disabled={disabled}
+      activeOpacity={0.75}
+    >
+      <Ionicons name={icon} size={19} color={danger ? colors.danger : colors.muted} />
+      <View style={styles.settingsActionCopy}>
+        <Text style={[styles.settingsActionText, danger && styles.settingsActionTextDanger]}>{label}</Text>
+        {!!detail && <Text style={styles.settingsActionDetail}>{detail}</Text>}
+      </View>
+      {loading ? (
+        <ActivityIndicator color={colors.muted} size="small" />
+      ) : (
+        <Ionicons name="chevron-forward" size={17} color={colors.dim} />
       )}
     </TouchableOpacity>
   );
@@ -734,6 +975,91 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
     alignItems: 'center',
   },
+  settingsSheet: { flex: 1 },
+  settingsContent: { padding: 22, paddingTop: 18, paddingBottom: 34, gap: 16 },
+  settingsTitle: {
+    color: colors.text,
+    fontFamily: fonts.display,
+    fontSize: 22,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  settingsSubtitle: {
+    color: colors.muted,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    textAlign: 'center',
+    marginTop: -10,
+  },
+  settingsSection: {
+    backgroundColor: colors.card2,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
+  },
+  settingsSectionLabel: {
+    color: colors.dim,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 6,
+  },
+  settingsActionRow: {
+    minHeight: 50,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+  },
+  settingsActionRowDisabled: { opacity: 0.45 },
+  settingsActionCopy: { flex: 1, minWidth: 0 },
+  settingsActionText: {
+    color: colors.text,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  settingsActionDetail: { color: colors.dim, fontFamily: fonts.body, fontSize: 11, marginTop: 2 },
+  settingsActionTextDanger: { color: colors.danger },
+  adminRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  adminRowBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
+  adminInfo: { flex: 1, minWidth: 0 },
+  adminName: { color: colors.text, fontFamily: fonts.bodyMedium, fontSize: 14, fontWeight: '600' },
+  adminMeta: { color: colors.dim, fontFamily: fonts.body, fontSize: 10, marginTop: 1 },
+  adminToggle: {
+    minWidth: 92,
+    minHeight: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.borderMid,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  adminToggleOn: { backgroundColor: colors.accentDim, borderColor: 'rgba(0,168,126,0.25)' },
+  adminToggleText: { color: colors.muted, fontFamily: fonts.bodyMedium, fontSize: 10, fontWeight: '700' },
+  adminToggleTextOn: { color: colors.accent },
+  ownerPill: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.borderMid,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  ownerPillText: { color: colors.muted, fontFamily: fonts.bodyMedium, fontSize: 10, fontWeight: '700' },
   modalBackdrop: {
     flex: 1,
     justifyContent: 'flex-end',
