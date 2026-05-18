@@ -119,6 +119,11 @@ const translations: Record<Language, TranslationMap> = {
     'picks.catalogLoadFailed': 'Failed to refresh tournament teams.',
     'picks.groupSaveFailed': 'Failed to save group picks.',
     'picks.tournamentSaveFailed': 'Failed to save tournament picks.',
+    'picksReminder.remindMissing': 'Remind missing picks',
+    'picksReminder.next24h': 'Matches locking in the next 24h',
+    'picksReminder.sentTitle': 'Reminder sent',
+    'picksReminder.sentBody': ({ count, matches }) => `Sent to ${count} members missing picks for ${matches} matches.`,
+    'picksReminder.failed': 'Failed to send pick reminders',
 
     'profile.rankTag': ({ rank }) => `Rank #${rank}`,
     'profile.matches': ({ count }) => `${count} matches`,
@@ -187,6 +192,12 @@ const translations: Record<Language, TranslationMap> = {
     'payments.invalidSettings': 'Enter valid EUR amounts. Prize totals cannot exceed the current pot.',
     'payments.saveFailed': 'Failed to save payment rules',
     'payments.memberSaveFailed': 'Failed to update payment status',
+    'payments.remindUnpaid': 'Remind unpaid members',
+    'payments.unpaidCount': ({ count }) => `${count} pending`,
+    'payments.allPaid': 'Everyone is paid',
+    'payments.reminderSentTitle': 'Reminder sent',
+    'payments.reminderSentBody': ({ count }) => `Sent to ${count} unpaid members.`,
+    'payments.reminderFailed': 'Failed to send payment reminders',
     'invite.pendingTitle': 'League invite ready',
     'invite.pendingLoginMessage': ({ code, leagueName }) =>
       leagueName
@@ -483,6 +494,11 @@ const translations: Record<Language, TranslationMap> = {
     'picks.catalogLoadFailed': 'No se pudieron actualizar los equipos del torneo.',
     'picks.groupSaveFailed': 'No se pudieron guardar los pronósticos de grupo.',
     'picks.tournamentSaveFailed': 'No se pudieron guardar los pronósticos del torneo.',
+    'picksReminder.remindMissing': 'Recordar pronósticos pendientes',
+    'picksReminder.next24h': 'Partidos que cierran en las próximas 24h',
+    'picksReminder.sentTitle': 'Recordatorio enviado',
+    'picksReminder.sentBody': ({ count, matches }) => `Enviado a ${count} miembros con pronósticos pendientes para ${matches} partidos.`,
+    'picksReminder.failed': 'No se pudieron enviar los recordatorios de pronósticos',
 
     'profile.rankTag': ({ rank }) => `Puesto #${rank}`,
     'profile.matches': ({ count }) => `${count} partidos`,
@@ -551,6 +567,12 @@ const translations: Record<Language, TranslationMap> = {
     'payments.invalidSettings': 'Introduce importes válidos en EUR. Los premios no pueden superar el bote actual.',
     'payments.saveFailed': 'No se pudieron guardar las reglas de pago',
     'payments.memberSaveFailed': 'No se pudo actualizar el estado de pago',
+    'payments.remindUnpaid': 'Recordar pagos pendientes',
+    'payments.unpaidCount': ({ count }) => `${count} pendientes`,
+    'payments.allPaid': 'Todos han pagado',
+    'payments.reminderSentTitle': 'Recordatorio enviado',
+    'payments.reminderSentBody': ({ count }) => `Enviado a ${count} miembros pendientes.`,
+    'payments.reminderFailed': 'No se pudieron enviar los recordatorios de pago',
     'invite.pendingTitle': 'Invitación lista',
     'invite.pendingLoginMessage': ({ code, leagueName }) =>
       leagueName

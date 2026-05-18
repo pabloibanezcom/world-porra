@@ -9,6 +9,7 @@ import { User } from '../models/User';
 import { getRequestLanguage, hydrateMatches } from '../services/countryTeamService';
 import { isLeagueCreationLocked, isTournamentStarted } from '../services/pollConfigService';
 import { canUserCreateLeagues } from './auth';
+import { currentDate } from '../utils/time';
 
 const router = Router();
 
@@ -426,6 +427,17 @@ const notifyLeagueSchema = z.object({
   body: z.string().min(1).max(300),
 });
 
+const PICK_REMINDER_LOOKAHEAD_HOURS = 24;
+const PICK_LOCK_MINUTES_BEFORE = 5;
+
+function getPickLockTime(match: { utcDate: Date }): Date {
+  return new Date(match.utcDate.getTime() - PICK_LOCK_MINUTES_BEFORE * 60 * 1000);
+}
+
+function hasConfirmedTeams(match: { homeTeamCode: string; awayTeamCode: string }): boolean {
+  return ![match.homeTeamCode, match.awayTeamCode].some((code) => code.trim().toUpperCase() === 'TBD');
+}
+
 router.post('/:id/notify', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   const league = await League.findById(req.params.id);
   if (!league) {
@@ -449,6 +461,108 @@ router.post('/:id/notify', authMiddleware, async (req: AuthRequest, res: Respons
     }
     throw error;
   }
+});
+
+router.post('/:id/payments/remind-unpaid', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  const league = await League.findById(req.params.id);
+  if (!league) {
+    res.status(404).json({ error: 'League not found' });
+    return;
+  }
+
+  if (!isLeagueAdmin(league, req.userId!)) {
+    res.status(403).json({ error: 'Only league admins can send payment reminders' });
+    return;
+  }
+
+  const unpaidMemberIds = league.members
+    .filter((member) => !member.hasPaid)
+    .map((member) => member.userId.toString());
+
+  if (unpaidMemberIds.length === 0) {
+    res.status(400).json({ error: 'All league members are marked as paid' });
+    return;
+  }
+
+  const { sendToUsers } = await import('../services/pushService');
+  await sendToUsers(unpaidMemberIds, {
+    title: `${league.name}: payment reminder`,
+    body: 'Your league admin marked your entry fee as pending.',
+    url: '/',
+  });
+
+  res.json({ ok: true, recipients: unpaidMemberIds.length });
+});
+
+router.post('/:id/picks/remind-missing', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  const league = await League.findById(req.params.id);
+  if (!league) {
+    res.status(404).json({ error: 'League not found' });
+    return;
+  }
+
+  if (!isLeagueAdmin(league, req.userId!)) {
+    res.status(403).json({ error: 'Only league admins can send pick reminders' });
+    return;
+  }
+
+  const now = currentDate();
+  const reminderWindowEnd = new Date(now.getTime() + PICK_REMINDER_LOOKAHEAD_HOURS * 60 * 60 * 1000);
+  const candidateMatches = await Match.find({
+    status: 'SCHEDULED',
+    utcDate: {
+      $gt: now,
+      $lte: new Date(reminderWindowEnd.getTime() + PICK_LOCK_MINUTES_BEFORE * 60 * 1000),
+    },
+  })
+    .select('_id utcDate homeTeamCode awayTeamCode')
+    .lean();
+
+  const matchesToPick = candidateMatches.filter((match) => {
+    const lockTime = getPickLockTime(match);
+    return hasConfirmedTeams(match) && lockTime > now && lockTime <= reminderWindowEnd;
+  });
+
+  if (matchesToPick.length === 0) {
+    res.status(400).json({ error: 'No upcoming matches lock in the next 24 hours' });
+    return;
+  }
+
+  const memberIds = league.members.map((member) => member.userId.toString());
+  const matchIds = matchesToPick.map((match) => match._id);
+  const predictions = await Prediction.find({
+    userId: { $in: memberIds },
+    matchId: { $in: matchIds },
+  })
+    .select('userId matchId')
+    .lean();
+
+  const pickedByUser = new Map<string, Set<string>>();
+  predictions.forEach((prediction) => {
+    const userId = prediction.userId.toString();
+    const picks = pickedByUser.get(userId) ?? new Set<string>();
+    picks.add(prediction.matchId.toString());
+    pickedByUser.set(userId, picks);
+  });
+
+  const missingMemberIds = memberIds.filter((memberId) => {
+    const picks = pickedByUser.get(memberId);
+    return matchesToPick.some((match) => !picks?.has(match._id.toString()));
+  });
+
+  if (missingMemberIds.length === 0) {
+    res.status(400).json({ error: 'All league members have picks for upcoming matches' });
+    return;
+  }
+
+  const { sendToUsers } = await import('../services/pushService');
+  await sendToUsers(missingMemberIds, {
+    title: `${league.name}: picks reminder`,
+    body: 'You have matches locking soon without picks.',
+    url: '/',
+  });
+
+  res.json({ ok: true, recipients: missingMemberIds.length, matches: matchesToPick.length });
 });
 
 router.get('/:id/members/:userId/predictions', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {

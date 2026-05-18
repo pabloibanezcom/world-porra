@@ -22,7 +22,9 @@ import {
   deleteLeague,
   fetchLeague,
   leaveLeague,
+  remindMissingPickMembers,
   notifyLeagueMembers,
+  remindUnpaidLeagueMembers,
   removeLeagueAdmin,
   updateLeagueMemberPayment,
   updateLeaguePaymentSettings,
@@ -80,6 +82,8 @@ export default function LeagueDetailScreen() {
   const [paymentSaving, setPaymentSaving] = useState(false);
   const [paymentUpdatingMemberId, setPaymentUpdatingMemberId] = useState<string | null>(null);
   const [adminUpdatingMemberId, setAdminUpdatingMemberId] = useState<string | null>(null);
+  const [remindingUnpaid, setRemindingUnpaid] = useState(false);
+  const [remindingMissingPicks, setRemindingMissingPicks] = useState(false);
 
   const loadLeague = useCallback(async () => {
     try {
@@ -191,6 +195,37 @@ export default function LeagueDetailScreen() {
       Alert.alert(t('common.error'), getApiErrorMessage(err, t('league.adminUpdateFailed')));
     } finally {
       setAdminUpdatingMemberId(null);
+    }
+  };
+
+  const handleRemindUnpaid = async () => {
+    if (remindingUnpaid) return;
+
+    setRemindingUnpaid(true);
+    try {
+      const result = await remindUnpaidLeagueMembers(league._id);
+      Alert.alert(t('payments.reminderSentTitle'), t('payments.reminderSentBody', { count: result.recipients }));
+    } catch (err: any) {
+      Alert.alert(t('common.error'), getApiErrorMessage(err, t('payments.reminderFailed')));
+    } finally {
+      setRemindingUnpaid(false);
+    }
+  };
+
+  const handleRemindMissingPicks = async () => {
+    if (remindingMissingPicks) return;
+
+    setRemindingMissingPicks(true);
+    try {
+      const result = await remindMissingPickMembers(league._id);
+      Alert.alert(
+        t('picksReminder.sentTitle'),
+        t('picksReminder.sentBody', { count: result.recipients, matches: result.matches })
+      );
+    } catch (err: any) {
+      Alert.alert(t('common.error'), getApiErrorMessage(err, t('picksReminder.failed')));
+    } finally {
+      setRemindingMissingPicks(false);
     }
   };
 
@@ -379,6 +414,8 @@ export default function LeagueDetailScreen() {
           league={league}
           isOwner={isOwner}
           adminUpdatingMemberId={adminUpdatingMemberId}
+          remindingUnpaid={remindingUnpaid}
+          remindingMissingPicks={remindingMissingPicks}
           onClose={() => setSettingsSheetVisible(false)}
           onInvite={() => {
             setSettingsSheetVisible(false);
@@ -392,6 +429,8 @@ export default function LeagueDetailScreen() {
             setSettingsSheetVisible(false);
             setPaymentModalVisible(true);
           }}
+          onRemindUnpaid={handleRemindUnpaid}
+          onRemindMissingPicks={handleRemindMissingPicks}
           onToggleAdmin={handleToggleAdmin}
           onDeleteLeague={() => {
             setSettingsSheetVisible(false);
@@ -504,10 +543,14 @@ function LeagueSettingsSheet({
   league,
   isOwner,
   adminUpdatingMemberId,
+  remindingUnpaid,
+  remindingMissingPicks,
   onClose,
   onInvite,
   onNotify,
   onEditPayments,
+  onRemindUnpaid,
+  onRemindMissingPicks,
   onToggleAdmin,
   onDeleteLeague,
   onLeaveLeague,
@@ -515,16 +558,21 @@ function LeagueSettingsSheet({
   league: League;
   isOwner: boolean;
   adminUpdatingMemberId: string | null;
+  remindingUnpaid: boolean;
+  remindingMissingPicks: boolean;
   onClose: () => void;
   onInvite: () => void;
   onNotify: () => void;
   onEditPayments: () => void;
+  onRemindUnpaid: () => void;
+  onRemindMissingPicks: () => void;
   onToggleAdmin: (member: LeagueMember) => void;
   onDeleteLeague: () => void;
   onLeaveLeague: () => void;
 }) {
   const { t } = useI18n();
   const ownerId = league.ownerId?.id || (league.ownerId as any)?._id || '';
+  const unpaidCount = league.members.filter((member) => !member.hasPaid).length;
 
   return (
     <BottomSheet onClose={onClose}>
@@ -535,7 +583,23 @@ function LeagueSettingsSheet({
         <View style={styles.settingsSection}>
           <SettingsActionRow icon="share-outline" label={t('league.inviteMembers')} onPress={onInvite} />
           <SettingsActionRow icon="notifications-outline" label={t('league.notifyMembers')} onPress={onNotify} />
+          <SettingsActionRow
+            icon="alarm-outline"
+            label={t('picksReminder.remindMissing')}
+            detail={t('picksReminder.next24h')}
+            loading={remindingMissingPicks}
+            disabled={remindingMissingPicks}
+            onPress={onRemindMissingPicks}
+          />
           <SettingsActionRow icon="card-outline" label={t('payments.editTitle')} onPress={onEditPayments} />
+          <SettingsActionRow
+            icon="mail-unread-outline"
+            label={t('payments.remindUnpaid')}
+            detail={unpaidCount > 0 ? t('payments.unpaidCount', { count: unpaidCount }) : t('payments.allPaid')}
+            loading={remindingUnpaid}
+            disabled={unpaidCount === 0 || remindingUnpaid}
+            onPress={onRemindUnpaid}
+          />
         </View>
 
         <View style={styles.settingsSection}>
@@ -597,19 +661,37 @@ function LeagueSettingsSheet({
 function SettingsActionRow({
   icon,
   label,
+  detail,
   danger,
+  disabled,
+  loading,
   onPress,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
+  detail?: string;
   danger?: boolean;
+  disabled?: boolean;
+  loading?: boolean;
   onPress: () => void;
 }) {
   return (
-    <TouchableOpacity style={styles.settingsActionRow} onPress={onPress} activeOpacity={0.75}>
+    <TouchableOpacity
+      style={[styles.settingsActionRow, disabled && styles.settingsActionRowDisabled]}
+      onPress={onPress}
+      disabled={disabled}
+      activeOpacity={0.75}
+    >
       <Ionicons name={icon} size={19} color={danger ? colors.danger : colors.muted} />
-      <Text style={[styles.settingsActionText, danger && styles.settingsActionTextDanger]}>{label}</Text>
-      <Ionicons name="chevron-forward" size={17} color={colors.dim} />
+      <View style={styles.settingsActionCopy}>
+        <Text style={[styles.settingsActionText, danger && styles.settingsActionTextDanger]}>{label}</Text>
+        {!!detail && <Text style={styles.settingsActionDetail}>{detail}</Text>}
+      </View>
+      {loading ? (
+        <ActivityIndicator color={colors.muted} size="small" />
+      ) : (
+        <Ionicons name="chevron-forward" size={17} color={colors.dim} />
+      )}
     </TouchableOpacity>
   );
 }
@@ -935,13 +1017,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 13,
   },
+  settingsActionRowDisabled: { opacity: 0.45 },
+  settingsActionCopy: { flex: 1, minWidth: 0 },
   settingsActionText: {
-    flex: 1,
     color: colors.text,
     fontFamily: fonts.bodyMedium,
     fontSize: 14,
     fontWeight: '600',
   },
+  settingsActionDetail: { color: colors.dim, fontFamily: fonts.body, fontSize: 11, marginTop: 2 },
   settingsActionTextDanger: { color: colors.danger },
   adminRow: {
     flexDirection: 'row',
