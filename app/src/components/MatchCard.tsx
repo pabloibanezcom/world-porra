@@ -550,19 +550,19 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 22,
     fontWeight: '700',
-    fontFamily: fonts.bodyMedium,
+    fontFamily: fonts.displayBold,
   },
   resultScore: {
     color: colors.text,
     fontSize: 18,
     fontWeight: '700',
-    fontFamily: fonts.bodyMedium,
+    fontFamily: fonts.displayBold,
   },
   scorePending: {
     color: colors.dim,
     fontSize: 12,
     fontWeight: '700',
-    fontFamily: fonts.bodyMedium,
+    fontFamily: fonts.displayBold,
     textTransform: 'uppercase',
   },
   pickText: {
