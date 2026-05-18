@@ -3,19 +3,19 @@ import { LeagueMember } from '../types';
 export const LEAGUE_AVATAR_COLORS = ['#494fdf', '#00a87e', '#e61e49', '#ec7e00', '#936d62', '#9b59b6', '#1abc9c'];
 
 export function memberId(member: LeagueMember): string {
-  return member.userId.id || member.userId._id || '';
+  return member.userId?.id || member.userId?._id || '';
 }
 
 export function memberPoints(member: LeagueMember): number {
-  return member.userId.totalPoints ?? 0;
+  return member.userId?.totalPoints ?? 0;
 }
 
 export function memberName(member: LeagueMember): string {
-  return member.userId.name || 'Player';
+  return member.userId?.name || 'Player';
 }
 
 export function memberAvatarUrl(member: LeagueMember): string {
-  return member.userId.avatarUrl || '';
+  return member.userId?.avatarUrl || '';
 }
 
 export function memberInitials(member: LeagueMember): string {

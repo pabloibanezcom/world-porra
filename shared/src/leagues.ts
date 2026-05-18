@@ -1,7 +1,7 @@
 import type { User } from './users';
 
 export interface LeagueMember {
-  userId: User;
+  userId: User | null;
   joinedAt: string;
   isAdmin?: boolean;
   hasPaid?: boolean;

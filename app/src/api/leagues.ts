@@ -66,6 +66,14 @@ export async function notifyLeagueMembers(id: string, title: string, body: strin
   await apiClient.post(`/leagues/${id}/notify`, { title, body });
 }
 
+export async function addLeagueAdmin(id: string, userId: string): Promise<void> {
+  await apiClient.post(`/leagues/${id}/admins`, { userId });
+}
+
+export async function removeLeagueAdmin(id: string, userId: string): Promise<void> {
+  await apiClient.delete(`/leagues/${id}/admins/${userId}`);
+}
+
 export async function updateLeaguePaymentSettings(
   id: string,
   paymentSettings: LeaguePaymentSettings
