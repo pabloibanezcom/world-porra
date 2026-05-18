@@ -438,6 +438,55 @@ function hasConfirmedTeams(match: { homeTeamCode: string; awayTeamCode: string }
   return ![match.homeTeamCode, match.awayTeamCode].some((code) => code.trim().toUpperCase() === 'TBD');
 }
 
+async function getMissingPickReminderPreview(league: {
+  members: Array<{ userId: { toString(): string } }>;
+}) {
+  const now = currentDate();
+  const reminderWindowEnd = new Date(now.getTime() + PICK_REMINDER_LOOKAHEAD_HOURS * 60 * 60 * 1000);
+  const candidateMatches = await Match.find({
+    status: 'SCHEDULED',
+    utcDate: {
+      $gt: now,
+      $lte: new Date(reminderWindowEnd.getTime() + PICK_LOCK_MINUTES_BEFORE * 60 * 1000),
+    },
+  })
+    .select('_id utcDate homeTeamCode awayTeamCode')
+    .lean();
+
+  const matchesToPick = candidateMatches.filter((match) => {
+    const lockTime = getPickLockTime(match);
+    return hasConfirmedTeams(match) && lockTime > now && lockTime <= reminderWindowEnd;
+  });
+
+  const memberIds = league.members.map((member) => member.userId.toString());
+  if (matchesToPick.length === 0 || memberIds.length === 0) {
+    return { matchesToPick, missingMemberIds: [] };
+  }
+
+  const matchIds = matchesToPick.map((match) => match._id);
+  const predictions = await Prediction.find({
+    userId: { $in: memberIds },
+    matchId: { $in: matchIds },
+  })
+    .select('userId matchId')
+    .lean();
+
+  const pickedByUser = new Map<string, Set<string>>();
+  predictions.forEach((prediction) => {
+    const userId = prediction.userId.toString();
+    const picks = pickedByUser.get(userId) ?? new Set<string>();
+    picks.add(prediction.matchId.toString());
+    pickedByUser.set(userId, picks);
+  });
+
+  const missingMemberIds = memberIds.filter((memberId) => {
+    const picks = pickedByUser.get(memberId);
+    return matchesToPick.some((match) => !picks?.has(match._id.toString()));
+  });
+
+  return { matchesToPick, missingMemberIds };
+}
+
 router.post('/:id/notify', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   const league = await League.findById(req.params.id);
   if (!league) {
@@ -494,6 +543,38 @@ router.post('/:id/payments/remind-unpaid', authMiddleware, async (req: AuthReque
   res.json({ ok: true, recipients: unpaidMemberIds.length });
 });
 
+router.get('/:id/picks/remind-missing/preview', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  const league = await League.findById(req.params.id);
+  if (!league) {
+    res.status(404).json({ error: 'League not found' });
+    return;
+  }
+
+  if (!isLeagueAdmin(league, req.userId!)) {
+    res.status(403).json({ error: 'Only league admins can preview pick reminders' });
+    return;
+  }
+
+  const { matchesToPick, missingMemberIds } = await getMissingPickReminderPreview(league);
+  const users = await User.find({ _id: { $in: missingMemberIds } })
+    .select('name avatarUrl')
+    .lean();
+  const usersById = new Map(users.map((user) => [String(user._id), user]));
+
+  res.json({
+    matches: matchesToPick.length,
+    recipients: missingMemberIds.length,
+    members: missingMemberIds.map((userId) => {
+      const user = usersById.get(userId);
+      return {
+        id: userId,
+        name: user?.name || 'Player',
+        avatarUrl: user?.avatarUrl || '',
+      };
+    }),
+  });
+});
+
 router.post('/:id/picks/remind-missing', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   const league = await League.findById(req.params.id);
   if (!league) {
@@ -506,49 +587,12 @@ router.post('/:id/picks/remind-missing', authMiddleware, async (req: AuthRequest
     return;
   }
 
-  const now = currentDate();
-  const reminderWindowEnd = new Date(now.getTime() + PICK_REMINDER_LOOKAHEAD_HOURS * 60 * 60 * 1000);
-  const candidateMatches = await Match.find({
-    status: 'SCHEDULED',
-    utcDate: {
-      $gt: now,
-      $lte: new Date(reminderWindowEnd.getTime() + PICK_LOCK_MINUTES_BEFORE * 60 * 1000),
-    },
-  })
-    .select('_id utcDate homeTeamCode awayTeamCode')
-    .lean();
-
-  const matchesToPick = candidateMatches.filter((match) => {
-    const lockTime = getPickLockTime(match);
-    return hasConfirmedTeams(match) && lockTime > now && lockTime <= reminderWindowEnd;
-  });
+  const { matchesToPick, missingMemberIds } = await getMissingPickReminderPreview(league);
 
   if (matchesToPick.length === 0) {
     res.status(400).json({ error: 'No upcoming matches lock in the next 24 hours' });
     return;
   }
-
-  const memberIds = league.members.map((member) => member.userId.toString());
-  const matchIds = matchesToPick.map((match) => match._id);
-  const predictions = await Prediction.find({
-    userId: { $in: memberIds },
-    matchId: { $in: matchIds },
-  })
-    .select('userId matchId')
-    .lean();
-
-  const pickedByUser = new Map<string, Set<string>>();
-  predictions.forEach((prediction) => {
-    const userId = prediction.userId.toString();
-    const picks = pickedByUser.get(userId) ?? new Set<string>();
-    picks.add(prediction.matchId.toString());
-    pickedByUser.set(userId, picks);
-  });
-
-  const missingMemberIds = memberIds.filter((memberId) => {
-    const picks = pickedByUser.get(memberId);
-    return matchesToPick.some((match) => !picks?.has(match._id.toString()));
-  });
 
   if (missingMemberIds.length === 0) {
     res.status(400).json({ error: 'All league members have picks for upcoming matches' });

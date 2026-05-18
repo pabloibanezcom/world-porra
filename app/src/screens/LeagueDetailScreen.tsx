@@ -20,8 +20,10 @@ import { CommonActions, RouteProp, useNavigation, useRoute } from '@react-naviga
 import {
   addLeagueAdmin,
   deleteLeague,
+  fetchMissingPickReminderPreview,
   fetchLeague,
   leaveLeague,
+  MissingPickReminderPreview,
   remindMissingPickMembers,
   notifyLeagueMembers,
   remindUnpaidLeagueMembers,
@@ -84,6 +86,8 @@ export default function LeagueDetailScreen() {
   const [adminUpdatingMemberId, setAdminUpdatingMemberId] = useState<string | null>(null);
   const [remindingUnpaid, setRemindingUnpaid] = useState(false);
   const [remindingMissingPicks, setRemindingMissingPicks] = useState(false);
+  const [missingPicksPreview, setMissingPicksPreview] = useState<MissingPickReminderPreview | null>(null);
+  const [missingPicksPreviewLoading, setMissingPicksPreviewLoading] = useState(false);
 
   const loadLeague = useCallback(async () => {
     try {
@@ -212,6 +216,21 @@ export default function LeagueDetailScreen() {
     }
   };
 
+  const handleOpenMissingPicksPreview = async () => {
+    if (missingPicksPreviewLoading) return;
+
+    setMissingPicksPreviewLoading(true);
+    try {
+      const preview = await fetchMissingPickReminderPreview(league._id);
+      setMissingPicksPreview(preview);
+      setSettingsSheetVisible(false);
+    } catch (err: any) {
+      Alert.alert(t('common.error'), getApiErrorMessage(err, t('picksReminder.previewFailed')));
+    } finally {
+      setMissingPicksPreviewLoading(false);
+    }
+  };
+
   const handleRemindMissingPicks = async () => {
     if (remindingMissingPicks) return;
 
@@ -222,6 +241,7 @@ export default function LeagueDetailScreen() {
         t('picksReminder.sentTitle'),
         t('picksReminder.sentBody', { count: result.recipients, matches: result.matches })
       );
+      setMissingPicksPreview(null);
     } catch (err: any) {
       Alert.alert(t('common.error'), getApiErrorMessage(err, t('picksReminder.failed')));
     } finally {
@@ -415,7 +435,7 @@ export default function LeagueDetailScreen() {
           isOwner={isOwner}
           adminUpdatingMemberId={adminUpdatingMemberId}
           remindingUnpaid={remindingUnpaid}
-          remindingMissingPicks={remindingMissingPicks}
+          remindingMissingPicks={missingPicksPreviewLoading}
           onClose={() => setSettingsSheetVisible(false)}
           onInvite={() => {
             setSettingsSheetVisible(false);
@@ -430,7 +450,7 @@ export default function LeagueDetailScreen() {
             setPaymentModalVisible(true);
           }}
           onRemindUnpaid={handleRemindUnpaid}
-          onRemindMissingPicks={handleRemindMissingPicks}
+          onRemindMissingPicks={handleOpenMissingPicksPreview}
           onToggleAdmin={handleToggleAdmin}
           onDeleteLeague={() => {
             setSettingsSheetVisible(false);
@@ -448,6 +468,13 @@ export default function LeagueDetailScreen() {
         saving={paymentSaving}
         onClose={() => !paymentSaving && setPaymentModalVisible(false)}
         onSave={handleSavePaymentSettings}
+      />
+      <MissingPickReminderPreviewModal
+        visible={!!missingPicksPreview}
+        preview={missingPicksPreview}
+        sending={remindingMissingPicks}
+        onClose={() => !remindingMissingPicks && setMissingPicksPreview(null)}
+        onSend={handleRemindMissingPicks}
       />
     </SafeAreaView>
   );
@@ -580,29 +607,8 @@ function LeagueSettingsSheet({
         <Text style={styles.settingsTitle}>{t('league.settingsTitle')}</Text>
         <Text style={styles.settingsSubtitle}>{league.name}</Text>
 
-        <View style={styles.settingsSection}>
+        <SettingsSection title={t('league.settingsMembersTitle')} subtitle={t('league.settingsMembersSubtitle')}>
           <SettingsActionRow icon="share-outline" label={t('league.inviteMembers')} onPress={onInvite} />
-          <SettingsActionRow icon="notifications-outline" label={t('league.notifyMembers')} onPress={onNotify} />
-          <SettingsActionRow
-            icon="alarm-outline"
-            label={t('picksReminder.remindMissing')}
-            detail={t('picksReminder.next24h')}
-            loading={remindingMissingPicks}
-            disabled={remindingMissingPicks}
-            onPress={onRemindMissingPicks}
-          />
-          <SettingsActionRow icon="card-outline" label={t('payments.editTitle')} onPress={onEditPayments} />
-          <SettingsActionRow
-            icon="mail-unread-outline"
-            label={t('payments.remindUnpaid')}
-            detail={unpaidCount > 0 ? t('payments.unpaidCount', { count: unpaidCount }) : t('payments.allPaid')}
-            loading={remindingUnpaid}
-            disabled={unpaidCount === 0 || remindingUnpaid}
-            onPress={onRemindUnpaid}
-          />
-        </View>
-
-        <View style={styles.settingsSection}>
           <Text style={styles.settingsSectionLabel}>{t('league.admins')}</Text>
           {league.members.map((member, index) => {
             const id = memberId(member);
@@ -644,17 +650,59 @@ function LeagueSettingsSheet({
               </View>
             );
           })}
-        </View>
+        </SettingsSection>
 
-        <View style={styles.settingsSection}>
+        <SettingsSection title={t('league.settingsRemindersTitle')} subtitle={t('league.settingsRemindersSubtitle')}>
+          <SettingsActionRow icon="notifications-outline" label={t('league.notifyMembers')} onPress={onNotify} />
+          <SettingsActionRow
+            icon="alarm-outline"
+            label={t('picksReminder.remindMissing')}
+            detail={t('picksReminder.next24h')}
+            loading={remindingMissingPicks}
+            disabled={remindingMissingPicks}
+            onPress={onRemindMissingPicks}
+          />
+          <SettingsActionRow
+            icon="mail-unread-outline"
+            label={t('payments.remindUnpaid')}
+            detail={unpaidCount > 0 ? t('payments.unpaidCount', { count: unpaidCount }) : t('payments.allPaid')}
+            loading={remindingUnpaid}
+            disabled={unpaidCount === 0 || remindingUnpaid}
+            onPress={onRemindUnpaid}
+          />
+        </SettingsSection>
+
+        <SettingsSection title={t('league.settingsPaymentsTitle')} subtitle={t('league.settingsPaymentsSubtitle')}>
+          <SettingsActionRow icon="card-outline" label={t('payments.editTitle')} onPress={onEditPayments} />
+        </SettingsSection>
+
+        <SettingsSection title={t('league.settingsDangerTitle')}>
           {isOwner ? (
             <SettingsActionRow icon="trash-outline" label={t('league.deleteAction')} danger onPress={onDeleteLeague} />
           ) : (
             <SettingsActionRow icon="exit-outline" label={t('league.leaveAction')} danger onPress={onLeaveLeague} />
           )}
-        </View>
+        </SettingsSection>
       </ScrollView>
     </BottomSheet>
+  );
+}
+
+function SettingsSection({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <View style={styles.settingsBlock}>
+      <Text style={styles.settingsBlockTitle}>{title}</Text>
+      {!!subtitle && <Text style={styles.settingsBlockSubtitle}>{subtitle}</Text>}
+      <View style={styles.settingsSection}>{children}</View>
+    </View>
   );
 }
 
@@ -693,6 +741,89 @@ function SettingsActionRow({
         <Ionicons name="chevron-forward" size={17} color={colors.dim} />
       )}
     </TouchableOpacity>
+  );
+}
+
+function MissingPickReminderPreviewModal({
+  visible,
+  preview,
+  sending,
+  onClose,
+  onSend,
+}: {
+  visible: boolean;
+  preview: MissingPickReminderPreview | null;
+  sending: boolean;
+  onClose: () => void;
+  onSend: () => void;
+}) {
+  const { t } = useI18n();
+
+  if (!preview) return null;
+
+  const hasRecipients = preview.recipients > 0 && preview.matches > 0;
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={styles.modalBackdrop}>
+        <View style={styles.paymentModal}>
+          <View style={styles.modalHandle} />
+          <Text style={styles.modalTitle}>{t('picksReminder.previewTitle')}</Text>
+          <Text style={styles.modalBody}>
+            {hasRecipients
+              ? t('picksReminder.previewBody', { count: preview.recipients, matches: preview.matches })
+              : t('picksReminder.previewEmpty')}
+          </Text>
+
+          <View style={styles.previewStatsRow}>
+            <View style={styles.previewStat}>
+              <Text style={styles.previewStatValue}>{preview.matches}</Text>
+              <Text style={styles.previewStatLabel}>{t('picksReminder.matches')}</Text>
+            </View>
+            <View style={styles.previewStat}>
+              <Text style={styles.previewStatValue}>{preview.recipients}</Text>
+              <Text style={styles.previewStatLabel}>{t('picksReminder.members')}</Text>
+            </View>
+          </View>
+
+          {preview.members.length > 0 && (
+            <View style={styles.previewMemberList}>
+              {preview.members.slice(0, 6).map((member, index) => (
+                <View
+                  key={member.id}
+                  style={[styles.previewMemberRow, index < Math.min(preview.members.length, 6) - 1 && styles.previewMemberBorder]}
+                >
+                  <Avatar name={member.name} color={avatarColor(member.id)} imageUrl={member.avatarUrl} size={30} />
+                  <Text style={styles.previewMemberName} numberOfLines={1}>{member.name}</Text>
+                </View>
+              ))}
+              {preview.members.length > 6 && (
+                <Text style={styles.previewMoreText}>
+                  {t('picksReminder.moreMembers', { count: preview.members.length - 6 })}
+                </Text>
+              )}
+            </View>
+          )}
+
+          <View style={styles.modalActions}>
+            <TouchableOpacity style={styles.modalCancelButton} onPress={onClose} disabled={sending}>
+              <Text style={styles.modalCancelText}>{t('common.cancel')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.modalSaveButton, !hasRecipients && styles.modalSaveButtonDisabled]}
+              onPress={onSend}
+              disabled={sending || !hasRecipients}
+            >
+              {sending ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.modalSaveText}>{t('picksReminder.sendReminder')}</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -976,7 +1107,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   settingsSheet: { flex: 1 },
-  settingsContent: { padding: 22, paddingTop: 18, paddingBottom: 34, gap: 16 },
+  settingsContent: { padding: 22, paddingTop: 18, paddingBottom: 34, gap: 18 },
   settingsTitle: {
     color: colors.text,
     fontFamily: fonts.display,
@@ -990,6 +1121,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: 'center',
     marginTop: -10,
+  },
+  settingsBlock: { gap: 8 },
+  settingsBlockTitle: {
+    color: colors.text,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  settingsBlockSubtitle: {
+    color: colors.dim,
+    fontFamily: fonts.body,
+    fontSize: 11,
+    marginTop: -4,
   },
   settingsSection: {
     backgroundColor: colors.card2,
@@ -1140,5 +1284,42 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
   },
+  modalSaveButtonDisabled: { opacity: 0.45 },
   modalSaveText: { color: '#fff', fontFamily: fonts.bodyMedium, fontSize: 14, fontWeight: '700' },
+  previewStatsRow: { flexDirection: 'row', gap: 10, marginBottom: 14 },
+  previewStat: {
+    flex: 1,
+    backgroundColor: colors.card2,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 12,
+    alignItems: 'center',
+  },
+  previewStatValue: { color: colors.text, fontFamily: fonts.displayBold, fontSize: 20, fontWeight: '700' },
+  previewStatLabel: { color: colors.dim, fontFamily: fonts.body, fontSize: 10, marginTop: 2 },
+  previewMemberList: {
+    backgroundColor: colors.card2,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
+    marginBottom: 16,
+  },
+  previewMemberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  previewMemberBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
+  previewMemberName: { flex: 1, color: colors.text, fontFamily: fonts.bodyMedium, fontSize: 13, fontWeight: '600' },
+  previewMoreText: {
+    color: colors.muted,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+  },
 });
