@@ -47,6 +47,12 @@ app.get('/health', (_req, res) => {
     dbName: mongoose.connection.name,
     scenario: scenario?.slug ?? null,
     tournamentNow: scenario?.now ?? null,
+    deployment: {
+      environment: process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? 'development',
+      commitSha: process.env.VERCEL_GIT_COMMIT_SHA ?? null,
+      commitRef: process.env.VERCEL_GIT_COMMIT_REF ?? null,
+      url: process.env.VERCEL_URL ?? null,
+    },
     timestamp: new Date().toISOString(),
   });
 });
