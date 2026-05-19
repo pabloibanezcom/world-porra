@@ -27,6 +27,12 @@ export interface MemberPredictionsResponse {
   upcomingMatches: MemberUpcomingMatch[];
 }
 
+export interface MissingPickReminderPreview {
+  matches: number;
+  recipients: number;
+  members: Array<{ id: string; name: string; avatarUrl: string }>;
+}
+
 export async function createLeague(name: string, paymentSettings?: LeaguePaymentSettings): Promise<League> {
   const { data } = await apiClient.post<{ league: League }>('/leagues', { name, paymentSettings });
   return data.league;
@@ -76,6 +82,11 @@ export async function remindMissingPickMembers(id: string): Promise<{ recipients
     `/leagues/${id}/picks/remind-missing`
   );
   return { recipients: data.recipients, matches: data.matches };
+}
+
+export async function fetchMissingPickReminderPreview(id: string): Promise<MissingPickReminderPreview> {
+  const { data } = await apiClient.get<MissingPickReminderPreview>(`/leagues/${id}/picks/remind-missing/preview`);
+  return data;
 }
 
 export async function addLeagueAdmin(id: string, userId: string): Promise<void> {

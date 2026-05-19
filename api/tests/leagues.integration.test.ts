@@ -407,6 +407,23 @@ describe('league membership', () => {
     });
     expect(forbidden.status).toBe(403);
 
+    const forbiddenPreview = await requestJson(`/leagues/${league._id}/picks/remind-missing/preview`, {
+      token: missingMember.token,
+    });
+    expect(forbiddenPreview.status).toBe(403);
+
+    const preview = await requestJson<{
+      matches: number;
+      recipients: number;
+      members: Array<{ id: string; name: string; avatarUrl: string }>;
+    }>(`/leagues/${league._id}/picks/remind-missing/preview`, { token: master.token });
+    expect(preview.status).toBe(200);
+    expect(preview.body).toEqual({
+      matches: 1,
+      recipients: 1,
+      members: [{ id: missingMember.user.id, name: 'Missing', avatarUrl: '' }],
+    });
+
     const reminded = await requestJson<{ ok: true; recipients: number; matches: number }>(
       `/leagues/${league._id}/picks/remind-missing`,
       { token: master.token, body: {} }

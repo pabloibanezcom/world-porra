@@ -1,9 +1,9 @@
+import { Types } from 'mongoose';
 import { connectDB } from '../config/db';
 import { League } from '../models/League';
+import { Prediction } from '../models/Prediction';
 import { User } from '../models/User';
 import { logger } from '../config/logger';
-
-const MOCK_POINTS = [48, 35, 30, 22, 18, 12, 7, 4, 3, 2];
 
 async function seedUserPoints() {
   await connectDB();
@@ -23,12 +23,18 @@ async function seedUserPoints() {
   }
 
   const users = [...userIds];
-  for (let i = 0; i < users.length; i++) {
-    const pts = MOCK_POINTS[i] ?? Math.max(0, MOCK_POINTS[MOCK_POINTS.length - 1] - i * 2);
-    await User.findByIdAndUpdate(users[i], { totalPoints: pts });
-  }
+  const userObjectIds = users.map((userId) => new Types.ObjectId(userId));
+  const totals = await Prediction.aggregate<{ _id: unknown; total: number }>([
+    { $match: { userId: { $in: userObjectIds }, points: { $ne: null } } },
+    { $group: { _id: '$userId', total: { $sum: '$points' } } },
+  ]);
+  const totalByUserId = new Map(totals.map(({ _id, total }) => [String(_id), total]));
 
-  logger.info(`Updated totalPoints for ${users.length} users`);
+  await Promise.all(
+    users.map((userId) => User.findByIdAndUpdate(userId, { totalPoints: totalByUserId.get(userId) ?? 0 }))
+  );
+
+  logger.info(`Recalculated totalPoints for ${users.length} users`);
   process.exit(0);
 }
 
