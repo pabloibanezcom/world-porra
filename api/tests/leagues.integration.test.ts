@@ -90,6 +90,59 @@ describe('league membership', () => {
     expect(detail.body.league.members).toHaveLength(2);
   });
 
+  it('lets master users silently manage leagues without being members', async () => {
+    const master = await registerPlayer('master@worldporra.test', 'Master');
+    const owner = await registerPlayer('owner@worldporra.test', 'Owner');
+    await User.findByIdAndUpdate(owner.user.id, { canCreateLeagues: true });
+
+    const ownedByMaster = await createLeague(master.token, 'Original Master League');
+    await requestJson(`/leagues/${ownedByMaster._id}/leave`, {
+      method: 'DELETE',
+      token: master.token,
+    });
+
+    const masterOwnedDetail = await requestJson<{ league: { members: Array<{ userId: { _id: string } }> } }>(
+      `/leagues/${ownedByMaster._id}`,
+      { token: master.token }
+    );
+    expect(masterOwnedDetail.status).toBe(200);
+    expect(masterOwnedDetail.body.league.members.map((entry) => String(entry.userId._id))).not.toContain(master.user.id);
+
+    const ownerLeague = await createLeague(owner.token, 'Owner League');
+    const masterList = await requestJson<{ leagues: Array<{ _id: string; members: unknown[] }> }>('/leagues', {
+      token: master.token,
+    });
+    expect(masterList.status).toBe(200);
+    expect(masterList.body.leagues.map((league) => league._id)).toEqual(
+      expect.arrayContaining([ownedByMaster._id, ownerLeague._id])
+    );
+
+    const detail = await requestJson<{ league: { members: Array<{ userId: { _id: string }; hasPaid: boolean }> } }>(
+      `/leagues/${ownerLeague._id}`,
+      { token: master.token }
+    );
+    expect(detail.status).toBe(200);
+    expect(detail.body.league.members).toHaveLength(1);
+    expect(detail.body.league.members.map((entry) => String(entry.userId._id))).not.toContain(master.user.id);
+
+    const updatedSettings = await requestJson(`/leagues/${ownerLeague._id}/payments`, {
+      method: 'PATCH',
+      token: master.token,
+      body: {
+        entryFee: 25,
+        payoutSplits: [{ position: 1, amount: 25 }],
+      },
+    });
+    expect(updatedSettings.status).toBe(200);
+
+    const paid = await requestJson<{ league: { members: Array<{ userId: { _id: string }; hasPaid: boolean }> } }>(
+      `/leagues/${ownerLeague._id}/members/${owner.user.id}/payment`,
+      { method: 'PATCH', token: master.token, body: { hasPaid: true } }
+    );
+    expect(paid.status).toBe(200);
+    expect(paid.body.league.members.find((entry) => String(entry.userId._id) === owner.user.id)?.hasPaid).toBe(true);
+  });
+
   it('returns a public league invite preview by invite code', async () => {
     const master = await registerPlayer('master@worldporra.test', 'Master');
     const league = await createLeague(master.token, 'Office Champions');
@@ -500,14 +553,15 @@ describe('league membership', () => {
   });
 
   it('lets non-owner members leave but keeps the owner in the league', async () => {
-    const master = await registerPlayer('master@worldporra.test', 'Master');
+    const owner = await registerPlayer('owner@worldporra.test', 'Owner');
     const member = await registerPlayer('member@worldporra.test', 'Member');
-    const league = await createLeague(master.token);
+    await User.findByIdAndUpdate(owner.user.id, { canCreateLeagues: true });
+    const league = await createLeague(owner.token);
     await requestJson('/leagues/join', { token: member.token, body: { inviteCode: league.inviteCode } });
 
     const ownerLeave = await requestJson(`/leagues/${league._id}/leave`, {
       method: 'DELETE',
-      token: master.token,
+      token: owner.token,
     });
     expect(ownerLeave.status).toBe(400);
 
@@ -519,7 +573,7 @@ describe('league membership', () => {
     expect(leave.body).toEqual({ message: 'Left league successfully' });
 
     const stored = await League.findById(league._id).lean();
-    expect(stored?.members.map((memberEntry) => String(memberEntry.userId))).toEqual([master.user.id]);
+    expect(stored?.members.map((memberEntry) => String(memberEntry.userId))).toEqual([owner.user.id]);
   });
 
   it('allows only the league owner to delete a league', async () => {

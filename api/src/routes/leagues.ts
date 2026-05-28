@@ -60,6 +60,23 @@ function isLeagueAdmin(
   return league.members.some((member) => member.userId.toString() === userId && member.isAdmin);
 }
 
+async function isMasterUser(userId?: string): Promise<boolean> {
+  if (!userId) return false;
+
+  const user = await User.findById(userId).select('isMaster').lean();
+  return !!user?.isMaster;
+}
+
+async function canManageLeague(
+  league: { ownerId: { toString(): string }; members: Array<{ userId: { toString(): string }; isAdmin?: boolean }> },
+  userId?: string
+): Promise<boolean> {
+  if (!userId) return false;
+  if (isLeagueAdmin(league, userId)) return true;
+
+  return isMasterUser(userId);
+}
+
 const paymentSettingsSchema = z
   .object({
     entryFee: z.coerce.number().min(0).max(100000),
@@ -227,7 +244,8 @@ router.get('/invite/:inviteCode', async (req, res: Response): Promise<void> => {
 });
 
 router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
-  const leagues = await League.find({ 'members.userId': req.userId })
+  const query = (await isMasterUser(req.userId)) ? {} : { 'members.userId': req.userId };
+  const leagues = await League.find(query)
     .populate('ownerId', 'name avatarUrl')
     .populate('members.userId', 'name avatarUrl totalPoints')
     .lean();
@@ -247,7 +265,7 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response): Prom
   }
 
   const isMember = league.members.some((m) => (m.userId as any)._id?.toString() === req.userId);
-  if (!isMember) {
+  if (!isMember && !(await isMasterUser(req.userId))) {
     res.status(403).json({ error: 'You are not a member of this league' });
     return;
   }
@@ -269,7 +287,7 @@ router.delete('/:id', authMiddleware, async (req: AuthRequest, res: Response): P
     return;
   }
 
-  if (league.ownerId.toString() !== req.userId) {
+  if (league.ownerId.toString() !== req.userId && !(await isMasterUser(req.userId))) {
     res.status(403).json({ error: 'Only the league owner can delete this league' });
     return;
   }
@@ -288,7 +306,7 @@ router.patch('/:id/payments', authMiddleware, async (req: AuthRequest, res: Resp
       return;
     }
 
-    if (!isLeagueAdmin(league, req.userId!)) {
+    if (!(await canManageLeague(league, req.userId))) {
       res.status(403).json({ error: 'Only league admins can manage payments' });
       return;
     }
@@ -326,7 +344,7 @@ router.patch('/:id/members/:userId/payment', authMiddleware, async (req: AuthReq
       return;
     }
 
-    if (!isLeagueAdmin(league, req.userId!)) {
+    if (!(await canManageLeague(league, req.userId))) {
       res.status(403).json({ error: 'Only league admins can manage payments' });
       return;
     }
@@ -366,7 +384,7 @@ router.post('/:id/admins', authMiddleware, async (req: AuthRequest, res: Respons
       return;
     }
 
-    if (!isLeagueAdmin(league, req.userId!)) {
+    if (!(await canManageLeague(league, req.userId))) {
       res.status(403).json({ error: 'Only league admins can manage admins' });
       return;
     }
@@ -398,7 +416,7 @@ router.delete('/:id/admins/:userId', authMiddleware, async (req: AuthRequest, re
     return;
   }
 
-  if (!isLeagueAdmin(league, req.userId!)) {
+  if (!(await canManageLeague(league, req.userId))) {
     res.status(403).json({ error: 'Only league admins can manage admins' });
     return;
   }
@@ -530,7 +548,7 @@ router.post('/:id/notify', authMiddleware, async (req: AuthRequest, res: Respons
     res.status(404).json({ error: 'League not found' });
     return;
   }
-  if (!isLeagueAdmin(league, req.userId!)) {
+  if (!(await canManageLeague(league, req.userId))) {
     res.status(403).json({ error: 'Only league admins can send notifications' });
     return;
   }
@@ -557,7 +575,7 @@ router.post('/:id/payments/remind-unpaid', authMiddleware, async (req: AuthReque
     return;
   }
 
-  if (!isLeagueAdmin(league, req.userId!)) {
+  if (!(await canManageLeague(league, req.userId))) {
     res.status(403).json({ error: 'Only league admins can send payment reminders' });
     return;
   }
@@ -600,7 +618,7 @@ router.get('/:id/picks/remind-missing/preview', authMiddleware, async (req: Auth
     return;
   }
 
-  if (!isLeagueAdmin(league, req.userId!)) {
+  if (!(await canManageLeague(league, req.userId))) {
     res.status(403).json({ error: 'Only league admins can preview pick reminders' });
     return;
   }
@@ -633,7 +651,7 @@ router.post('/:id/picks/remind-missing', authMiddleware, async (req: AuthRequest
     return;
   }
 
-  if (!isLeagueAdmin(league, req.userId!)) {
+  if (!(await canManageLeague(league, req.userId))) {
     res.status(403).json({ error: 'Only league admins can send pick reminders' });
     return;
   }
@@ -682,7 +700,7 @@ router.get('/:id/members/:userId/predictions', authMiddleware, async (req: AuthR
     }
 
     const isViewer = league.members.some((m) => m.userId.toString() === req.userId);
-    if (!isViewer) {
+    if (!isViewer && !(await isMasterUser(req.userId))) {
       res.status(403).json({ error: 'Not a league member' });
       return;
     }
@@ -752,8 +770,14 @@ router.delete('/:id/leave', authMiddleware, async (req: AuthRequest, res: Respon
     return;
   }
 
-  if (league.ownerId.toString() === req.userId) {
+  if (league.ownerId.toString() === req.userId && !(await isMasterUser(req.userId))) {
     res.status(400).json({ error: 'The league owner cannot leave the league' });
+    return;
+  }
+
+  const wasMember = league.members.some((m) => m.userId.toString() === req.userId);
+  if (!wasMember) {
+    res.status(400).json({ error: 'You are not a member of this league' });
     return;
   }
 

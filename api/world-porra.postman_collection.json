@@ -813,6 +813,7 @@
         },
         {
           "name": "My Leagues",
+          "description": "Returns the authenticated user's leagues. Master users receive every league, including leagues where they are not a member and should not appear in member lists.",
           "request": {
             "method": "GET",
             "header": [
@@ -834,6 +835,7 @@
         },
         {
           "name": "Get League (with Leaderboard)",
+          "description": "League detail with sorted leaderboard. Requires membership, except master users can read any league silently without being listed as a member.",
           "request": {
             "method": "GET",
             "header": [
@@ -855,7 +857,8 @@
           }
         },
         {
-          "name": "Delete League (Owner only)",
+          "name": "Delete League (Owner/master)",
+          "description": "Deletes a league. Allowed for the league owner or any master user.",
           "request": {
             "method": "DELETE",
             "header": [
@@ -878,6 +881,7 @@
         },
         {
           "name": "Leave League",
+          "description": "Removes the authenticated user from the league member list. Normal owners cannot leave their own league; master owners can leave to manage the league silently without being visible to players.",
           "request": {
             "method": "DELETE",
             "header": [
@@ -900,7 +904,8 @@
           }
         },
         {
-          "name": "Update Payment Settings (Admin only)",
+          "name": "Update Payment Settings (Admin/master)",
+          "description": "Updates payment settings. Allowed for league admins, the owner, or any master user even when the master user is not a member.",
           "request": {
             "method": "PATCH",
             "header": [
@@ -931,7 +936,8 @@
           }
         },
         {
-          "name": "Mark Member Payment (Admin only)",
+          "name": "Mark Member Payment (Admin/master)",
+          "description": "Marks a member as paid/unpaid. Allowed for league admins, the owner, or any master user even when the master user is not a member.",
           "request": {
             "method": "PATCH",
             "header": [
@@ -964,7 +970,8 @@
           }
         },
         {
-          "name": "Add League Admin",
+          "name": "Add League Admin (Admin/master)",
+          "description": "Promotes an existing league member to admin. Allowed for league admins, the owner, or any master user.",
           "request": {
             "method": "POST",
             "header": [
@@ -995,7 +1002,8 @@
           }
         },
         {
-          "name": "Remove League Admin",
+          "name": "Remove League Admin (Admin/master)",
+          "description": "Removes admin status from a league member. Allowed for league admins, the owner, or any master user. The owner cannot be demoted.",
           "request": {
             "method": "DELETE",
             "header": [
@@ -1019,7 +1027,8 @@
           }
         },
         {
-          "name": "Notify League Members (Admin only)",
+          "name": "Notify League Members (Admin/master)",
+          "description": "Sends a notification to league members. Allowed for league admins, the owner, or any master user even when the master user is not a member.",
           "request": {
             "method": "POST",
             "header": [
@@ -1050,7 +1059,8 @@
           }
         },
         {
-          "name": "Remind Unpaid Members (Admin only)",
+          "name": "Remind Unpaid Members (Admin/master)",
+          "description": "Sends payment reminders to unpaid league members. Allowed for league admins, the owner, or any master user.",
           "request": {
             "method": "POST",
             "header": [
@@ -1074,7 +1084,8 @@
           }
         },
         {
-          "name": "Preview Missing Pick Reminder (Admin only)",
+          "name": "Preview Missing Pick Reminder (Admin/master)",
+          "description": "Previews members missing picks for matches locking soon. Allowed for league admins, the owner, or any master user.",
           "request": {
             "method": "GET",
             "header": [
@@ -1099,7 +1110,8 @@
           }
         },
         {
-          "name": "Send Missing Pick Reminder (Admin only)",
+          "name": "Send Missing Pick Reminder (Admin/master)",
+          "description": "Sends reminders to members missing picks for matches locking soon. Allowed for league admins, the owner, or any master user.",
           "request": {
             "method": "POST",
             "header": [
@@ -1124,6 +1136,7 @@
         },
         {
           "name": "Get Member Predictions",
+          "description": "Returns a league member's finished predictions and upcoming pick status. Requires membership, except master users can read any league member silently.",
           "request": {
             "method": "GET",
             "header": [
