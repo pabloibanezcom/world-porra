@@ -215,7 +215,7 @@ This starts Expo on LAN with `EXPO_PUBLIC_API_PRESET=vercel`, which takes preced
 
 ## API
 
-See [`api/wc2026.postman_collection.json`](api/wc2026.postman_collection.json) for a Postman collection with all endpoints. Hit **Dev Login** first — it auto-saves the token for all subsequent requests.
+See [`api/world-porra.postman_collection.json`](api/world-porra.postman_collection.json) for a Postman collection with all endpoints. Hit **Dev Login** first — it auto-saves the token for all subsequent requests.
 
 | Method | Endpoint | Description |
 |---|---|---|
