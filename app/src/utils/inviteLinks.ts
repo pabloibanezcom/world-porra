@@ -61,3 +61,24 @@ export function parseInviteFromUrl(url: string | null | undefined): ParsedInvite
 export function parseInviteCodeFromUrl(url: string | null | undefined): string | null {
   return parseInviteFromUrl(url)?.code ?? null;
 }
+
+const LEAGUE_CREATION_INVITE_TOKEN_PATTERN = /^[a-f0-9]{32}$/iu;
+
+export function buildLeagueCreationInviteUrl(token: string): string {
+  return `${getAppBaseUrl()}/create-league-invite/${token}`;
+}
+
+export function parseLeagueCreationInviteTokenFromUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const parsedUrl = new URL(url);
+    const pathParts = parsedUrl.pathname.split('/').filter(Boolean);
+    const idx = pathParts.findIndex((part) => part.toLowerCase() === 'create-league-invite');
+    const token = idx >= 0 ? pathParts[idx + 1] : null;
+    if (token && LEAGUE_CREATION_INVITE_TOKEN_PATTERN.test(token)) return token;
+    return null;
+  } catch {
+    const match = url.match(/create-league-invite\/([a-f0-9]{32})/iu);
+    return match?.[1] ?? null;
+  }
+}

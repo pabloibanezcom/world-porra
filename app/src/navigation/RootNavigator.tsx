@@ -8,7 +8,8 @@ import { useAuthStore } from '../store/authStore';
 import { colors, fonts } from '../theme';
 import { fetchLeagueInvitePreview, joinLeague } from '../api/leagues';
 import { usePendingInviteStore } from '../store/pendingInviteStore';
-import { parseInviteFromUrl } from '../utils/inviteLinks';
+import { usePendingLeagueCreationInviteStore } from '../store/pendingLeagueCreationInviteStore';
+import { parseInviteFromUrl, parseLeagueCreationInviteTokenFromUrl } from '../utils/inviteLinks';
 
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
@@ -21,6 +22,7 @@ import CreateLeagueScreen from '../screens/CreateLeagueScreen';
 import LeagueDetailScreen from '../screens/LeagueDetailScreen';
 import MatchDetailScreen from '../screens/MatchDetailScreen';
 import MemberScreen from '../screens/MemberScreen';
+import LeagueCreationInviteScreen from '../screens/LeagueCreationInviteScreen';
 import { useI18n } from '../i18n';
 
 const Stack = createNativeStackNavigator();
@@ -107,16 +109,28 @@ export default function RootNavigator() {
   const hydratePendingInvite = usePendingInviteStore((s) => s.hydratePendingInvite);
   const setPendingInvite = usePendingInviteStore((s) => s.setPendingInvite);
   const clearPendingInviteCode = usePendingInviteStore((s) => s.clearPendingInviteCode);
+  const pendingLeagueCreationToken = usePendingLeagueCreationInviteStore((s) => s.pendingToken);
+  const hydrateLeagueCreationInvite = usePendingLeagueCreationInviteStore((s) => s.hydrate);
+  const setPendingLeagueCreationToken = usePendingLeagueCreationInviteStore((s) => s.setPendingToken);
+  const clearPendingLeagueCreationToken = usePendingLeagueCreationInviteStore((s) => s.clearPendingToken);
+  const handledLeagueCreationTokenRef = useRef<string | null>(null);
   const { t } = useI18n();
   const handledInviteRef = useRef<string | null>(null);
 
   useEffect(() => {
     restoreSession();
     hydratePendingInvite();
+    hydrateLeagueCreationInvite();
   }, []);
 
   useEffect(() => {
     const handleUrl = (url: string | null) => {
+      const leagueCreationToken = parseLeagueCreationInviteTokenFromUrl(url);
+      if (leagueCreationToken) {
+        setPendingLeagueCreationToken(leagueCreationToken).catch(() => {});
+        return;
+      }
+
       const invite = parseInviteFromUrl(url);
       if (invite) {
         setPendingInvite(invite.code, invite.leagueName).catch(() => {});
@@ -171,6 +185,15 @@ export default function RootNavigator() {
     rootNavigation.navigate('Register');
   }, [isLoading, user, pendingInviteCode, navigationRef]);
 
+  useEffect(() => {
+    if (!user || !pendingLeagueCreationToken || handledLeagueCreationTokenRef.current === pendingLeagueCreationToken) return;
+
+    handledLeagueCreationTokenRef.current = pendingLeagueCreationToken;
+    clearPendingLeagueCreationToken().catch(() => {});
+    const rootNavigation = navigationRef as unknown as { navigate: (screen: string, params?: object) => void };
+    rootNavigation.navigate('LeagueCreationInvite', { token: pendingLeagueCreationToken });
+  }, [user, pendingLeagueCreationToken, clearPendingLeagueCreationToken, navigationRef]);
+
   if (isLoading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.bg }}>
@@ -204,6 +227,16 @@ export default function RootNavigator() {
               name="MemberScreen"
               component={MemberScreen}
               options={{ headerShown: false, animation: 'slide_from_right' }}
+            />
+            <Stack.Screen
+              name="LeagueCreationInvite"
+              component={LeagueCreationInviteScreen}
+              options={{
+                headerShown: false,
+                presentation: 'transparentModal',
+                animation: 'fade',
+                contentStyle: { backgroundColor: 'transparent' },
+              }}
             />
           </>
         ) : (

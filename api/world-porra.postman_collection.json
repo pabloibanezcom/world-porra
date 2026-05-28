@@ -1150,6 +1150,105 @@
       ]
     },
     {
+      "name": "League Creation Invites",
+      "item": [
+        {
+          "name": "Generate Invite (master)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.invite?.token) { pm.collectionVariables.set('leagueCreationToken', json.invite.token); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/league-creation-invites",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "league-creation-invites"
+              ]
+            }
+          }
+        },
+        {
+          "name": "List Invites (master)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/league-creation-invites",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "league-creation-invites"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Invite Preview (public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/league-creation-invites/{{leagueCreationToken}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "league-creation-invites",
+                "{{leagueCreationToken}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Redeem Invite",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/league-creation-invites/{{leagueCreationToken}}/redeem",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "league-creation-invites",
+                "{{leagueCreationToken}}",
+                "redeem"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "Notifications",
       "item": [
         {

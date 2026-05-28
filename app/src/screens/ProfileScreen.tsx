@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
+  Alert,
+  Share,
   View,
   Text,
   StyleSheet,
@@ -21,6 +23,8 @@ import { sortMembersByPoints } from '../utils/league';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import NotifyModal from '../components/NotifyModal';
 import { apiClient, getApiBaseUrl } from '../api/client';
+import { generateLeagueCreationInvite } from '../api/leagueCreationInvites';
+import { buildLeagueCreationInviteUrl } from '../utils/inviteLinks';
 import { ApiHealth, fetchApiHealth } from '../api/config';
 import { getActiveApiScenario } from '../api/scenario';
 import { Language, useI18n } from '../i18n';
@@ -95,6 +99,16 @@ export default function ProfileScreen() {
 
   const handleBroadcast = async (title: string, body: string) => {
     await apiClient.post('/notifications/broadcast', { title, body });
+  };
+
+  const handleInviteToCreateLeague = async () => {
+    try {
+      const { token } = await generateLeagueCreationInvite();
+      const url = buildLeagueCreationInviteUrl(token);
+      await Share.share({ message: t('profile.inviteToCreateLeagueShareMessage', { url }) });
+    } catch {
+      Alert.alert(t('common.error'), t('profile.inviteToCreateLeagueFailed'));
+    }
   };
 
   const handleSaveName = async () => {
@@ -181,13 +195,22 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* Master: broadcast to all */}
+        {/* Master: admin tools */}
         {user?.isMaster && (
           <View>
             <SectionLabel>{t('profile.admin')}</SectionLabel>
             <View style={styles.card}>
-              <TouchableOpacity style={styles.settingsRow} onPress={() => setNotifyModalVisible(true)}>
+              <TouchableOpacity
+                style={[styles.settingsRow, styles.settingsRowBorder]}
+                onPress={() => setNotifyModalVisible(true)}
+              >
                 <Text style={styles.settingsLabel}>{t('profile.notifyAll')}</Text>
+                <View style={styles.settingsRight}>
+                  <Text style={styles.chevron}>›</Text>
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.settingsRow} onPress={handleInviteToCreateLeague}>
+                <Text style={styles.settingsLabel}>{t('profile.inviteToCreateLeague')}</Text>
                 <View style={styles.settingsRight}>
                   <Text style={styles.chevron}>›</Text>
                 </View>

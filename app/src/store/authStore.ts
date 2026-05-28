@@ -13,6 +13,7 @@ interface AuthState {
   signInWithGoogle: (idToken: string) => Promise<void>;
   signInDev: (email?: string) => Promise<void>;
   restoreSession: () => Promise<void>;
+  refreshUser: () => Promise<void>;
   updateProfileName: (name: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -58,6 +59,15 @@ export const useAuthStore = create<AuthState>((set) => ({
     } catch {
       await deleteToken(TOKEN_STORAGE_KEY);
       set({ user: null, token: null, isLoading: false });
+    }
+  },
+
+  refreshUser: async () => {
+    try {
+      const user = await getMe();
+      set({ user });
+    } catch {
+      // ignore — stale session will be caught on next restoreSession
     }
   },
 
