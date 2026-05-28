@@ -60,22 +60,24 @@ function isLeagueAdmin(
   return league.members.some((member) => member.userId.toString() === userId && member.isAdmin);
 }
 
+const paymentSettingsSchema = z
+  .object({
+    entryFee: z.coerce.number().min(0).max(100000),
+    payoutSplits: z
+      .array(
+        z.object({
+          position: z.coerce.number().int().min(1).max(10),
+          amount: z.coerce.number().min(0).max(100000),
+        })
+      )
+      .min(1)
+      .max(10),
+  })
+  .transform((settings): PaymentSettingsInput => settings as PaymentSettingsInput);
+
 const createLeagueSchema = z.object({
   name: z.string().min(1).max(50),
-  paymentSettings: z
-    .object({
-      entryFee: z.coerce.number().min(0).max(100000),
-      payoutSplits: z
-        .array(
-          z.object({
-            position: z.coerce.number().int().min(1).max(10),
-            amount: z.coerce.number().min(0).max(100000),
-          })
-        )
-        .min(1)
-        .max(10),
-    })
-    .optional(),
+  paymentSettings: paymentSettingsSchema.optional(),
 });
 
 const joinLeagueSchema = z.object({
@@ -84,19 +86,6 @@ const joinLeagueSchema = z.object({
 
 const setAdminSchema = z.object({
   userId: z.string().min(1),
-});
-
-const paymentSettingsSchema: z.ZodType<PaymentSettingsInput> = z.object({
-  entryFee: z.coerce.number().min(0).max(100000),
-  payoutSplits: z
-    .array(
-      z.object({
-        position: z.coerce.number().int().min(1).max(10),
-        amount: z.coerce.number().min(0).max(100000),
-      })
-    )
-    .min(1)
-    .max(10),
 });
 
 const setMemberPaymentSchema = z.object({
