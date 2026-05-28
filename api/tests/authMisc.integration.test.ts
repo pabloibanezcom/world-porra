@@ -27,10 +27,19 @@ afterAll(async () => {
 
 describe('misc app and auth routes', () => {
   it('reports a healthy database connection', async () => {
-    const response = await requestJson<{ status: string; db: string; timestamp: string }>('/health');
+    const response = await requestJson<{
+      status: string;
+      db: string;
+      timestamp: string;
+      deployment: { environment: string; commitSha: string | null; commitRef: string | null; url: string | null };
+    }>('/health');
 
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({ status: 'ok', db: 'connected' });
+    expect(response.body.deployment.environment).toEqual(expect.any(String));
+    expect(response.body.deployment).toHaveProperty('commitSha');
+    expect(response.body.deployment).toHaveProperty('commitRef');
+    expect(response.body.deployment).toHaveProperty('url');
     expect(new Date(response.body.timestamp).toString()).not.toBe('Invalid Date');
   });
 

@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import { League, LEAGUE_MAX_MEMBERS } from '../models/League';
 import { Match } from '../models/Match';
 import { Prediction } from '../models/Prediction';
+import { LeagueReminderLog, LeagueReminderType } from '../models/LeagueReminderLog';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { User } from '../models/User';
 import { getRequestLanguage, hydrateMatches } from '../services/countryTeamService';
@@ -429,6 +430,7 @@ const notifyLeagueSchema = z.object({
 
 const PICK_REMINDER_LOOKAHEAD_HOURS = 24;
 const PICK_LOCK_MINUTES_BEFORE = 5;
+const REMINDER_COOLDOWN_HOURS = 2;
 
 function getPickLockTime(match: { utcDate: Date }): Date {
   return new Date(match.utcDate.getTime() - PICK_LOCK_MINUTES_BEFORE * 60 * 1000);
@@ -436,6 +438,39 @@ function getPickLockTime(match: { utcDate: Date }): Date {
 
 function hasConfirmedTeams(match: { homeTeamCode: string; awayTeamCode: string }): boolean {
   return ![match.homeTeamCode, match.awayTeamCode].some((code) => code.trim().toUpperCase() === 'TBD');
+}
+
+async function enforceReminderCooldown(leagueId: string, type: LeagueReminderType) {
+  const now = currentDate();
+  const cooldownStart = new Date(now.getTime() - REMINDER_COOLDOWN_HOURS * 60 * 60 * 1000);
+  const recentReminder = await LeagueReminderLog.findOne({
+    leagueId,
+    type,
+    sentAt: { $gt: cooldownStart },
+  })
+    .sort({ sentAt: -1 })
+    .lean();
+
+  if (!recentReminder) return null;
+
+  return new Date(new Date(recentReminder.sentAt).getTime() + REMINDER_COOLDOWN_HOURS * 60 * 60 * 1000);
+}
+
+async function logReminder(input: {
+  leagueId: string;
+  senderId: string;
+  type: LeagueReminderType;
+  recipients: number;
+  metadata?: Record<string, unknown>;
+}) {
+  await LeagueReminderLog.create({
+    leagueId: input.leagueId,
+    senderId: input.senderId,
+    type: input.type,
+    recipients: input.recipients,
+    sentAt: currentDate(),
+    metadata: input.metadata,
+  });
 }
 
 async function getMissingPickReminderPreview(league: {
@@ -513,7 +548,8 @@ router.post('/:id/notify', authMiddleware, async (req: AuthRequest, res: Respons
 });
 
 router.post('/:id/payments/remind-unpaid', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
-  const league = await League.findById(req.params.id);
+  const leagueId = String(req.params.id);
+  const league = await League.findById(leagueId);
   if (!league) {
     res.status(404).json({ error: 'League not found' });
     return;
@@ -533,11 +569,23 @@ router.post('/:id/payments/remind-unpaid', authMiddleware, async (req: AuthReque
     return;
   }
 
+  const cooldownUntil = await enforceReminderCooldown(leagueId, 'payment_unpaid');
+  if (cooldownUntil) {
+    res.status(429).json({ error: 'Payment reminders were sent recently', cooldownUntil: cooldownUntil.toISOString() });
+    return;
+  }
+
   const { sendToUsers } = await import('../services/pushService');
   await sendToUsers(unpaidMemberIds, {
     title: `${league.name}: payment reminder`,
     body: 'Your league admin marked your entry fee as pending.',
     url: '/',
+  });
+  await logReminder({
+    leagueId,
+    senderId: req.userId!,
+    type: 'payment_unpaid',
+    recipients: unpaidMemberIds.length,
   });
 
   res.json({ ok: true, recipients: unpaidMemberIds.length });
@@ -576,7 +624,8 @@ router.get('/:id/picks/remind-missing/preview', authMiddleware, async (req: Auth
 });
 
 router.post('/:id/picks/remind-missing', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
-  const league = await League.findById(req.params.id);
+  const leagueId = String(req.params.id);
+  const league = await League.findById(leagueId);
   if (!league) {
     res.status(404).json({ error: 'League not found' });
     return;
@@ -599,11 +648,24 @@ router.post('/:id/picks/remind-missing', authMiddleware, async (req: AuthRequest
     return;
   }
 
+  const cooldownUntil = await enforceReminderCooldown(leagueId, 'missing_picks');
+  if (cooldownUntil) {
+    res.status(429).json({ error: 'Pick reminders were sent recently', cooldownUntil: cooldownUntil.toISOString() });
+    return;
+  }
+
   const { sendToUsers } = await import('../services/pushService');
   await sendToUsers(missingMemberIds, {
     title: `${league.name}: picks reminder`,
     body: 'You have matches locking soon without picks.',
     url: '/',
+  });
+  await logReminder({
+    leagueId,
+    senderId: req.userId!,
+    type: 'missing_picks',
+    recipients: missingMemberIds.length,
+    metadata: { matches: matchesToPick.length },
   });
 
   res.json({ ok: true, recipients: missingMemberIds.length, matches: matchesToPick.length });

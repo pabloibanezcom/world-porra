@@ -354,6 +354,13 @@ describe('league membership', () => {
       })
     );
 
+    const repeated = await requestJson(`/leagues/${league._id}/payments/remind-unpaid`, {
+      token: master.token,
+      body: {},
+    });
+    expect(repeated.status).toBe(429);
+    expect(repeated.body).toMatchObject({ error: 'Payment reminders were sent recently' });
+
     await requestJson(`/leagues/${league._id}/members/${unpaidMember.user.id}/payment`, {
       method: 'PATCH',
       token: master.token,
@@ -437,6 +444,13 @@ describe('league membership', () => {
         url: '/',
       })
     );
+
+    const repeated = await requestJson(`/leagues/${league._id}/picks/remind-missing`, {
+      token: master.token,
+      body: {},
+    });
+    expect(repeated.status).toBe(429);
+    expect(repeated.body).toMatchObject({ error: 'Pick reminders were sent recently' });
 
     await Prediction.create({
       userId: missingMember.user.id,

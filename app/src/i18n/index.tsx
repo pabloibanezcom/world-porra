@@ -149,6 +149,11 @@ const translations: Record<Language, TranslationMap> = {
     'profile.nameTooLong': 'Display name must be 40 characters or fewer.',
     'profile.nameUpdated': 'Display name updated.',
     'profile.nameUpdateFailed': 'Failed to update display name.',
+    'profile.diagnostics': 'Diagnostics',
+    'profile.apiUrl': 'API URL',
+    'profile.apiScenario': 'Scenario',
+    'profile.apiStatus': 'API status',
+    'profile.apiCommit': 'API commit',
     'profile.signOut': 'Sign out',
 
     'scenario.label': 'Tournament phase',
@@ -539,6 +544,11 @@ const translations: Record<Language, TranslationMap> = {
     'profile.nameTooLong': 'El nombre visible debe tener 40 caracteres o menos.',
     'profile.nameUpdated': 'Nombre visible actualizado.',
     'profile.nameUpdateFailed': 'No se pudo actualizar el nombre visible.',
+    'profile.diagnostics': 'Diagnóstico',
+    'profile.apiUrl': 'URL de API',
+    'profile.apiScenario': 'Escenario',
+    'profile.apiStatus': 'Estado API',
+    'profile.apiCommit': 'Commit API',
     'profile.signOut': 'Cerrar sesión',
 
     'scenario.label': 'Fase del torneo',

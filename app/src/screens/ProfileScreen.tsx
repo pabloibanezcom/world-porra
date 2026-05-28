@@ -20,7 +20,9 @@ import { colors, fonts } from '../theme';
 import { sortMembersByPoints } from '../utils/league';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import NotifyModal from '../components/NotifyModal';
-import { apiClient } from '../api/client';
+import { apiClient, getApiBaseUrl } from '../api/client';
+import { ApiHealth, fetchApiHealth } from '../api/config';
+import { getActiveApiScenario } from '../api/scenario';
 import { Language, useI18n } from '../i18n';
 import ApiScenarioSelector from '../components/ApiScenarioSelector';
 
@@ -49,6 +51,9 @@ export default function ProfileScreen() {
   const [displayName, setDisplayName] = useState(user?.name ?? '');
   const [nameError, setNameError] = useState<string | null>(null);
   const [savingName, setSavingName] = useState(false);
+  const [apiHealth, setApiHealth] = useState<ApiHealth | null>(null);
+  const [activeScenario, setActiveScenario] = useState<string | null>(null);
+  const showDiagnostics = __DEV__ || process.env.EXPO_PUBLIC_ENABLE_SCENARIO_SWITCHER === 'true';
 
   useEffect(() => {
     Promise.all([fetchMyLeagues(), fetchMyPredictions()])
@@ -58,6 +63,13 @@ export default function ProfileScreen() {
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!showDiagnostics) return;
+
+    getActiveApiScenario().then(setActiveScenario).catch(() => {});
+    fetchApiHealth().then(setApiHealth).catch(() => {});
+  }, [showDiagnostics]);
 
   const totalPoints = predictions.reduce((a, p) => a + (p.points ?? 0), 0);
   const exactCount = predictions.filter((p) => p.points !== null && p.points >= 10).length;
@@ -216,6 +228,18 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        {showDiagnostics && (
+          <View>
+            <SectionLabel>{t('profile.diagnostics')}</SectionLabel>
+            <View style={styles.card}>
+              <DiagnosticsRow label={t('profile.apiUrl')} value={getApiBaseUrl()} />
+              <DiagnosticsRow label={t('profile.apiScenario')} value={activeScenario || apiHealth?.scenario || 'default'} />
+              <DiagnosticsRow label={t('profile.apiStatus')} value={apiHealth ? `${apiHealth.status} · ${apiHealth.db}` : t('common.notAvailable')} />
+              <DiagnosticsRow label={t('profile.apiCommit')} value={apiHealth?.deployment?.commitSha?.slice(0, 7) || t('common.notAvailable')} />
+            </View>
+          </View>
+        )}
+
         {/* Account */}
         <View>
           <SectionLabel>{t('profile.account')}</SectionLabel>
@@ -287,6 +311,15 @@ export default function ProfileScreen() {
         </View>
       </Modal>
     </SafeAreaView>
+  );
+}
+
+function DiagnosticsRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.diagnosticsRow}>
+      <Text style={styles.diagnosticsLabel}>{label}</Text>
+      <Text style={styles.diagnosticsValue} numberOfLines={1}>{value}</Text>
+    </View>
   );
 }
 
@@ -439,5 +472,25 @@ const styles = StyleSheet.create({
   settingsLabel: { color: colors.text, fontSize: 14, fontFamily: fonts.body },
   settingsRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   settingsValue: { color: colors.muted, fontSize: 13 },
+  diagnosticsRow: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  diagnosticsLabel: {
+    color: colors.dim,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    marginBottom: 3,
+  },
+  diagnosticsValue: {
+    color: colors.muted,
+    fontFamily: fonts.body,
+    fontSize: 12,
+  },
   chevron: { color: colors.dim, fontSize: 18 },
 });
