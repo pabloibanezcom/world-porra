@@ -132,8 +132,11 @@ export default function LeagueDetailScreen() {
   const myPoints = me ? memberPoints(me) : 0;
   const accent = colors.accent;
   const accentDim = colors.accentDim;
-  const isAdmin = me?.isAdmin || league.ownerId?.id === user?.id || (league.ownerId as any)?._id === user?.id;
+  const isAdmin = !!user?.isMaster || me?.isAdmin || league.ownerId?.id === user?.id || (league.ownerId as any)?._id === user?.id;
   const isOwner = league.ownerId?.id === user?.id || (league.ownerId as any)?._id === user?.id;
+  const isMember = !!me;
+  const canDeleteLeague = isOwner || !!user?.isMaster;
+  const canLeaveLeague = isMember && (!isOwner || !!user?.isMaster);
   const paymentSettings = league.paymentSettings ?? {
     entryFee: 0,
     payoutSplits: [
@@ -432,7 +435,8 @@ export default function LeagueDetailScreen() {
       {settingsSheetVisible && (
         <LeagueSettingsSheet
           league={league}
-          isOwner={isOwner}
+          canDeleteLeague={canDeleteLeague}
+          canLeaveLeague={canLeaveLeague}
           adminUpdatingMemberId={adminUpdatingMemberId}
           remindingUnpaid={remindingUnpaid}
           remindingMissingPicks={missingPicksPreviewLoading}
@@ -568,7 +572,8 @@ function RankingRow({
 
 function LeagueSettingsSheet({
   league,
-  isOwner,
+  canDeleteLeague,
+  canLeaveLeague,
   adminUpdatingMemberId,
   remindingUnpaid,
   remindingMissingPicks,
@@ -583,7 +588,8 @@ function LeagueSettingsSheet({
   onLeaveLeague,
 }: {
   league: League;
-  isOwner: boolean;
+  canDeleteLeague: boolean;
+  canLeaveLeague: boolean;
   adminUpdatingMemberId: string | null;
   remindingUnpaid: boolean;
   remindingMissingPicks: boolean;
@@ -676,13 +682,16 @@ function LeagueSettingsSheet({
           <SettingsActionRow icon="card-outline" label={t('payments.editTitle')} onPress={onEditPayments} />
         </SettingsSection>
 
-        <SettingsSection title={t('league.settingsDangerTitle')}>
-          {isOwner ? (
-            <SettingsActionRow icon="trash-outline" label={t('league.deleteAction')} danger onPress={onDeleteLeague} />
-          ) : (
-            <SettingsActionRow icon="exit-outline" label={t('league.leaveAction')} danger onPress={onLeaveLeague} />
-          )}
-        </SettingsSection>
+        {(canDeleteLeague || canLeaveLeague) && (
+          <SettingsSection title={t('league.settingsDangerTitle')}>
+            {canDeleteLeague && (
+              <SettingsActionRow icon="trash-outline" label={t('league.deleteAction')} danger onPress={onDeleteLeague} />
+            )}
+            {canLeaveLeague && (
+              <SettingsActionRow icon="exit-outline" label={t('league.leaveAction')} danger onPress={onLeaveLeague} />
+            )}
+          </SettingsSection>
+        )}
       </ScrollView>
     </BottomSheet>
   );
