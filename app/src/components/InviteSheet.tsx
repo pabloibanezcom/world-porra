@@ -45,7 +45,6 @@ export default function InviteSheet({ visible, leagueName, inviteCode, onClose }
     const inviteUrl = buildInviteUrl(inviteCode, leagueName);
     await Share.share({
       message: t('league.shareMessage', { name: leagueName, code: inviteCode, url: inviteUrl }),
-      url: inviteUrl,
     });
   };
 
