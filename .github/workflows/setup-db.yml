@@ -6,22 +6,40 @@ on:
       target:
         description: 'Which databases to populate'
         required: true
-        default: 'both'
+        default: 'production'
         type: choice
         options:
-          - both
           - production
           - staging
+          - both
+      source_db:
+        description: 'Source database name on the dev/reference cluster'
+        required: true
+        default: 'test'
+      production_db:
+        description: 'Target production database name'
+        required: true
+        default: 'world-porra'
+      staging_db:
+        description: 'Target staging database name'
+        required: true
+        default: 'world-porra-stg'
+      confirm:
+        description: 'Type "copy-reference-data" to confirm'
+        required: true
+        default: 'no'
 
 jobs:
   setup-db:
-    name: Copy reference data from test → prod/stg
+    name: Copy reference data from dev/reference cluster
     runs-on: ubuntu-latest
+    environment: production
+    if: ${{ github.event.inputs.confirm == 'copy-reference-data' }}
 
     env:
-      SOURCE_DB: test
-      PROD_DB: world-porra
-      STG_DB: world-porra-stg
+      SOURCE_DB: ${{ inputs.source_db }}
+      PROD_DB: ${{ inputs.production_db }}
+      STG_DB: ${{ inputs.staging_db }}
       DUMP_PATH: /tmp/world-porra-dump
 
     steps:
@@ -32,17 +50,22 @@ jobs:
           sudo cp mongodb-database-tools-*/bin/* /usr/local/bin/
           mongodump --version
 
-      - name: Dump source database (test)
+      - name: Dump source database
         env:
-          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          SOURCE_MONGODB_URI: ${{ secrets.SOURCE_MONGODB_URI }}
         run: |
+          if [ -z "$SOURCE_MONGODB_URI" ]; then
+            echo "Missing SOURCE_MONGODB_URI secret with the dev/reference Atlas connection string."
+            exit 1
+          fi
+
           mongodump \
-            --uri="$MONGODB_URI" \
+            --uri="$SOURCE_MONGODB_URI" \
             --db="$SOURCE_DB" \
             --out="$DUMP_PATH"
 
           # Remove user-generated collections from the dump before restoring
-          for col in users leagues predictions grouppredictions tournamentpredictions pushsubscriptions; do
+          for col in users leagues predictions grouppredictions tournamentpredictions pushsubscriptions leaguereminderlogs; do
             rm -f "$DUMP_PATH/$SOURCE_DB/${col}.bson"
             rm -f "$DUMP_PATH/$SOURCE_DB/${col}.metadata.json"
             echo "Excluded $col from dump"
@@ -54,27 +77,37 @@ jobs:
       - name: Restore to production
         if: ${{ inputs.target == 'both' || inputs.target == 'production' }}
         env:
-          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          TARGET_MONGODB_URI: ${{ secrets.PROD_MONGODB_URI }}
         run: |
-          BASE_URI=$(echo "$MONGODB_URI" | grep -oE 'mongodb\+srv://[^/]+')
+          if [ -z "$TARGET_MONGODB_URI" ]; then
+            echo "Missing PROD_MONGODB_URI secret with the production Atlas connection string."
+            exit 1
+          fi
+
           mongorestore \
-            --uri="$BASE_URI/$PROD_DB?appName=Cluster0" \
-            --db="$PROD_DB" \
+            --uri="$TARGET_MONGODB_URI" \
+            --nsFrom="${SOURCE_DB}.*" \
+            --nsTo="${PROD_DB}.*" \
             --drop \
-            "$DUMP_PATH/$SOURCE_DB"
+            "$DUMP_PATH"
           echo "Restored to $PROD_DB"
 
       - name: Restore to staging
         if: ${{ inputs.target == 'both' || inputs.target == 'staging' }}
         env:
-          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          TARGET_MONGODB_URI: ${{ secrets.STG_MONGODB_URI }}
         run: |
-          BASE_URI=$(echo "$MONGODB_URI" | grep -oE 'mongodb\+srv://[^/]+')
+          if [ -z "$TARGET_MONGODB_URI" ]; then
+            echo "Missing STG_MONGODB_URI secret with the staging Atlas connection string."
+            exit 1
+          fi
+
           mongorestore \
-            --uri="$BASE_URI/$STG_DB?appName=Cluster0" \
-            --db="$STG_DB" \
+            --uri="$TARGET_MONGODB_URI" \
+            --nsFrom="${SOURCE_DB}.*" \
+            --nsTo="${STG_DB}.*" \
             --drop \
-            "$DUMP_PATH/$SOURCE_DB"
+            "$DUMP_PATH"
           echo "Restored to $STG_DB"
 
       - name: Summary
@@ -84,4 +117,4 @@ jobs:
           echo "**Target:** ${{ inputs.target }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Reference data copied:** countryteams, matches, pollconfigs" >> $GITHUB_STEP_SUMMARY
-          echo "**User data excluded:** users, leagues, predictions, grouppredictions, tournamentpredictions, pushsubscriptions" >> $GITHUB_STEP_SUMMARY
+          echo "**User data excluded:** users, leagues, predictions, grouppredictions, tournamentpredictions, pushsubscriptions, leaguereminderlogs" >> $GITHUB_STEP_SUMMARY
