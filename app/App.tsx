@@ -5,6 +5,7 @@ import Toast from 'react-native-toast-message';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import RootNavigator from './src/navigation/RootNavigator';
 import { I18nProvider } from './src/i18n';
+import VercelAnalytics from './src/components/VercelAnalytics';
 
 const fontAssets = {
   'PoolSans-Regular': require('./assets/fonts/PoolSans-Regular.ttf'),
@@ -27,6 +28,7 @@ export default function App() {
       <I18nProvider>
         <StatusBar style="light" />
         <RootNavigator />
+        <VercelAnalytics />
         <Toast />
       </I18nProvider>
     </SafeAreaProvider>
