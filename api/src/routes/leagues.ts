@@ -14,6 +14,11 @@ import { currentDate } from '../utils/time';
 
 const router = Router();
 
+type PaymentSettingsInput = {
+  entryFee: number;
+  payoutSplits: Array<{ position: number; amount: number }>;
+};
+
 const INVITE_CODE_LENGTH = 8;
 const INVITE_CODE_MIN_LENGTH = 6;
 const INVITE_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -81,7 +86,7 @@ const setAdminSchema = z.object({
   userId: z.string().min(1),
 });
 
-const paymentSettingsSchema = z.object({
+const paymentSettingsSchema: z.ZodType<PaymentSettingsInput> = z.object({
   entryFee: z.coerce.number().min(0).max(100000),
   payoutSplits: z
     .array(
@@ -534,7 +539,7 @@ router.post('/:id/notify', authMiddleware, async (req: AuthRequest, res: Respons
   }
   try {
     const { title, body } = notifyLeagueSchema.parse(req.body);
-    const { sendToUsers } = await import('../services/pushService');
+    const { sendToUsers } = await import('../services/pushService.js');
     const memberIds = league.members.map((m) => m.userId.toString());
     await sendToUsers(memberIds, { title, body, url: '/' });
     res.json({ ok: true });
@@ -575,7 +580,7 @@ router.post('/:id/payments/remind-unpaid', authMiddleware, async (req: AuthReque
     return;
   }
 
-  const { sendToUsers } = await import('../services/pushService');
+  const { sendToUsers } = await import('../services/pushService.js');
   await sendToUsers(unpaidMemberIds, {
     title: `${league.name}: payment reminder`,
     body: 'Your league admin marked your entry fee as pending.',
@@ -654,7 +659,7 @@ router.post('/:id/picks/remind-missing', authMiddleware, async (req: AuthRequest
     return;
   }
 
-  const { sendToUsers } = await import('../services/pushService');
+  const { sendToUsers } = await import('../services/pushService.js');
   await sendToUsers(missingMemberIds, {
     title: `${league.name}: picks reminder`,
     body: 'You have matches locking soon without picks.',

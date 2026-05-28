@@ -47,7 +47,7 @@ router.delete('/subscribe', authMiddleware, async (req: AuthRequest, res: Respon
 });
 
 router.post('/test', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
-  const { sendToUser } = await import('../services/pushService');
+  const { sendToUser } = await import('../services/pushService.js');
   await sendToUser(req.userId!, {
     title: 'Test notification',
     body: 'Push notifications are working!',
@@ -62,14 +62,14 @@ const broadcastSchema = z.object({
 });
 
 router.post('/broadcast', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
-  const user = await (await import('../models/User')).User.findById(req.userId);
+  const user = await (await import('../models/User.js')).User.findById(req.userId);
   if (!user?.isMaster) {
     res.status(403).json({ error: 'Master access required' });
     return;
   }
   try {
     const { title, body } = broadcastSchema.parse(req.body);
-    const { sendToAll } = await import('../services/pushService');
+    const { sendToAll } = await import('../services/pushService.js');
     await sendToAll({ title, body, url: '/' });
     res.json({ ok: true });
   } catch (error) {
