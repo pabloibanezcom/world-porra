@@ -12,6 +12,7 @@ import leagueCreationInviteRoutes from './routes/leagueCreationInvites';
 import adminRoutes from './routes/admin';
 import notificationRoutes from './routes/notifications';
 import configRoutes from './routes/config';
+import cronRoutes from './routes/cron';
 import { resolveRuntimeScenario } from './config/scenarioRuntime';
 import { runWithRequestContext } from './utils/requestContext';
 
@@ -66,6 +67,7 @@ app.use('/predictions', predictionRoutes);
 app.use('/leagues', leagueRoutes);
 app.use('/league-creation-invites', leagueCreationInviteRoutes);
 app.use('/admin', adminRoutes);
+app.use('/cron', cronRoutes);
 app.use('/notifications', notificationRoutes);
 app.use('/config', configRoutes);
 

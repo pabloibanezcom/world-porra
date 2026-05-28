@@ -170,6 +170,22 @@ curl -X POST https://world-porra-api.vercel.app/admin/scenarios/seed \
 
 If Vercel times out while creating all databases, run one scenario at a time. This endpoint uses the same `SYNC_API_KEY` protection as `/admin/sync`.
 
+### Daily Odds Sync
+
+The API registers a Vercel Cron Job that calls `/cron/daily-odds` once per day at `07:00 UTC`. Configure these API environment variables in Vercel:
+
+```env
+ODDS_API_KEY=...
+CRON_SECRET=...
+```
+
+Vercel sends `CRON_SECRET` as a bearer token for scheduled cron calls. For a manual run, you can also use the existing sync key:
+
+```bash
+curl https://world-porra-api.vercel.app/cron/daily-odds \
+  -H "x-sync-api-key: $SYNC_API_KEY"
+```
+
 ### Running
 
 From the repo root:

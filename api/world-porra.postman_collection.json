@@ -1424,7 +1424,29 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"syncFixtures\": true,\n  \"processResults\": true,\n  \"syncOdds\": false\n}"
+              "raw": "{\n  \"syncFixtures\": true,\n  \"processResults\": true,\n  \"syncOdds\": false,\n  \"forceOdds\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "Daily Odds Cron",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-sync-api-key",
+                "value": "{{syncApiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cron/daily-odds",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cron",
+                "daily-odds"
+              ]
             }
           }
         },

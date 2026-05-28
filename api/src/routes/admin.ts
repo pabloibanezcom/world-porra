@@ -15,6 +15,7 @@ const syncSchema = z.object({
   syncFixtures: z.boolean().default(true),
   processResults: z.boolean().default(true),
   syncOdds: z.boolean().default(false),
+  forceOdds: z.boolean().default(false),
 });
 
 const seedScenariosSchema = z.object({
@@ -28,7 +29,7 @@ function redactSensitiveError(value: string): string {
 
 router.post('/sync', syncAuthMiddleware, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { syncFixtures, processResults, syncOdds: doSyncOdds } = syncSchema.parse(req.body ?? {});
+    const { syncFixtures, processResults, syncOdds: doSyncOdds, forceOdds } = syncSchema.parse(req.body ?? {});
 
     if (!syncFixtures && !processResults && !doSyncOdds) {
       res.status(400).json({ error: 'At least one sync action must be enabled' });
@@ -45,19 +46,20 @@ router.post('/sync', syncAuthMiddleware, async (req: Request, res: Response, nex
       return;
     }
 
-    logger.info({ syncFixtures, processResults, syncOdds: doSyncOdds }, 'Running manual sync');
+    logger.info({ syncFixtures, processResults, syncOdds: doSyncOdds, forceOdds }, 'Running manual sync');
 
     const fixtureResult = syncFixtures ? await syncAllFixtures() : { fixturesSynced: 0 };
     const scoringResult = processResults
       ? await processFinishedMatches()
       : { matchesProcessed: 0, predictionsScored: 0, leaguesUpdated: 0 };
-    const oddsResult = doSyncOdds ? await syncOdds() : { matchesUpdated: 0, requestsRemaining: null };
+    const oddsResult = doSyncOdds ? await syncOdds({ force: forceOdds }) : { matchesUpdated: 0, requestsRemaining: null };
 
     res.json({
       ok: true,
       syncFixtures,
       processResults,
       syncOdds: doSyncOdds,
+      forceOdds,
       ...fixtureResult,
       ...scoringResult,
       oddsMatchesUpdated: oddsResult.matchesUpdated,
