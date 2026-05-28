@@ -3,8 +3,41 @@ import { Match } from '../models/Match';
 import { CountryTeam } from '../models/CountryTeam';
 import { env } from '../config/env';
 import { logger } from '../config/logger';
+import type { MatchStage } from '../shared';
 
 const ODDS_API_BASE = 'https://api.the-odds-api.com/v4';
+const ODDS_STALE_HOURS = 12;
+const MATCH_TIME_TOLERANCE_MS = 2 * 60 * 60 * 1000;
+
+const KNOCKOUT_STAGES = new Set<MatchStage>([
+  'ROUND_OF_32',
+  'ROUND_OF_16',
+  'QUARTER_FINAL',
+  'SEMI_FINAL',
+  'THIRD_PLACE',
+  'FINAL',
+]);
+
+const ODDS_TEAM_ALIASES: Record<string, string> = {
+  'cape verde': 'CPV',
+  'congo dr': 'COD',
+  'cote divoire': 'CIV',
+  curacao: 'CUW',
+  czechia: 'CZE',
+  'czech republic': 'CZE',
+  'democratic republic of the congo': 'COD',
+  'dr congo': 'COD',
+  haiti: 'HAI',
+  iran: 'IRN',
+  'ir iran': 'IRN',
+  'ivory coast': 'CIV',
+  'korea republic': 'KOR',
+  'saudi arabia': 'KSA',
+  'south korea': 'KOR',
+  usa: 'USA',
+  'united states': 'USA',
+  'united states of america': 'USA',
+};
 
 interface OddsApiOutcome {
   name: string;
@@ -29,27 +62,39 @@ interface OddsApiEvent {
   bookmakers: OddsApiBookmaker[];
 }
 
+interface MatchOdds {
+  home: number | null;
+  draw: number | null;
+  away: number | null;
+}
+
+interface SyncOddsOptions {
+  force?: boolean;
+}
+
 function normalizeName(name: string): string {
   return name
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9\s]/g, '')
     .trim();
 }
 
-function averageOdds(events: OddsApiEvent): { home: number | null; draw: number | null; away: number | null } {
+function averageOdds(event: OddsApiEvent, marketKey = 'h2h'): MatchOdds {
   const homePrices: number[] = [];
   const drawPrices: number[] = [];
   const awayPrices: number[] = [];
+  const normalizedHome = normalizeName(event.home_team);
+  const normalizedAway = normalizeName(event.away_team);
 
-  for (const bookmaker of events.bookmakers) {
-    const h2h = bookmaker.markets.find((m) => m.key === 'h2h');
-    if (!h2h) continue;
+  for (const bookmaker of event.bookmakers) {
+    const market = bookmaker.markets.find((m) => m.key === marketKey);
+    if (!market) continue;
 
-    const homeOutcome = h2h.outcomes.find((o) => normalizeName(o.name) === normalizeName(events.home_team));
-    const awayOutcome = h2h.outcomes.find((o) => normalizeName(o.name) === normalizeName(events.away_team));
-    const drawOutcome = h2h.outcomes.find((o) => normalizeName(o.name) === 'draw');
+    const homeOutcome = market.outcomes.find((o) => normalizeName(o.name) === normalizedHome);
+    const awayOutcome = market.outcomes.find((o) => normalizeName(o.name) === normalizedAway);
+    const drawOutcome = market.outcomes.find((o) => normalizeName(o.name) === 'draw');
 
     if (homeOutcome) homePrices.push(homeOutcome.price);
     if (awayOutcome) awayPrices.push(awayOutcome.price);
@@ -62,17 +107,47 @@ function averageOdds(events: OddsApiEvent): { home: number | null; draw: number 
   return { home: avg(homePrices), draw: avg(drawPrices), away: avg(awayPrices) };
 }
 
-export async function syncOdds(): Promise<{ matchesUpdated: number; requestsRemaining: number | null }> {
+function hasUsableGroupOdds(odds: MatchOdds): boolean {
+  return Boolean(odds.home && odds.draw && odds.away);
+}
+
+function hasUsableKnockoutOdds(odds: MatchOdds): boolean {
+  return Boolean(odds.home && odds.away && !odds.draw);
+}
+
+function oddsForMatch(event: OddsApiEvent, stage: MatchStage): MatchOdds | null {
+  const h2h = averageOdds(event, 'h2h');
+
+  if (!KNOCKOUT_STAGES.has(stage)) {
+    return hasUsableGroupOdds(h2h) ? h2h : null;
+  }
+
+  // Our knockout scoring uses "to qualify" prices. The Odds API's soccer h2h
+  // market is normally regular-time 1X2, so only accept a two-outcome market.
+  return hasUsableKnockoutOdds(h2h) ? h2h : null;
+}
+
+function parseRequestsRemaining(value: unknown): number | null {
+  if (value === undefined || value === null) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function findDateFallbackMatch<T extends { utcDate: Date }>(matches: T[], eventDate: Date): T | null {
+  const candidates = matches.filter((m) => Math.abs(m.utcDate.getTime() - eventDate.getTime()) < MATCH_TIME_TOLERANCE_MS);
+  return candidates.length === 1 ? candidates[0] : null;
+}
+
+export async function syncOdds(options: SyncOddsOptions = {}): Promise<{ matchesUpdated: number; requestsRemaining: number | null }> {
   if (!env.ODDS_API_KEY) {
     logger.warn('ODDS_API_KEY not configured — skipping odds sync');
     return { matchesUpdated: 0, requestsRemaining: null };
   }
 
-  // Only fetch odds for SCHEDULED matches without odds, or with stale odds (>12h old)
-  const staleCutoff = new Date(Date.now() - 12 * 60 * 60 * 1000);
+  const staleCutoff = new Date(Date.now() - ODDS_STALE_HOURS * 60 * 60 * 1000);
   const matches = await Match.find({
     status: { $in: ['SCHEDULED', 'LIVE'] },
-    $or: [{ odds: null }, { 'odds.fetchedAt': { $lt: staleCutoff } }],
+    ...(options.force ? {} : { $or: [{ odds: null }, { 'odds.fetchedAt': { $lt: staleCutoff } }] }),
   });
 
   if (matches.length === 0) {
@@ -84,11 +159,19 @@ export async function syncOdds(): Promise<{ matchesUpdated: number; requestsRema
   const teams = await CountryTeam.find({});
   const nameToCode = new Map<string, string>();
   for (const team of teams) {
+    nameToCode.set(normalizeName(team.code), team.code);
     const names = team.names instanceof Map ? team.names : new Map(Object.entries(team.names as Record<string, string>));
     for (const name of names.values()) {
       if (name) nameToCode.set(normalizeName(name), team.code);
     }
   }
+  for (const [name, code] of Object.entries(ODDS_TEAM_ALIASES)) {
+    nameToCode.set(normalizeName(name), code);
+  }
+
+  const timestamps = matches.map((match) => match.utcDate.getTime());
+  const earliest = new Date(Math.min(...timestamps) - MATCH_TIME_TOLERANCE_MS).toISOString();
+  const latest = new Date(Math.max(...timestamps) + MATCH_TIME_TOLERANCE_MS).toISOString();
 
   // Fetch all odds in a single API call
   let events: OddsApiEvent[] = [];
@@ -96,10 +179,17 @@ export async function syncOdds(): Promise<{ matchesUpdated: number; requestsRema
 
   try {
     const response = await axios.get<OddsApiEvent[]>(`${ODDS_API_BASE}/sports/${env.ODDS_API_SPORT_KEY}/odds`, {
-      params: { apiKey: env.ODDS_API_KEY, regions: 'eu', markets: 'h2h', oddsFormat: 'decimal' },
+      params: {
+        apiKey: env.ODDS_API_KEY,
+        regions: 'eu',
+        markets: 'h2h',
+        oddsFormat: 'decimal',
+        commenceTimeFrom: earliest,
+        commenceTimeTo: latest,
+      },
     });
     events = response.data;
-    requestsRemaining = Number(response.headers['x-requests-remaining'] ?? null) || null;
+    requestsRemaining = parseRequestsRemaining(response.headers['x-requests-remaining']);
     logger.info({ count: events.length, requestsRemaining }, 'Fetched odds from API');
   } catch (err) {
     logger.error({ err }, 'Failed to fetch odds from The Odds API');
@@ -113,37 +203,44 @@ export async function syncOdds(): Promise<{ matchesUpdated: number; requestsRema
   }
 
   let matchesUpdated = 0;
+  let eventsSkipped = 0;
 
   for (const event of events) {
     const homeCode = nameToCode.get(normalizeName(event.home_team));
     const awayCode = nameToCode.get(normalizeName(event.away_team));
+    const eventDate = new Date(event.commence_time);
+    let match: (typeof matches)[number] | null = null;
 
     if (!homeCode || !awayCode) {
-      // Fall back to date-proximity match when team names aren't in catalog yet
-      const eventDate = new Date(event.commence_time);
-      const candidate = matches.find((m) => Math.abs(m.utcDate.getTime() - eventDate.getTime()) < 2 * 60 * 60 * 1000);
-      if (!candidate) continue;
+      // Only fall back by date when there is a single possible match. World Cup
+      // group games can overlap, and guessing there would corrupt the odds.
+      match = findDateFallbackMatch(matches, eventDate);
+    } else {
+      match = matchIndex.get(`${homeCode}:${awayCode}`) ?? null;
+      if (!match) match = matchIndex.get(`${awayCode}:${homeCode}`) ?? null;
+    }
 
-      const computed = averageOdds(event);
-      candidate.odds = { ...computed, fetchedAt: new Date() };
-      await candidate.save();
-      matchesUpdated++;
+    if (!match) {
+      eventsSkipped++;
       continue;
     }
 
-    const match = matchIndex.get(`${homeCode}:${awayCode}`);
-    if (!match) continue;
-
     // Verify date proximity (within 2 hours) to avoid false matches
-    const eventDate = new Date(event.commence_time);
-    if (Math.abs(match.utcDate.getTime() - eventDate.getTime()) > 2 * 60 * 60 * 1000) continue;
+    if (Math.abs(match.utcDate.getTime() - eventDate.getTime()) > MATCH_TIME_TOLERANCE_MS) {
+      eventsSkipped++;
+      continue;
+    }
 
-    const computed = averageOdds(event);
+    const computed = oddsForMatch(event, match.stage);
+    if (!computed) {
+      eventsSkipped++;
+      continue;
+    }
     match.odds = { ...computed, fetchedAt: new Date() };
     await match.save();
     matchesUpdated++;
   }
 
-  logger.info({ matchesUpdated, requestsRemaining }, 'Odds sync complete');
+  logger.info({ matchesUpdated, eventsSkipped, requestsRemaining }, 'Odds sync complete');
   return { matchesUpdated, requestsRemaining };
 }

@@ -36,6 +36,7 @@ const envSchema = z.object({
   LIVE_SCORE_CACHE_SECONDS: z.coerce.number().int().positive().default(60),
   MOCK_LIVE_SCORES: envBoolean,
   SYNC_API_KEY: z.string().default(''),
+  CRON_SECRET: z.string().default(''),
   VAPID_PUBLIC_KEY: z.string().default(''),
   VAPID_PRIVATE_KEY: z.string().default(''),
   VAPID_EMAIL: z.string().default(''),
