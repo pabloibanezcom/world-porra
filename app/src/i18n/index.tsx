@@ -140,6 +140,9 @@ const translations: Record<Language, TranslationMap> = {
     'profile.pushNotifications': 'Push notifications',
     'profile.admin': 'Admin',
     'profile.notifyAll': 'Notify all members',
+    'profile.inviteToCreateLeague': 'Invite to create a league',
+    'profile.inviteToCreateLeagueShareMessage': ({ url }) => `You've been invited to create a World Porra league: ${url}`,
+    'profile.inviteToCreateLeagueFailed': 'Failed to generate invite. Please try again.',
     'profile.account': 'Account',
     'profile.editProfile': 'Edit profile',
     'profile.displayName': 'Display name',
@@ -232,6 +235,11 @@ const translations: Record<Language, TranslationMap> = {
     'install.androidBody': 'Install it from Chrome so your pool opens like an app and your invite stays ready.',
     'install.action': 'Install app',
     'install.dismiss': 'Maybe later',
+
+    'leagueCreationInvite.title': "You're invited to create a league",
+    'leagueCreationInvite.body': "You've been given permission to create your own World Porra league.",
+    'leagueCreationInvite.accept': 'Create my league',
+    'leagueCreationInvite.failed': 'Failed to accept invite. Please try again.',
 
     'createLeague.name': 'League Name',
     'createLeague.placeholder': 'e.g. Office Champions',
@@ -535,6 +543,9 @@ const translations: Record<Language, TranslationMap> = {
     'profile.pushNotifications': 'Notificaciones push',
     'profile.admin': 'Admin',
     'profile.notifyAll': 'Notificar a todos',
+    'profile.inviteToCreateLeague': 'Invitar a crear una liga',
+    'profile.inviteToCreateLeagueShareMessage': ({ url }) => `Has sido invitado a crear una liga de World Porra: ${url}`,
+    'profile.inviteToCreateLeagueFailed': 'No se pudo generar la invitación. Inténtalo de nuevo.',
     'profile.account': 'Cuenta',
     'profile.editProfile': 'Editar perfil',
     'profile.displayName': 'Nombre visible',
@@ -627,6 +638,11 @@ const translations: Record<Language, TranslationMap> = {
     'install.androidBody': 'Instálala desde Chrome para abrir tu liga como una app y conservar la invitación.',
     'install.action': 'Instalar app',
     'install.dismiss': 'Más tarde',
+
+    'leagueCreationInvite.title': 'Estás invitado a crear una liga',
+    'leagueCreationInvite.body': 'Se te ha dado permiso para crear tu propia liga de World Porra.',
+    'leagueCreationInvite.accept': 'Crear mi liga',
+    'leagueCreationInvite.failed': 'No se pudo aceptar la invitación. Inténtalo de nuevo.',
 
     'createLeague.name': 'Nombre de la liga',
     'createLeague.placeholder': 'ej. Campeones de la oficina',
