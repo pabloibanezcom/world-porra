@@ -41,7 +41,7 @@ nav.top {
 nav.top .row { display: flex; align-items: center; justify-content: space-between; height: 68px; }
 .brand { display: flex; align-items: center; gap: 10px; font-family: 'PoolDisplay', sans-serif; font-weight: 600; font-size: 18px; letter-spacing: -0.01em; cursor: pointer; }
 .brand-mark {
-  width: 32px; height: 32px; border-radius: 9999px;
+  width: 32px; height: 32px; border-radius: 8px;
   flex-shrink: 0; object-fit: cover;
 }
 nav.top .links { display: flex; align-items: center; gap: 8px; }

@@ -371,7 +371,7 @@ export default function LandingPage() {
       <nav className="top">
         <div className="wrap row">
           <a href="#" className="brand">
-            <img src="/favicon.png" width={32} height={32} alt="" className="brand-mark" />
+            <img src="/logo.png" width={32} height={32} alt="" className="brand-mark" />
             <span>{t.brand}</span>
           </a>
           <div className="links">
@@ -639,7 +639,7 @@ export default function LandingPage() {
           <div className="foot-row">
             <div>
               <a href="#" className="brand">
-                <img src="/favicon.png" width={32} height={32} alt="" className="brand-mark" />
+                <img src="/logo.png" width={32} height={32} alt="" className="brand-mark" />
                 <span>World Porra</span>
               </a>
               <p style={{ color: '#505a63', marginTop: 14, fontSize: 14, maxWidth: 340 }}>{t.foot_blurb}</p>
