@@ -130,6 +130,19 @@ describe('notification routes', () => {
     expect(sent.body).toEqual({ ok: true });
     expect(pushMocks.sendToAll).toHaveBeenCalledWith({ title: 'Hello', body: 'Everyone', url: '/' });
   });
+
+  it('notifies master users when a new user registers', async () => {
+    const master = await registerPlayer('master@worldporra.test', 'Master');
+    pushMocks.sendToUsers.mockClear();
+
+    await registerPlayer('new-player@worldporra.test', 'New Player');
+
+    expect(pushMocks.sendToUsers).toHaveBeenCalledWith([master.user.id], {
+      title: 'New user joined',
+      body: 'New Player (new-player@worldporra.test) joined World Porra.',
+      url: '/',
+    });
+  });
 });
 
 describe('admin sync route', () => {

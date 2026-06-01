@@ -5,6 +5,7 @@ import mongoose from 'mongoose';
 import { z } from 'zod';
 import { User } from '../models/User';
 import { env } from '../config/env';
+import { logger } from '../config/logger';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { hashPassword, verifyPassword } from '../utils/password';
 
@@ -94,6 +95,31 @@ function serializeUser(user: {
   };
 }
 
+async function notifyMastersOfNewUser(user: { _id: unknown; email: string; name: string; isMaster?: boolean }): Promise<void> {
+  try {
+    const masterUsers = await User.find({
+      isMaster: true,
+      _id: { $ne: user._id },
+    })
+      .select('_id')
+      .lean();
+
+    if (masterUsers.length === 0) return;
+
+    const { sendToUsers } = await import('../services/pushService.js');
+    await sendToUsers(
+      masterUsers.map((masterUser) => String(masterUser._id)),
+      {
+        title: 'New user joined',
+        body: `${user.name} (${user.email}) joined World Porra.`,
+        url: '/',
+      }
+    );
+  } catch (error) {
+    logger.error({ err: error, userId: String(user._id) }, 'Failed to notify master users about new user');
+  }
+}
+
 router.post('/register', async (req, res: Response): Promise<void> => {
   try {
     const { email, name, password } = registerSchema.parse(req.body);
@@ -102,6 +128,7 @@ router.post('/register', async (req, res: Response): Promise<void> => {
 
     const existingUser = await User.findOne({ email: normalizedEmail }).select('+passwordHash');
     let user;
+    let isNewUser = false;
 
     if (existingUser) {
       if (existingUser.passwordHash) {
@@ -120,6 +147,11 @@ router.post('/register', async (req, res: Response): Promise<void> => {
         passwordHash,
         isMaster: isMasterEmail(normalizedEmail),
       });
+      isNewUser = true;
+    }
+
+    if (isNewUser) {
+      await notifyMastersOfNewUser(user);
     }
 
     const token = signToken(user);
@@ -199,6 +231,7 @@ router.post('/google', async (req, res: Response): Promise<void> => {
         avatarUrl: payload.picture || '',
         isMaster: isMasterEmail(normalizedEmail),
       });
+      await notifyMastersOfNewUser(user);
     } else {
       user.googleId = payload.sub;
       user.email = normalizedEmail;
