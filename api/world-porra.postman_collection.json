@@ -46,6 +46,11 @@
       "type": "string"
     },
     {
+      "key": "adminUserId",
+      "value": "",
+      "type": "string"
+    },
+    {
       "key": "syncApiKey",
       "value": "",
       "type": "string"
@@ -1398,6 +1403,71 @@
     {
       "name": "Admin",
       "item": [
+        {
+          "name": "List Users (Master only)",
+          "description": "Requires a normal bearer auth token for a master user. Optional search filters by name or email. The test script stores the first returned user as adminUserId.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.users?.[0]?.id) { pm.collectionVariables.set('adminUserId', json.users[0].id); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users?search=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get User Detail (Master only)",
+          "description": "Shows one user's email/profile details, enrolled leagues, match predictions, group predictions, and tournament picks.",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/{{adminUserId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users",
+                "{{adminUserId}}"
+              ]
+            }
+          }
+        },
         {
           "name": "Manual Sync",
           "request": {

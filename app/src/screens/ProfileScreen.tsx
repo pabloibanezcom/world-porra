@@ -13,6 +13,7 @@ import {
   TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../store/authStore';
 import { fetchMyLeagues } from '../api/leagues';
 import { fetchMyPredictions } from '../api/predictions';
@@ -43,6 +44,7 @@ function Tag({ children, color, bg }: { children: React.ReactNode; color: string
 }
 
 export default function ProfileScreen() {
+  const navigation = useNavigation();
   const { language, setLanguage, t } = useI18n();
   const user = useAuthStore((s) => s.user);
   const signOut = useAuthStore((s) => s.signOut);
@@ -200,6 +202,15 @@ export default function ProfileScreen() {
           <View>
             <SectionLabel>{t('profile.admin')}</SectionLabel>
             <View style={styles.card}>
+              <TouchableOpacity
+                style={[styles.settingsRow, styles.settingsRowBorder]}
+                onPress={() => (navigation as any).navigate('AdminUsers')}
+              >
+                <Text style={styles.settingsLabel}>{t('profile.manageUsers')}</Text>
+                <View style={styles.settingsRight}>
+                  <Text style={styles.chevron}>›</Text>
+                </View>
+              </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.settingsRow, styles.settingsRowBorder]}
                 onPress={() => setNotifyModalVisible(true)}

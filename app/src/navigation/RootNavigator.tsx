@@ -23,6 +23,7 @@ import LeagueDetailScreen from '../screens/LeagueDetailScreen';
 import MatchDetailScreen from '../screens/MatchDetailScreen';
 import MemberScreen from '../screens/MemberScreen';
 import LeagueCreationInviteScreen from '../screens/LeagueCreationInviteScreen';
+import AdminUsersScreen from '../screens/AdminUsersScreen';
 import { useI18n } from '../i18n';
 
 const Stack = createNativeStackNavigator();
@@ -237,6 +238,11 @@ export default function RootNavigator() {
                 animation: 'fade',
                 contentStyle: { backgroundColor: 'transparent' },
               }}
+            />
+            <Stack.Screen
+              name="AdminUsers"
+              component={AdminUsersScreen}
+              options={{ headerShown: false, animation: 'slide_from_right' }}
             />
           </>
         ) : (
