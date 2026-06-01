@@ -22,7 +22,6 @@ const I18N = {
     hero_sub: 'A private porra for the 2026 World Cup. Lock in your picks, climb the leaderboard, settle every group-stage debate before kickoff. 104 matches. One champion.',
     hero_cta1: 'Install the app',
     hero_cta2: 'See the demo',
-    hero_meta1: 'Free for friends & family',
     hero_meta2a: 'iOS',
     hero_meta2b: 'Android',
     hero_meta2c: '· install in 10 seconds',
@@ -52,8 +51,68 @@ const I18N = {
     show_h2: 'Bonuses for nerve.',
     show_h3: 'Caps so nobody runs away.',
     show_p: 'Open the rules anytime. Group, knockouts, jokers, podium and individual awards — all explained in plain language so the points never feel rigged.',
-    show_cta1: 'Open the app',
+    show_cta1: 'See all rules',
     show_cta2: 'How to install',
+    rules_kicker: 'Scoring rules',
+    rules_h: 'The full points system.',
+    rules_sub: 'The same rules shown in the app, with every bonus and multiplier visible before you join a pool.',
+    rules_general_h: 'General',
+    rules_general_lock: 'Predictions lock 15 minutes before each match.',
+    rules_general_official: 'Points are calculated using official FIFA results.',
+    rules_general_deadline: 'Tournament winner, group standings and awards must be picked before the first match.',
+    rules_general_missing: 'No prediction means 0 points.',
+    rules_group_h: 'Group stage matches',
+    rules_group_sub: '72 matches · outcome odds × 2 + exact-score bonus',
+    rules_group_formula: 'Round(correct outcome odds × 2) + 5 for exact score',
+    rules_group_cap: 'Maximum 20 points per match.',
+    rules_group_tip: 'Riskier correct picks earn more because longer odds pay more.',
+    rules_ko_h: 'Knockout matches',
+    rules_ko_sub: 'Pick who advances. Exact-score bonuses grow by round.',
+    rules_ko_round: 'Round',
+    rules_ko_mult: 'Multiplier',
+    rules_ko_bonus: 'Exact bonus',
+    rules_ko_r32: 'Round of 32',
+    rules_ko_r16: 'Round of 16',
+    rules_ko_qf: 'Quarter-finals',
+    rules_ko_3rd: '3rd Place',
+    rules_ko_sf: 'Semi-finals',
+    rules_ko_final: 'Grand Final',
+    rules_ko_draw: 'If your score is a draw, also pick who advances on penalties.',
+    rules_jokers_h: 'Jokers',
+    rules_jokers_group: 'Group-stage joker',
+    rules_jokers_group_sub: 'Any match 1-72',
+    rules_jokers_ko: 'Knockout joker',
+    rules_jokers_ko_sub: 'Any match 73-104',
+    rules_jokers_body: 'Each joker doubles the total points you earn on that match. Activate it before kickoff.',
+    rules_standings_h: 'Group standings',
+    rules_standings_sub: '12 groups · predict the final 1-2-3-4 order',
+    rules_standings_first: 'Correct 1st place',
+    rules_standings_second: 'Correct 2nd place',
+    rules_standings_third: 'Correct 3rd place',
+    rules_standings_fourth: 'Correct 4th place',
+    rules_standings_perfect: 'Perfect group order',
+    rules_standings_consolation: 'Qualified in a different predicted top-3 position',
+    rules_standings_note: 'Consolation applies when a team you predicted in the top 3 qualifies, but not in that exact position.',
+    rules_honors_h: 'Honors board',
+    rules_honors_sub: 'Final Four + individual awards',
+    rules_honors_pred: 'Prediction',
+    rules_honors_result: 'Actual result',
+    rules_honors_points: 'Points',
+    rules_honors_champ_1: 'Predicted champion',
+    rules_honors_champ_2: 'Predicted champion',
+    rules_honors_runner_1: 'Predicted runner-up',
+    rules_honors_runner_2: 'Predicted runner-up',
+    rules_honors_semi: 'Predicted semi-finalist',
+    rules_honors_wins: 'Wins the tournament',
+    rules_honors_second: 'Finishes 2nd',
+    rules_honors_top4: 'Reaches top 4',
+    rules_awards_boot: 'Golden Boot',
+    rules_awards_ball: 'Golden Ball',
+    rules_awards_young: 'Best Young Player',
+    rules_tie_h: 'Tiebreaker',
+    rules_tie_1: 'Most exact scores predicted correctly',
+    rules_tie_2: 'Most match outcomes predicted correctly',
+    rules_tie_3: 'Earliest app registration date',
     ins_kicker: 'Get the app',
     ins_h: 'Install on your phone in 10 seconds.',
     ins_sub: 'No app store, no download. The pool is a Progressive Web App — add it to your home screen and it works like a native app, even offline.',
@@ -112,7 +171,6 @@ const I18N = {
     hero_sub: 'Una porra privada para el Mundial 2026. Bloquea tus picks, escala la clasificación y zanja cualquier debate antes del pitido inicial. 104 partidos. Un campeón.',
     hero_cta1: 'Instalar la app',
     hero_cta2: 'Ver demo',
-    hero_meta1: 'Gratis para amigos y familia',
     hero_meta2a: 'iOS',
     hero_meta2b: 'Android',
     hero_meta2c: '· se instala en 10 segundos',
@@ -126,7 +184,7 @@ const I18N = {
     card1_kicker: 'Predicciones',
     card1_h1: 'Elige ganadores. Elige el marcador.',
     card1_h2: 'Más puntos por arriesgar.',
-    card1_p: 'Los puntos escalan con las cuotas — apostar por Marruecos contra España vale mucho más que Francia contra Costa Rica. Acierta el resultado exacto y te llevas un buen bono.',
+    card1_p: 'Los puntos escalan con las cuotas — apostar por Marruecos contra España vale mucho más que Francia contra Costa Rica. Acierta el resultado exacto y te llevas más puntos. ',
     card2_kicker: 'Clasificación',
     card2_h1: 'Una porra. Todos tus amigos.',
     card2_h2: 'Un ranking en vivo.',
@@ -142,8 +200,68 @@ const I18N = {
     show_h2: 'Bonus por arriesgar.',
     show_h3: 'Topes para que nadie se escape.',
     show_p: 'Abre las reglas cuando quieras. Grupos, eliminatorias, comodines, podio y premios individuales — todo explicado en lenguaje claro para que los puntos nunca parezcan amañados.',
-    show_cta1: 'Abrir la app',
+    show_cta1: 'Ver reglas completas',
     show_cta2: 'Cómo instalar',
+    rules_kicker: 'Reglas de puntos',
+    rules_h: 'El sistema completo de puntos.',
+    rules_sub: 'Las mismas reglas que aparecen en la app, con cada bonus y multiplicador visible antes de entrar en una porra.',
+    rules_general_h: 'General',
+    rules_general_lock: 'Los pronósticos se cierran 15 minutos antes de cada partido.',
+    rules_general_official: 'Los puntos se calculan usando resultados oficiales de la FIFA.',
+    rules_general_deadline: 'Ganador del torneo, grupos y premios deben elegirse antes del primer partido.',
+    rules_general_missing: 'Sin pronóstico son 0 puntos.',
+    rules_group_h: 'Partidos de fase de grupos',
+    rules_group_sub: '72 partidos · cuota del resultado × 2 + bonus por marcador exacto',
+    rules_group_formula: 'Redondear(cuota del resultado correcto × 2) + 5 por marcador exacto',
+    rules_group_cap: 'Máximo 20 puntos por partido.',
+    rules_group_tip: 'Los aciertos más arriesgados dan más puntos porque las cuotas altas pagan más.',
+    rules_ko_h: 'Partidos eliminatorios',
+    rules_ko_sub: 'Elige quién pasa. Los bonus por marcador exacto crecen por ronda.',
+    rules_ko_round: 'Ronda',
+    rules_ko_mult: 'Multiplicador',
+    rules_ko_bonus: 'Bonus exacto',
+    rules_ko_r32: 'Ronda de 32',
+    rules_ko_r16: 'Ronda de 16',
+    rules_ko_qf: 'Cuartos de final',
+    rules_ko_3rd: 'Tercer puesto',
+    rules_ko_sf: 'Semifinales',
+    rules_ko_final: 'Gran Final',
+    rules_ko_draw: 'Si tu marcador es empate, elige también quién pasa en penaltis.',
+    rules_jokers_h: 'Comodines',
+    rules_jokers_group: 'Comodín de grupos',
+    rules_jokers_group_sub: 'Cualquier partido 1-72',
+    rules_jokers_ko: 'Comodín de eliminatorias',
+    rules_jokers_ko_sub: 'Cualquier partido 73-104',
+    rules_jokers_body: 'Cada comodín duplica los puntos totales que ganes en ese partido. Actívalo antes del saque.',
+    rules_standings_h: 'Clasificación de grupos',
+    rules_standings_sub: '12 grupos · predice el orden final 1-2-3-4',
+    rules_standings_first: '1er lugar correcto',
+    rules_standings_second: '2do lugar correcto',
+    rules_standings_third: '3er lugar correcto',
+    rules_standings_fourth: '4to lugar correcto',
+    rules_standings_perfect: 'Orden de grupo perfecto',
+    rules_standings_consolation: 'Clasificado en otra posición prevista de top 3',
+    rules_standings_note: 'La consolación aplica si un equipo que pusiste en el top 3 clasifica, pero no en esa posición exacta.',
+    rules_honors_h: 'Cuadro de honor',
+    rules_honors_sub: 'Final Four + premios individuales',
+    rules_honors_pred: 'Predicción',
+    rules_honors_result: 'Resultado real',
+    rules_honors_points: 'Puntos',
+    rules_honors_champ_1: 'Predijiste campeón',
+    rules_honors_champ_2: 'Predijiste campeón',
+    rules_honors_runner_1: 'Predijiste subcampeón',
+    rules_honors_runner_2: 'Predijiste subcampeón',
+    rules_honors_semi: 'Predijiste semifinalista',
+    rules_honors_wins: 'Gana el torneo',
+    rules_honors_second: 'Queda 2do',
+    rules_honors_top4: 'Llega al top 4',
+    rules_awards_boot: 'Bota de Oro',
+    rules_awards_ball: 'Balón de Oro',
+    rules_awards_young: 'Mejor Jugador Joven',
+    rules_tie_h: 'Desempate',
+    rules_tie_1: 'Mayor número de marcadores exactos acertados',
+    rules_tie_2: 'Mayor número de resultados de partido acertados',
+    rules_tie_3: 'Fecha de registro más antigua en la app',
     ins_kicker: 'Consigue la app',
     ins_h: 'Instálala en tu móvil en 10 segundos.',
     ins_sub: 'Sin tienda de apps, sin descargas. La porra es una Progressive Web App — añádela a la pantalla de inicio y funciona como nativa, incluso sin conexión.',
@@ -239,12 +357,41 @@ const ShareIcon = () => (
   </svg>
 );
 
+const KNOCKOUT_RULES = [
+  { labelKey: 'rules_ko_r32', mult: '×2', bonus: '+6 pts' },
+  { labelKey: 'rules_ko_r16', mult: '×3', bonus: '+8 pts' },
+  { labelKey: 'rules_ko_qf', mult: '×4', bonus: '+10 pts' },
+  { labelKey: 'rules_ko_3rd', mult: '×4', bonus: '+10 pts' },
+  { labelKey: 'rules_ko_sf', mult: '×5', bonus: '+12 pts' },
+  { labelKey: 'rules_ko_final', mult: '×6', bonus: '+15 pts' },
+] as const;
+
+const STANDINGS_RULES = [
+  { labelKey: 'rules_standings_first', points: '8 pts', highlight: false },
+  { labelKey: 'rules_standings_second', points: '6 pts', highlight: false },
+  { labelKey: 'rules_standings_third', points: '3 pts', highlight: false },
+  { labelKey: 'rules_standings_fourth', points: '3 pts', highlight: false },
+  { labelKey: 'rules_standings_perfect', points: '+5 pts', highlight: true },
+  { labelKey: 'rules_standings_consolation', points: '2 pts', highlight: false },
+] as const;
+
+const HONORS_RULES = [
+  { predKey: 'rules_honors_champ_1', resultKey: 'rules_honors_wins', points: '40 pts' },
+  { predKey: 'rules_honors_champ_2', resultKey: 'rules_honors_second', points: '15 pts' },
+  { predKey: 'rules_honors_runner_1', resultKey: 'rules_honors_second', points: '25 pts' },
+  { predKey: 'rules_honors_runner_2', resultKey: 'rules_honors_wins', points: '15 pts' },
+  { predKey: 'rules_honors_semi', resultKey: 'rules_honors_top4', points: '15 pts' },
+] as const;
+
+type TranslationKey = keyof typeof I18N.en;
+
 export default function LandingPage() {
   const [lang, setLang] = useState<Lang>('en');
   const [copied, setCopied] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
   const qrRef = useRef<HTMLCanvasElement>(null);
   const t = I18N[lang];
+  const tr = (key: TranslationKey) => t[key];
 
   useEffect(() => {
     let l: Lang = 'en';
@@ -410,10 +557,6 @@ export default function LandingPage() {
             </div>
             <div className="hero-meta reveal d4">
               <span className="hero-meta-item">
-                <span className="hero-meta-dot" />
-                {t.hero_meta1}
-              </span>
-              <span className="hero-meta-item">
                 <b>{t.hero_meta2a}</b> + <b>{t.hero_meta2b}</b> {t.hero_meta2c}
               </span>
             </div>
@@ -508,7 +651,7 @@ export default function LandingPage() {
               <h3>{t.show_h1}<br />{t.show_h2}<br />{t.show_h3}</h3>
               <p>{t.show_p}</p>
               <div className="showcase-cta">
-                <a href={APP_URL} className="pill light lg">{t.show_cta1}</a>
+                <a href="#scoring" className="pill light lg">{t.show_cta1}</a>
                 <a href="#install" className="pill pill-frosted lg">{t.show_cta2}</a>
               </div>
             </div>
@@ -516,6 +659,132 @@ export default function LandingPage() {
               <img src="/screenshots/crop-04-rules.png" alt="Rules" />
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Scoring */}
+      <section className="scoring" id="scoring">
+        <div className="wrap">
+          <div className="section-head">
+            <div className="reveal">
+              <div className="h-eyebrow">{t.rules_kicker}</div>
+              <h2>{t.rules_h}</h2>
+            </div>
+            <p className="reveal d1" style={{ maxWidth: 420, color: '#505a63', fontSize: 16 }}>{t.rules_sub}</p>
+          </div>
+
+          <div className="rules-grid">
+            <article className="rules-card rules-card-dark reveal">
+              <h3>{t.rules_group_h}</h3>
+              <p>{t.rules_group_sub}</p>
+              <div className="formula-box">
+                <span>{t.rules_group_formula}</span>
+                <b>{t.rules_group_cap}</b>
+              </div>
+              <div className="rules-note">{t.rules_group_tip}</div>
+            </article>
+
+            <article className="rules-card reveal d1">
+              <h3>{t.rules_general_h}</h3>
+              <ul className="rules-list">
+                <li>{t.rules_general_lock}</li>
+                <li>{t.rules_general_official}</li>
+                <li>{t.rules_general_deadline}</li>
+                <li>{t.rules_general_missing}</li>
+              </ul>
+            </article>
+          </div>
+
+          <div className="rules-grid rules-grid-wide">
+            <article className="rules-card reveal">
+              <div className="rules-card-head">
+                <div>
+                  <h3>{t.rules_ko_h}</h3>
+                  <p>{t.rules_ko_sub}</p>
+                </div>
+              </div>
+              <div className="rules-table">
+                <div className="rules-row rules-row-head">
+                  <span>{t.rules_ko_round}</span>
+                  <span>{t.rules_ko_mult}</span>
+                  <span>{t.rules_ko_bonus}</span>
+                </div>
+                {KNOCKOUT_RULES.map((rule) => (
+                  <div className="rules-row" key={rule.labelKey}>
+                    <span>{tr(rule.labelKey)}</span>
+                    <b>{rule.mult}</b>
+                    <b>{rule.bonus}</b>
+                  </div>
+                ))}
+              </div>
+              <div className="rules-note">{t.rules_ko_draw}</div>
+            </article>
+
+            <article className="rules-card reveal d1">
+              <h3>{t.rules_jokers_h}</h3>
+              <div className="joker-pair">
+                <div>
+                  <b>{t.rules_jokers_group}</b>
+                  <span>{t.rules_jokers_group_sub}</span>
+                </div>
+                <div>
+                  <b>{t.rules_jokers_ko}</b>
+                  <span>{t.rules_jokers_ko_sub}</span>
+                </div>
+              </div>
+              <div className="joker-mult">×2</div>
+              <p>{t.rules_jokers_body}</p>
+            </article>
+          </div>
+
+          <div className="rules-grid rules-grid-wide">
+            <article className="rules-card reveal">
+              <h3>{t.rules_standings_h}</h3>
+              <p>{t.rules_standings_sub}</p>
+              <div className="rules-table compact">
+                {STANDINGS_RULES.map((rule) => (
+                  <div className={rule.highlight ? 'rules-row highlight' : 'rules-row'} key={rule.labelKey}>
+                    <span>{tr(rule.labelKey)}</span>
+                    <b>{rule.points}</b>
+                  </div>
+                ))}
+              </div>
+              <div className="rules-note">{t.rules_standings_note}</div>
+            </article>
+
+            <article className="rules-card reveal d1">
+              <h3>{t.rules_honors_h}</h3>
+              <p>{t.rules_honors_sub}</p>
+              <div className="honors-table">
+                <div className="honors-row honors-head">
+                  <span>{t.rules_honors_pred}</span>
+                  <span>{t.rules_honors_result}</span>
+                  <span>{t.rules_honors_points}</span>
+                </div>
+                {HONORS_RULES.map((rule, index) => (
+                  <div className="honors-row" key={`${rule.predKey}-${index}`}>
+                    <span>{tr(rule.predKey)}</span>
+                    <span>{tr(rule.resultKey)}</span>
+                    <b>{rule.points}</b>
+                  </div>
+                ))}
+              </div>
+              <div className="award-grid">
+                <div><span>{t.rules_awards_boot}</span><b>30 pts</b></div>
+                <div><span>{t.rules_awards_ball}</span><b>30 pts</b></div>
+                <div><span>{t.rules_awards_young}</span><b>20 pts</b></div>
+              </div>
+            </article>
+          </div>
+
+          <article className="rules-card tiebreak reveal">
+            <h3>{t.rules_tie_h}</h3>
+            <ol>
+              <li>{t.rules_tie_1}</li>
+              <li>{t.rules_tie_2}</li>
+              <li>{t.rules_tie_3}</li>
+            </ol>
+          </article>
         </div>
       </section>
 
@@ -649,7 +918,7 @@ export default function LandingPage() {
               <ul>
                 <li><a href={APP_URL}>{t.foot_open}</a></li>
                 <li><a href="#install">{t.foot_install}</a></li>
-                <li><a href={APP_URL}>{t.foot_rules}</a></li>
+                <li><a href="#scoring">{t.foot_rules}</a></li>
               </ul>
             </div>
             <div>
