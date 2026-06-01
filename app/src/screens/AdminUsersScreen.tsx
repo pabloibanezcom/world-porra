@@ -205,15 +205,23 @@ export default function AdminUsersScreen() {
                               <>
                                 <Flag code={prediction.match.homeTeam.code} size={18} />
                                 <Text style={styles.pickText} numberOfLines={1}>
-                                  {prediction.match.homeTeam.name} {prediction.homeGoals}-{prediction.awayGoals} {prediction.match.awayTeam.name}
+                                  {prediction.match.homeTeam.name}{' '}
+                                  {prediction.isRevealed
+                                    ? `${prediction.homeGoals}-${prediction.awayGoals}`
+                                    : t('common.vs')}{' '}
+                                  {prediction.match.awayTeam.name}
                                 </Text>
                                 <Flag code={prediction.match.awayTeam.code} size={18} />
                               </>
                             ) : (
-                              <Text style={styles.pickText}>{prediction.homeGoals}-{prediction.awayGoals}</Text>
+                              <Text style={styles.pickText}>{t('adminUsers.matchPick')}</Text>
                             )}
                           </View>
-                          <Text style={styles.pickPoints}>{prediction.points ?? '—'} {t('common.pointsShort')}</Text>
+                          <Text style={styles.pickPoints}>
+                            {prediction.isRevealed
+                              ? `${prediction.points ?? '—'} ${t('common.pointsShort')}`
+                              : prediction.hasPrediction ? t('adminUsers.made') : t('common.missing')}
+                          </Text>
                         </View>
                       ))
                     )}
@@ -230,7 +238,11 @@ export default function AdminUsersScreen() {
                         <InfoRow
                           key={prediction._id}
                           label={t('common.group', { group: prediction.group })}
-                          value={`${prediction.orderedTeamCodes.join(', ')} · ${prediction.points ?? '—'} ${t('common.pointsShort')}`}
+                          value={
+                            prediction.isRevealed
+                              ? `${prediction.orderedTeamCodes?.join(', ') ?? t('common.missing')} · ${prediction.points ?? '—'} ${t('common.pointsShort')}`
+                              : prediction.hasPrediction ? t('adminUsers.made') : t('common.missing')
+                          }
                         />
                       ))
                     )}
@@ -241,12 +253,10 @@ export default function AdminUsersScreen() {
                   <SectionLabel>{t('tournament.picks')}</SectionLabel>
                   <View style={styles.infoCard}>
                     {selected.tournamentPrediction ? (
-                      <>
-                        <InfoRow label={t('tournament.winner')} value={selected.tournamentPrediction.championCode ?? t('common.missing')} />
-                        <InfoRow label={t('tournament.runnerUp')} value={selected.tournamentPrediction.runnerUpCode ?? t('common.missing')} />
-                        <InfoRow label={t('tournament.bestPlayer')} value={selected.tournamentPrediction.bestPlayer?.name ?? t('common.missing')} />
-                        <InfoRow label={t('tournament.topScorer')} value={selected.tournamentPrediction.topScorer?.name ?? t('common.missing')} />
-                      </>
+                      <InfoRow
+                        label={t('adminUsers.status')}
+                        value={selected.tournamentPrediction.hasPrediction ? t('adminUsers.made') : t('common.missing')}
+                      />
                     ) : (
                       <Text style={styles.cardEmpty}>{t('adminUsers.noTournamentPicks')}</Text>
                     )}

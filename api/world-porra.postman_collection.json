@@ -1446,7 +1446,7 @@
         },
         {
           "name": "Get User Detail (Master only)",
-          "description": "Shows one user's email/profile details, enrolled leagues, match predictions, group predictions, and tournament picks.",
+          "description": "Shows one user's email/profile details, enrolled leagues, prediction completion status, finished-match picks with points, and group ordering only after the group stage is complete.",
           "request": {
             "method": "GET",
             "header": [

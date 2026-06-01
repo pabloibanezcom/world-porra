@@ -1,4 +1,4 @@
-import type { MatchResult, MatchStage } from './matches';
+import type { MatchStage, MatchStatus } from './matches';
 import type { TeamInfo } from './teams';
 import type { User } from './users';
 
@@ -26,43 +26,41 @@ export interface AdminUsersResponse {
   total: number;
 }
 
-export interface AdminUserMatchPrediction {
+export interface AdminUserMatchPredictionStatus {
   _id: string;
   matchId: string;
-  homeGoals: number;
-  awayGoals: number;
-  qualifier: 'HOME' | 'AWAY' | null;
-  points: number | null;
+  hasPrediction: boolean;
+  isRevealed: boolean;
+  homeGoals?: number;
+  awayGoals?: number;
+  qualifier?: 'HOME' | 'AWAY' | null;
+  points?: number | null;
   createdAt: string;
   updatedAt: string;
   match: {
     _id: string;
     stage: MatchStage;
+    status: MatchStatus;
     group: string | null;
     utcDate: string;
     homeTeam: TeamInfo;
     awayTeam: TeamInfo;
-    result: MatchResult | null;
   } | null;
 }
 
 export interface AdminUserGroupPrediction {
   _id: string;
   group: string;
-  orderedTeamCodes: string[];
-  points: number | null;
+  hasPrediction: boolean;
+  isRevealed: boolean;
+  orderedTeamCodes?: string[];
+  points?: number | null;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface AdminUserTournamentPrediction {
-  championCode?: string;
-  runnerUpCode?: string;
-  semi1Code?: string;
-  semi2Code?: string;
-  bestPlayer?: { name: string; team: string; code: string; pos: string; age: number };
-  topScorer?: { name: string; team: string; code: string; pos: string; age: number };
-  bestYoung?: { name: string; team: string; code: string; pos: string; age: number };
+  hasPrediction: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -73,7 +71,7 @@ export interface AdminUserDetail {
     total: number;
     scored: number;
     pending: number;
-    recent: AdminUserMatchPrediction[];
+    recent: AdminUserMatchPredictionStatus[];
   };
   groupPredictions: AdminUserGroupPrediction[];
   tournamentPrediction: AdminUserTournamentPrediction | null;

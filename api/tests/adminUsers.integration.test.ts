@@ -48,7 +48,7 @@ describe('admin user management routes', () => {
       ],
     });
 
-    const match = await Match.create({
+    const finishedMatch = await Match.create({
       externalId: 9001,
       stage: 'GROUP',
       group: 'A',
@@ -61,14 +61,35 @@ describe('admin user management routes', () => {
       status: 'FINISHED',
       result: { homeGoals: 2, awayGoals: 1, winner: 'HOME' },
     });
+    const scheduledMatch = await Match.create({
+      externalId: 9002,
+      stage: 'GROUP',
+      group: 'A',
+      matchday: 2,
+      homeTeamCode: 'ESP',
+      awayTeamCode: 'FRA',
+      homeTeam: { code: 'ESP', name: 'Spain', crest: '' },
+      awayTeam: { code: 'FRA', name: 'France', crest: '' },
+      utcDate: new Date('2026-06-18T20:00:00.000Z'),
+      status: 'SCHEDULED',
+      result: null,
+    });
 
     await Prediction.create({
       userId: member.user.id,
-      matchId: match._id,
+      matchId: finishedMatch._id,
       homeGoals: 2,
       awayGoals: 1,
       predictedWinner: 'HOME',
       points: 10,
+    });
+    await Prediction.create({
+      userId: member.user.id,
+      matchId: scheduledMatch._id,
+      homeGoals: 3,
+      awayGoals: 2,
+      predictedWinner: 'HOME',
+      points: null,
     });
     await GroupPrediction.create({
       userId: member.user.id,
@@ -101,7 +122,7 @@ describe('admin user management routes', () => {
     expect(memberSummary).toMatchObject({
       email: 'member@worldporra.test',
       leagueCount: 1,
-      predictionCount: 1,
+      predictionCount: 2,
     });
 
     const search = await requestJson<{ users: Array<{ email: string }> }>('/admin/users?search=orph', {
@@ -118,25 +139,65 @@ describe('admin user management routes', () => {
       inviteCode: 'FRIENDS1',
     });
     expect(detail.body.predictions).toMatchObject({
-      total: 1,
+      total: 2,
       scored: 1,
-      pending: 0,
+      pending: 1,
     });
-    expect(detail.body.predictions.recent[0]).toMatchObject({
+    const finishedPick = detail.body.predictions.recent.find((prediction: any) => prediction.matchId === String(finishedMatch._id));
+    const scheduledPick = detail.body.predictions.recent.find((prediction: any) => prediction.matchId === String(scheduledMatch._id));
+    expect(finishedPick).toMatchObject({
+      hasPrediction: true,
+      isRevealed: true,
       homeGoals: 2,
       awayGoals: 1,
       points: 10,
       match: {
         stage: 'GROUP',
+        status: 'FINISHED',
         group: 'A',
         homeTeam: { code: 'ARG', name: 'Argentina', crest: '' },
         awayTeam: { code: 'BRA', name: 'Brazil', crest: '' },
       },
     });
+    expect(scheduledPick).toMatchObject({
+      hasPrediction: true,
+      isRevealed: false,
+      match: {
+        stage: 'GROUP',
+        status: 'SCHEDULED',
+      },
+    });
+    expect(scheduledPick.homeGoals).toBeUndefined();
+    expect(scheduledPick.awayGoals).toBeUndefined();
+    expect(scheduledPick.qualifier).toBeUndefined();
+    expect(scheduledPick.points).toBeUndefined();
     expect(detail.body.groupPredictions).toHaveLength(1);
+    expect(detail.body.groupPredictions[0]).toMatchObject({
+      group: 'A',
+      hasPrediction: true,
+      isRevealed: false,
+    });
+    expect(detail.body.groupPredictions[0].orderedTeamCodes).toBeUndefined();
+    expect(detail.body.groupPredictions[0].points).toBeUndefined();
     expect(detail.body.tournamentPrediction).toMatchObject({
-      championCode: 'ARG',
-      runnerUpCode: 'BRA',
+      hasPrediction: true,
+    });
+    expect(detail.body.tournamentPrediction.championCode).toBeUndefined();
+    expect(detail.body.tournamentPrediction.runnerUpCode).toBeUndefined();
+    expect(detail.body.tournamentPrediction.bestPlayer).toBeUndefined();
+
+    await Match.findByIdAndUpdate(scheduledMatch._id, {
+      status: 'FINISHED',
+      result: { homeGoals: 1, awayGoals: 1, winner: 'DRAW' },
+    });
+    const completeDetail = await requestJson<any>(`/admin/users/${member.user.id}`, { token: master.token });
+    expect(completeDetail.status).toBe(200);
+    expect(completeDetail.body.groupPredictions[0]).toMatchObject({
+      group: 'A',
+      hasPrediction: true,
+      isRevealed: true,
+      orderedTeamCodes: ['ARG', 'BRA', 'ESP', 'FRA'],
+      points: null,
     });
   });
 
