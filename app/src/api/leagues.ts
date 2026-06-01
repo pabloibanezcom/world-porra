@@ -1,5 +1,6 @@
 import { apiClient } from './client';
 import { League, LeaguePaymentSettings, Match, MatchResult } from '../types';
+import { markLeaguesChanged } from '../store/dataRefreshStore';
 
 export interface MemberMatchPrediction {
   _id: string;
@@ -35,11 +36,13 @@ export interface MissingPickReminderPreview {
 
 export async function createLeague(name: string, paymentSettings?: LeaguePaymentSettings): Promise<League> {
   const { data } = await apiClient.post<{ league: League }>('/leagues', { name, paymentSettings });
+  markLeaguesChanged();
   return data.league;
 }
 
 export async function joinLeague(inviteCode: string): Promise<League> {
   const { data } = await apiClient.post<{ league: League }>('/leagues/join', { inviteCode });
+  markLeaguesChanged();
   return data.league;
 }
 
@@ -57,6 +60,7 @@ export async function fetchMyLeagues(): Promise<League[]> {
 
 export async function updateLeagueOrder(leagueIds: string[]): Promise<League[]> {
   const { data } = await apiClient.patch<{ leagues: League[] }>('/leagues/order', { leagueIds });
+  markLeaguesChanged();
   return data.leagues;
 }
 
@@ -67,10 +71,12 @@ export async function fetchLeague(id: string): Promise<League> {
 
 export async function leaveLeague(id: string): Promise<void> {
   await apiClient.delete(`/leagues/${id}/leave`);
+  markLeaguesChanged();
 }
 
 export async function deleteLeague(id: string): Promise<void> {
   await apiClient.delete(`/leagues/${id}`);
+  markLeaguesChanged();
 }
 
 export async function notifyLeagueMembers(id: string, title: string, body: string): Promise<void> {
@@ -96,10 +102,12 @@ export async function fetchMissingPickReminderPreview(id: string): Promise<Missi
 
 export async function addLeagueAdmin(id: string, userId: string): Promise<void> {
   await apiClient.post(`/leagues/${id}/admins`, { userId });
+  markLeaguesChanged();
 }
 
 export async function removeLeagueAdmin(id: string, userId: string): Promise<void> {
   await apiClient.delete(`/leagues/${id}/admins/${userId}`);
+  markLeaguesChanged();
 }
 
 export async function updateLeaguePaymentSettings(
@@ -107,6 +115,7 @@ export async function updateLeaguePaymentSettings(
   paymentSettings: LeaguePaymentSettings
 ): Promise<League> {
   const { data } = await apiClient.patch<{ league: League }>(`/leagues/${id}/payments`, paymentSettings);
+  markLeaguesChanged();
   return data.league;
 }
 
@@ -119,6 +128,7 @@ export async function updateLeagueMemberPayment(
     `/leagues/${leagueId}/members/${userId}/payment`,
     { hasPaid }
   );
+  markLeaguesChanged();
   return data.league;
 }
 
