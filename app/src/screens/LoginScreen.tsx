@@ -222,10 +222,6 @@ export default function LoginScreen() {
           <TouchableOpacity style={styles.registerLink} onPress={() => navigation.navigate('Register')}>
             <Text style={styles.registerLinkText}>{t('login.createAccount')}</Text>
           </TouchableOpacity>
-
-          <Text style={styles.fine}>
-            {t('login.finePrint')}
-          </Text>
         </View>
 
         <View style={styles.spacerBottom} />
