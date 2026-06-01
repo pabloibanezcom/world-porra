@@ -55,6 +55,11 @@ export async function fetchMyLeagues(): Promise<League[]> {
   return data.leagues;
 }
 
+export async function updateLeagueOrder(leagueIds: string[]): Promise<League[]> {
+  const { data } = await apiClient.patch<{ leagues: League[] }>('/leagues/order', { leagueIds });
+  return data.leagues;
+}
+
 export async function fetchLeague(id: string): Promise<League> {
   const { data } = await apiClient.get<{ league: League }>(`/leagues/${id}`);
   return data.league;

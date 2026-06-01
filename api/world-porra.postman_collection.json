@@ -818,7 +818,7 @@
         },
         {
           "name": "My Leagues",
-          "description": "Returns the authenticated user's leagues. Master users receive every league, including leagues where they are not a member and should not appear in member lists.",
+          "description": "Returns the authenticated user's leagues in their saved order. Master users receive every league, including leagues where they are not a member and should not appear in member lists.",
           "request": {
             "method": "GET",
             "header": [
@@ -835,6 +835,37 @@
               "path": [
                 "leagues"
               ]
+            }
+          }
+        },
+        {
+          "name": "Update League Order",
+          "description": "Persists the authenticated user's league order. Home uses the first two leagues from this same order.",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/leagues/order",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "leagues",
+                "order"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"leagueIds\": [\n    \"{{leagueId}}\"\n  ]\n}"
             }
           }
         },

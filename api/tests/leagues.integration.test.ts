@@ -90,6 +90,35 @@ describe('league membership', () => {
     expect(detail.body.league.members).toHaveLength(2);
   });
 
+  it('persists the current user league order and returns leagues in that order', async () => {
+    const master = await registerPlayer('master@worldporra.test', 'Master');
+    const first = await createLeague(master.token, 'First League');
+    const second = await createLeague(master.token, 'Second League');
+    const third = await createLeague(master.token, 'Third League');
+
+    const reordered = await requestJson<{ leagues: Array<{ _id: string; name: string }> }>('/leagues/order', {
+      method: 'PATCH',
+      token: master.token,
+      body: { leagueIds: [third._id, first._id, second._id] },
+    });
+    expect(reordered.status).toBe(200);
+    expect(reordered.body.leagues.map((league) => league._id)).toEqual([third._id, first._id, second._id]);
+
+    const listed = await requestJson<{ leagues: Array<{ _id: string; name: string }> }>('/leagues', {
+      token: master.token,
+    });
+    expect(listed.status).toBe(200);
+    expect(listed.body.leagues.map((league) => league._id)).toEqual([third._id, first._id, second._id]);
+
+    const duplicate = await requestJson('/leagues/order', {
+      method: 'PATCH',
+      token: master.token,
+      body: { leagueIds: [first._id, first._id] },
+    });
+    expect(duplicate.status).toBe(400);
+    expect(duplicate.body).toEqual({ error: 'League order cannot contain duplicates' });
+  });
+
   it('lets master users silently manage leagues without being members', async () => {
     const master = await registerPlayer('master@worldporra.test', 'Master');
     const owner = await registerPlayer('owner@worldporra.test', 'Owner');

@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, Types } from 'mongoose';
 
 export interface IUser extends Document {
   googleId?: string;
@@ -8,6 +8,7 @@ export interface IUser extends Document {
   passwordHash: string | null;
   isMaster: boolean;
   canCreateLeagues: boolean;
+  leagueOrder: Types.ObjectId[];
   totalPoints: number;
   createdAt: Date;
   updatedAt: Date;
@@ -22,6 +23,7 @@ const userSchema = new Schema<IUser>(
     passwordHash: { type: String, default: null, select: false },
     isMaster: { type: Boolean, default: false },
     canCreateLeagues: { type: Boolean, default: false },
+    leagueOrder: [{ type: Schema.Types.ObjectId, ref: 'League' }],
     totalPoints: { type: Number, default: 0 },
   },
   { timestamps: true }
