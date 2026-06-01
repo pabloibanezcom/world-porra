@@ -101,6 +101,10 @@ const joinLeagueSchema = z.object({
   inviteCode: z.string().trim().min(INVITE_CODE_MIN_LENGTH).max(INVITE_CODE_LENGTH).transform(normalizeInviteCode),
 });
 
+const leagueOrderSchema = z.object({
+  leagueIds: z.array(z.string().regex(/^[0-9a-fA-F]{24}$/)).max(200),
+});
+
 const setAdminSchema = z.object({
   userId: z.string().min(1),
 });
@@ -139,6 +143,26 @@ function validatePayoutSplits(
       },
     ]);
   }
+}
+
+function sortLeaguesForUser<T extends { _id: unknown; createdAt?: Date | string }>(leagues: T[], leagueOrder: unknown[] = []): T[] {
+  const order = new Map(leagueOrder.map((id, index) => [String(id), index]));
+  return [...leagues].sort((a, b) => {
+    const aOrder = order.get((a._id as any).toString());
+    const bOrder = order.get((b._id as any).toString());
+
+    if (aOrder !== undefined && bOrder !== undefined) return aOrder - bOrder;
+    if (aOrder !== undefined) return -1;
+    if (bOrder !== undefined) return 1;
+
+    const aCreated = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const bCreated = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return aCreated - bCreated;
+  });
+}
+
+async function getVisibleLeagueQuery(userId?: string) {
+  return (await isMasterUser(userId)) ? {} : { 'members.userId': userId };
 }
 
 router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
@@ -244,13 +268,64 @@ router.get('/invite/:inviteCode', async (req, res: Response): Promise<void> => {
 });
 
 router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
-  const query = (await isMasterUser(req.userId)) ? {} : { 'members.userId': req.userId };
+  const user = await User.findById(req.userId).select('leagueOrder').lean();
+  const query = await getVisibleLeagueQuery(req.userId);
   const leagues = await League.find(query)
     .populate('ownerId', 'name avatarUrl')
     .populate('members.userId', 'name avatarUrl totalPoints')
     .lean();
 
-  res.json({ leagues });
+  res.json({ leagues: sortLeaguesForUser(leagues, user?.leagueOrder ?? []) });
+});
+
+router.patch('/order', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { leagueIds } = leagueOrderSchema.parse(req.body);
+    const uniqueLeagueIds = Array.from(new Set(leagueIds));
+    if (uniqueLeagueIds.length !== leagueIds.length) {
+      res.status(400).json({ error: 'League order cannot contain duplicates' });
+      return;
+    }
+
+    const user = await User.findById(req.userId).select('leagueOrder');
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    const query = await getVisibleLeagueQuery(req.userId);
+    const visibleLeagues = await League.find(query)
+      .select('_id createdAt')
+      .lean();
+    const visibleIds = visibleLeagues.map((league) => league._id.toString());
+    const visibleSet = new Set(visibleIds);
+
+    if (uniqueLeagueIds.some((id) => !visibleSet.has(id))) {
+      res.status(400).json({ error: 'League order contains leagues this user cannot access' });
+      return;
+    }
+
+    const orderedVisibleIds = [
+      ...uniqueLeagueIds,
+      ...sortLeaguesForUser(visibleLeagues, user.leagueOrder).map((league) => league._id.toString()).filter((id) => !uniqueLeagueIds.includes(id)),
+    ];
+    const existingHiddenOrder = user.leagueOrder.map((id) => id.toString()).filter((id) => !visibleSet.has(id));
+    user.leagueOrder = [...orderedVisibleIds, ...existingHiddenOrder] as any;
+    await user.save();
+
+    const leagues = await League.find(query)
+      .populate('ownerId', 'name avatarUrl')
+      .populate('members.userId', 'name avatarUrl totalPoints')
+      .lean();
+
+    res.json({ leagues: sortLeaguesForUser(leagues, user.leagueOrder) });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: 'Invalid league order', details: error.errors });
+      return;
+    }
+    throw error;
+  }
 });
 
 router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
