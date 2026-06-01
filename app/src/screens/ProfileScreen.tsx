@@ -171,10 +171,12 @@ export default function ProfileScreen() {
           ))}
         </View>
 
-        <View>
-          <SectionLabel>{t('scenario.label')}</SectionLabel>
-          <ApiScenarioSelector />
-        </View>
+        {showDiagnostics && (
+          <View>
+            <SectionLabel>{t('scenario.label')}</SectionLabel>
+            <ApiScenarioSelector />
+          </View>
+        )}
 
         {/* Notifications */}
         <View>
