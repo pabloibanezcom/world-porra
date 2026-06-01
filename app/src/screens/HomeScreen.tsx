@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../store/authStore';
+import { useDataRefreshStore } from '../store/dataRefreshStore';
 import { fetchMatches } from '../api/matches';
 import { fetchMyPredictions } from '../api/predictions';
 import { fetchMyLeagues } from '../api/leagues';
@@ -46,6 +47,8 @@ function getResult(pred: Prediction, match: Match): 'exact' | 'correct' | 'wrong
 export default function HomeScreen() {
   const { language, t } = useI18n();
   const user = useAuthStore((s) => s.user);
+  const leaguesVersion = useDataRefreshStore((s) => s.leaguesVersion);
+  const predictionsVersion = useDataRefreshStore((s) => s.predictionsVersion);
   const navigation = useNavigation<any>();
   const triggerRef = useRef<() => void>(() => {});
   const [matches, setMatches] = useState<Match[]>([]);
@@ -95,6 +98,11 @@ export default function HomeScreen() {
       load();
     }, [load])
   );
+
+  useEffect(() => {
+    if (loading) return;
+    load();
+  }, [leaguesVersion, predictionsVersion, load]);
 
   useEffect(() => {
     if (!matches.some((match) => match.status === 'LIVE')) return;
