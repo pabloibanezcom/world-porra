@@ -175,6 +175,9 @@ const translations: Record<Language, TranslationMap> = {
     'adminUsers.groupPicks': 'Group picks',
     'adminUsers.tournamentPicks': 'Tournament picks',
     'adminUsers.recentPicks': 'Recent picks',
+    'adminUsers.matchPick': 'Match pick',
+    'adminUsers.made': 'Made',
+    'adminUsers.status': 'Status',
     'adminUsers.noPicks': 'No match picks yet.',
     'adminUsers.noTournamentPicks': 'No tournament picks yet.',
 
@@ -597,6 +600,9 @@ const translations: Record<Language, TranslationMap> = {
     'adminUsers.groupPicks': 'Pronósticos de grupo',
     'adminUsers.tournamentPicks': 'Pronósticos del torneo',
     'adminUsers.recentPicks': 'Pronósticos recientes',
+    'adminUsers.matchPick': 'Pronóstico de partido',
+    'adminUsers.made': 'Hecho',
+    'adminUsers.status': 'Estado',
     'adminUsers.noPicks': 'Todavía no hay pronósticos de partidos.',
     'adminUsers.noTournamentPicks': 'Todavía no hay pronósticos del torneo.',
 

@@ -7,6 +7,7 @@ import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { syncAuthMiddleware } from '../middleware/syncAuth';
 import { GroupPrediction } from '../models/GroupPrediction';
 import { League } from '../models/League';
+import { Match } from '../models/Match';
 import { Prediction } from '../models/Prediction';
 import { TournamentPrediction } from '../models/TournamentPrediction';
 import { User } from '../models/User';
@@ -144,18 +145,24 @@ router.get('/users/:userId', authMiddleware, async (req: AuthRequest, res: Respo
       return;
     }
 
-    const [summary, predictionTotal, predictionScored, recentPredictions, groupPredictions, tournamentPrediction] = await Promise.all([
+    const [summary, predictionTotal, predictionScored, recentPredictions, groupPredictions, tournamentPrediction, groupStageCounts] = await Promise.all([
       buildAdminUserSummary(user),
       Prediction.countDocuments({ userId: user._id }),
       Prediction.countDocuments({ userId: user._id, points: { $ne: null } }),
       Prediction.find({ userId: user._id })
+        .select('matchId homeGoals awayGoals qualifier points createdAt updatedAt')
         .sort({ updatedAt: -1 })
         .limit(30)
-        .populate('matchId', '+homeTeam +awayTeam stage group utcDate result homeTeamCode awayTeamCode')
+        .populate('matchId', '+homeTeam +awayTeam stage status group utcDate homeTeamCode awayTeamCode')
         .lean(),
       GroupPrediction.find({ userId: user._id }).sort({ group: 1 }).lean(),
-      TournamentPrediction.findOne({ userId: user._id }).lean(),
+      TournamentPrediction.findOne({ userId: user._id }).select('createdAt updatedAt').lean(),
+      Promise.all([
+        Match.countDocuments({ stage: 'GROUP' }),
+        Match.countDocuments({ stage: 'GROUP', status: { $ne: 'FINISHED' } }),
+      ]),
     ]);
+    const groupStageComplete = groupStageCounts[0] > 0 && groupStageCounts[1] === 0;
 
     res.json({
       user: summary,
@@ -165,24 +172,31 @@ router.get('/users/:userId', authMiddleware, async (req: AuthRequest, res: Respo
         pending: predictionTotal - predictionScored,
         recent: recentPredictions.map((prediction: any) => {
           const match = prediction.matchId;
+          const isRevealed = match?.status === 'FINISHED';
           return {
             _id: String(prediction._id),
             matchId: match?._id ? String(match._id) : String(prediction.matchId),
-            homeGoals: prediction.homeGoals,
-            awayGoals: prediction.awayGoals,
-            qualifier: prediction.qualifier ?? null,
-            points: prediction.points ?? null,
+            hasPrediction: true,
+            isRevealed,
+            ...(isRevealed
+              ? {
+                  homeGoals: prediction.homeGoals,
+                  awayGoals: prediction.awayGoals,
+                  qualifier: prediction.qualifier ?? null,
+                  points: prediction.points ?? null,
+                }
+              : {}),
             createdAt: new Date(prediction.createdAt).toISOString(),
             updatedAt: new Date(prediction.updatedAt).toISOString(),
             match: match?._id
               ? {
                   _id: String(match._id),
                   stage: match.stage,
+                  status: match.status,
                   group: match.group ?? null,
                   utcDate: new Date(match.utcDate).toISOString(),
                   homeTeam: match.homeTeam ?? { code: match.homeTeamCode, name: match.homeTeamCode, crest: '' },
                   awayTeam: match.awayTeam ?? { code: match.awayTeamCode, name: match.awayTeamCode, crest: '' },
-                  result: match.result ?? null,
                 }
               : null,
           };
@@ -191,20 +205,20 @@ router.get('/users/:userId', authMiddleware, async (req: AuthRequest, res: Respo
       groupPredictions: groupPredictions.map((prediction) => ({
         _id: String(prediction._id),
         group: prediction.group,
-        orderedTeamCodes: prediction.orderedTeamCodes,
-        points: prediction.points ?? null,
+        hasPrediction: true,
+        isRevealed: groupStageComplete,
+        ...(groupStageComplete
+          ? {
+              orderedTeamCodes: prediction.orderedTeamCodes,
+              points: prediction.points ?? null,
+            }
+          : {}),
         createdAt: new Date(prediction.createdAt).toISOString(),
         updatedAt: new Date(prediction.updatedAt).toISOString(),
       })),
       tournamentPrediction: tournamentPrediction
         ? {
-            championCode: tournamentPrediction.championCode,
-            runnerUpCode: tournamentPrediction.runnerUpCode,
-            semi1Code: tournamentPrediction.semi1Code,
-            semi2Code: tournamentPrediction.semi2Code,
-            bestPlayer: tournamentPrediction.bestPlayer,
-            topScorer: tournamentPrediction.topScorer,
-            bestYoung: tournamentPrediction.bestYoung,
+            hasPrediction: true,
             createdAt: new Date(tournamentPrediction.createdAt).toISOString(),
             updatedAt: new Date(tournamentPrediction.updatedAt).toISOString(),
           }
