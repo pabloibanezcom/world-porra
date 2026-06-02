@@ -4,7 +4,6 @@ import { Types } from 'mongoose';
 import { League } from '../src/models/League';
 import { Match } from '../src/models/Match';
 import { Prediction } from '../src/models/Prediction';
-import { User } from '../src/models/User';
 
 const pushMocks = vi.hoisted(() => ({
   sendToUsers: vi.fn().mockResolvedValue(undefined),
@@ -44,25 +43,46 @@ async function createLeague(token: string, name = 'Friends League') {
   return response.body.league;
 }
 
+async function createStoredLeague(ownerId: string, name: string, inviteCode: string) {
+  return League.create({
+    name,
+    inviteCode,
+    ownerId,
+    maxMembers: 50,
+    members: [{ userId: ownerId, isAdmin: true, hasPaid: false }],
+  });
+}
+
 describe('league membership', () => {
-  it('allows master and authorized users to create leagues and lets users join/list/read them', async () => {
+  it('allows any user to create one league as admin and lets users join/list/read it', async () => {
     const master = await registerPlayer('master@worldporra.test', 'Master');
     const member = await registerPlayer('member@worldporra.test', 'Member');
+    pushMocks.sendToUsers.mockClear();
 
-    const forbidden = await requestJson('/leagues', {
+    const memberLeague = await requestJson<{ league: { _id: string; inviteCode: string; members: Array<{ userId: string; isAdmin: boolean }> } }>('/leagues', {
       token: member.token,
-      body: { name: 'Nope' },
+      body: { name: 'Member League' },
     });
-    expect(forbidden.status).toBe(403);
+    expect(memberLeague.status).toBe(201);
+    expect(memberLeague.body.league.inviteCode).toHaveLength(8);
+    expect(memberLeague.body.league.inviteCode).toMatch(/^[A-Z2-9]+$/);
+    expect(memberLeague.body.league.members.find((entry) => String(entry.userId) === member.user.id)?.isAdmin).toBe(true);
+    expect(pushMocks.sendToUsers).toHaveBeenCalledWith([master.user.id], {
+      title: 'New league created',
+      body: 'Member created Member League.',
+      url: '/',
+    });
+
+    const duplicateOwnedLeague = await requestJson('/leagues', {
+      token: member.token,
+      body: { name: 'Another Member League' },
+    });
+    expect(duplicateOwnedLeague.status).toBe(403);
+    expect(duplicateOwnedLeague.body).toEqual({ error: 'You can only create one league' });
 
     const league = await createLeague(master.token);
     expect(league.inviteCode).toHaveLength(8);
     expect(league.inviteCode).toMatch(/^[A-Z2-9]+$/);
-
-    await User.findByIdAndUpdate(member.user.id, { canCreateLeagues: true });
-    const memberLeague = await createLeague(member.token, 'Member League');
-    expect(memberLeague.inviteCode).toHaveLength(8);
-    expect(memberLeague.inviteCode).toMatch(/^[A-Z2-9]+$/);
 
     const joined = await requestJson<{ league: { members: unknown[] } }>('/leagues/join', {
       token: member.token,
@@ -92,28 +112,28 @@ describe('league membership', () => {
 
   it('persists the current user league order and returns leagues in that order', async () => {
     const master = await registerPlayer('master@worldporra.test', 'Master');
-    const first = await createLeague(master.token, 'First League');
-    const second = await createLeague(master.token, 'Second League');
-    const third = await createLeague(master.token, 'Third League');
+    const first = await createStoredLeague(master.user.id, 'First League', 'ORDERA1');
+    const second = await createStoredLeague(master.user.id, 'Second League', 'ORDERB2');
+    const third = await createStoredLeague(master.user.id, 'Third League', 'ORDERC3');
 
     const reordered = await requestJson<{ leagues: Array<{ _id: string; name: string }> }>('/leagues/order', {
       method: 'PATCH',
       token: master.token,
-      body: { leagueIds: [third._id, first._id, second._id] },
+      body: { leagueIds: [String(third._id), String(first._id), String(second._id)] },
     });
     expect(reordered.status).toBe(200);
-    expect(reordered.body.leagues.map((league) => league._id)).toEqual([third._id, first._id, second._id]);
+    expect(reordered.body.leagues.map((league) => league._id)).toEqual([String(third._id), String(first._id), String(second._id)]);
 
     const listed = await requestJson<{ leagues: Array<{ _id: string; name: string }> }>('/leagues', {
       token: master.token,
     });
     expect(listed.status).toBe(200);
-    expect(listed.body.leagues.map((league) => league._id)).toEqual([third._id, first._id, second._id]);
+    expect(listed.body.leagues.map((league) => league._id)).toEqual([String(third._id), String(first._id), String(second._id)]);
 
     const duplicate = await requestJson('/leagues/order', {
       method: 'PATCH',
       token: master.token,
-      body: { leagueIds: [first._id, first._id] },
+      body: { leagueIds: [String(first._id), String(first._id)] },
     });
     expect(duplicate.status).toBe(400);
     expect(duplicate.body).toEqual({ error: 'League order cannot contain duplicates' });
@@ -122,7 +142,6 @@ describe('league membership', () => {
   it('lets master users silently manage leagues without being members', async () => {
     const master = await registerPlayer('master@worldporra.test', 'Master');
     const owner = await registerPlayer('owner@worldporra.test', 'Owner');
-    await User.findByIdAndUpdate(owner.user.id, { canCreateLeagues: true });
 
     const ownedByMaster = await createLeague(master.token, 'Original Master League');
     await requestJson(`/leagues/${ownedByMaster._id}/leave`, {
@@ -584,7 +603,6 @@ describe('league membership', () => {
   it('lets non-owner members leave but keeps the owner in the league', async () => {
     const owner = await registerPlayer('owner@worldporra.test', 'Owner');
     const member = await registerPlayer('member@worldporra.test', 'Member');
-    await User.findByIdAndUpdate(owner.user.id, { canCreateLeagues: true });
     const league = await createLeague(owner.token);
     await requestJson('/leagues/join', { token: member.token, body: { inviteCode: league.inviteCode } });
 

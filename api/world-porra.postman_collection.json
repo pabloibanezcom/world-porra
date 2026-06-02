@@ -740,7 +740,7 @@
       "item": [
         {
           "name": "Create League",
-          "description": "Requires master/canCreateLeagues/LEAGUE_CREATOR_EMAILS and must be before the league-creation lock.",
+          "description": "Allows any authenticated user to create one league they own/administer, before the league-creation lock.",
           "request": {
             "method": "POST",
             "header": [
