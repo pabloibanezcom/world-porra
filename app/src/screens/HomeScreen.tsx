@@ -14,10 +14,10 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../store/authStore';
 import { useDataRefreshStore } from '../store/dataRefreshStore';
 import { fetchMatches } from '../api/matches';
-import { fetchMyPredictions } from '../api/predictions';
+import { fetchMyGroupPredictions, fetchMyPredictions, fetchTournamentPrediction } from '../api/predictions';
 import { fetchMyLeagues } from '../api/leagues';
 import { fetchPollConfig, PollConfig } from '../api/config';
-import { Match, Prediction, League } from '../types';
+import { GroupPrediction, Match, Prediction, League, TOURNAMENT_SLOT_KEYS, TournamentPicks } from '../types';
 import PredictionSheet from '../components/PredictionSheet';
 import ResultSheet from '../components/ResultSheet';
 import MatchCard, { hasTbdTeam } from '../components/MatchCard';
@@ -46,6 +46,29 @@ function getResult(pred: Prediction, match: Match): 'exact' | 'correct' | 'wrong
   return pOut === aOut ? 'correct' : 'wrong';
 }
 
+function getPredictableGroupSizes(matches: Match[]): Record<string, number> {
+  const groups = new Map<string, Set<string>>();
+
+  matches.forEach((match) => {
+    if (match.stage !== 'GROUP' || !match.group) return;
+
+    const groupTeams = groups.get(match.group) ?? new Set<string>();
+    [match.homeTeam, match.awayTeam].forEach((team) => {
+      const code = team.code.trim().toUpperCase();
+      if (code && code !== 'TBD' && team.name.trim().toUpperCase() !== 'TBD') {
+        groupTeams.add(code);
+      }
+    });
+    groups.set(match.group, groupTeams);
+  });
+
+  return Object.fromEntries(
+    Array.from(groups.entries())
+      .filter(([, teams]) => teams.size >= 2)
+      .map(([group, teams]) => [group, teams.size]),
+  );
+}
+
 export default function HomeScreen() {
   const { language, t } = useI18n();
   const user = useAuthStore((s) => s.user);
@@ -55,6 +78,8 @@ export default function HomeScreen() {
   const triggerRef = useRef<() => void>(() => {});
   const [matches, setMatches] = useState<Match[]>([]);
   const [predictions, setPredictions] = useState<Prediction[]>([]);
+  const [groupPredictions, setGroupPredictions] = useState<GroupPrediction[]>([]);
+  const [tournamentPicks, setTournamentPicks] = useState<TournamentPicks>({});
   const [leagues, setLeagues] = useState<League[]>([]);
   const [pollConfig, setPollConfig] = useState<PollConfig | null>(null);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
@@ -64,17 +89,22 @@ export default function HomeScreen() {
   const [loadFailed, setLoadFailed] = useState(false);
 
   const predMap = Object.fromEntries(predictions.map((p) => [p.matchId, p]));
+  const groupPredMap = Object.fromEntries(groupPredictions.map((prediction) => [prediction.group, prediction]));
 
   const load = useCallback(async () => {
     try {
-      const [m, p, leagues, config] = await Promise.all([
+      const [m, p, groups, tournament, leagues, config] = await Promise.all([
         fetchMatches({}),
         fetchMyPredictions(),
+        fetchMyGroupPredictions(),
+        fetchTournamentPrediction(),
         fetchMyLeagues(),
         fetchPollConfig(),
       ]);
       setMatches(m);
       setPredictions(p);
+      setGroupPredictions(groups);
+      setTournamentPicks(tournament);
       setLeagues(leagues);
       setPollConfig(config);
       setLoadFailed(false);
@@ -146,7 +176,19 @@ export default function HomeScreen() {
     !hasTbdTeam(match) &&
     !isPredictionLocked(match)
   ));
-  const missingPredictionCount = missingPredictionMatches.length;
+  const missingMatchPredictionCount = missingPredictionMatches.length;
+  const groupSizes = getPredictableGroupSizes(matches);
+  const missingGroupPredictionCount = pollConfig?.groupPredictionsLocked
+    ? 0
+    : Object.entries(groupSizes).filter(([group, teamCount]) => {
+        const prediction = groupPredMap[group];
+        return !prediction || (prediction.orderedTeamCodes?.length ?? 0) < teamCount;
+      }).length;
+  const missingTournamentPredictionCount = pollConfig?.tournamentPredictionsLocked
+    ? 0
+    : TOURNAMENT_SLOT_KEYS.filter((key) => !tournamentPicks[key]).length;
+  const missingPredictionCount =
+    missingMatchPredictionCount + missingGroupPredictionCount + missingTournamentPredictionCount;
 
   const totalPoints = predictions.reduce((sum, prediction) => sum + (prediction.points ?? 0), 0);
   const pointsSummary = loadFailed ? `- ${t('common.points')}` : `${totalPoints} ${t('common.points')}`;
@@ -209,8 +251,25 @@ export default function HomeScreen() {
                 {t('home.predictionsAvailableTitle')}
               </Text>
               <Text style={styles.predictionReminderBody}>
-                {t('home.predictionsAvailableBody', { count: missingPredictionCount })}
+                {t('home.predictionsAvailableBody')}
               </Text>
+              <View style={styles.predictionReminderItems}>
+                {missingMatchPredictionCount > 0 && (
+                  <Text style={styles.predictionReminderItem}>
+                    {t('home.predictionsAvailableMatches', { count: missingMatchPredictionCount })}
+                  </Text>
+                )}
+                {missingGroupPredictionCount > 0 && (
+                  <Text style={styles.predictionReminderItem}>
+                    {t('home.predictionsAvailableGroups', { count: missingGroupPredictionCount })}
+                  </Text>
+                )}
+                {missingTournamentPredictionCount > 0 && (
+                  <Text style={styles.predictionReminderItem}>
+                    {t('home.predictionsAvailableFinals', { count: missingTournamentPredictionCount })}
+                  </Text>
+                )}
+              </View>
             </View>
             <View style={styles.predictionReminderAction}>
               <Text style={styles.predictionReminderActionText}>
@@ -358,6 +417,17 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontFamily: fonts.body,
     fontSize: 12,
+    lineHeight: 16,
+  },
+  predictionReminderItems: {
+    gap: 2,
+    marginTop: 7,
+  },
+  predictionReminderItem: {
+    color: colors.text,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 12,
+    fontWeight: '600',
     lineHeight: 16,
   },
   predictionReminderAction: {
