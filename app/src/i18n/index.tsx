@@ -187,6 +187,11 @@ const translations: Record<Language, TranslationMap> = {
     'adminUsers.status': 'Status',
     'adminUsers.noPicks': 'No match picks yet.',
     'adminUsers.noTournamentPicks': 'No tournament picks yet.',
+    'adminUsers.devices': 'Devices',
+    'adminUsers.noDevices': 'No devices recorded yet.',
+    'adminUsers.pwa': 'PWA',
+    'adminUsers.browser': 'Browser',
+    'adminUsers.lastSeen': ({ date }) => `Last seen ${date}`,
 
     'scenario.label': 'Tournament phase',
     'scenario.select': 'Select tournament phase',
@@ -619,6 +624,11 @@ const translations: Record<Language, TranslationMap> = {
     'adminUsers.status': 'Estado',
     'adminUsers.noPicks': 'Todavía no hay pronósticos de partidos.',
     'adminUsers.noTournamentPicks': 'Todavía no hay pronósticos del torneo.',
+    'adminUsers.devices': 'Dispositivos',
+    'adminUsers.noDevices': 'Todavía no hay dispositivos registrados.',
+    'adminUsers.pwa': 'PWA',
+    'adminUsers.browser': 'Navegador',
+    'adminUsers.lastSeen': ({ date }) => `Visto por última vez ${date}`,
 
     'scenario.label': 'Fase del torneo',
     'scenario.select': 'Seleccionar fase del torneo',

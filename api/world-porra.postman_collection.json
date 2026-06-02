@@ -26,6 +26,11 @@
       "type": "string"
     },
     {
+      "key": "deviceId",
+      "value": "device-demo",
+      "type": "string"
+    },
+    {
       "key": "matchId",
       "value": "",
       "type": "string"
@@ -467,6 +472,42 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"groupPredictionsDeadline\": null,\n  \"tournamentPredictionsDeadline\": null\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Devices",
+      "item": [
+        {
+          "name": "Device Heartbeat",
+          "description": "Upserts the current authenticated user device. Use displayMode=standalone when the app is running as installed PWA, browser for regular web.",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/devices/heartbeat",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "devices",
+                "heartbeat"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deviceId\": \"{{deviceId}}\",\n  \"displayMode\": \"standalone\",\n  \"platform\": \"web\",\n  \"userAgent\": \"PostmanRuntime\",\n  \"browserLanguage\": \"en-US\"\n}"
             }
           }
         }

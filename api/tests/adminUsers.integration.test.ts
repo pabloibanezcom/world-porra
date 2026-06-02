@@ -102,6 +102,28 @@ describe('admin user management routes', () => {
       championCode: 'ARG',
       runnerUpCode: 'BRA',
     });
+    const deviceHeartbeat = await requestJson('/devices/heartbeat', {
+      token: member.token,
+      body: {
+        deviceId: 'device-member-web',
+        displayMode: 'browser',
+        platform: 'web',
+        userAgent: 'Mozilla/5.0 Chrome/120',
+        browserLanguage: 'en-US',
+      },
+    });
+    expect(deviceHeartbeat.status).toBe(200);
+    const updatedDeviceHeartbeat = await requestJson('/devices/heartbeat', {
+      token: member.token,
+      body: {
+        deviceId: 'device-member-web',
+        displayMode: 'standalone',
+        platform: 'web',
+        userAgent: 'Mozilla/5.0 Chrome/121',
+        browserLanguage: 'en-GB',
+      },
+    });
+    expect(updatedDeviceHeartbeat.status).toBe(200);
 
     const list = await requestJson<{ users: Array<{ id: string; email: string; leagueCount: number; predictionCount: number; leagues: unknown[] }> }>(
       '/admin/users',
@@ -185,6 +207,14 @@ describe('admin user management routes', () => {
     expect(detail.body.tournamentPrediction.championCode).toBeUndefined();
     expect(detail.body.tournamentPrediction.runnerUpCode).toBeUndefined();
     expect(detail.body.tournamentPrediction.bestPlayer).toBeUndefined();
+    expect(detail.body.devices).toHaveLength(1);
+    expect(detail.body.devices[0]).toMatchObject({
+      deviceId: 'device-member-web',
+      displayMode: 'standalone',
+      platform: 'web',
+      userAgent: 'Mozilla/5.0 Chrome/121',
+      browserLanguage: 'en-GB',
+    });
 
     await Match.findByIdAndUpdate(scheduledMatch._id, {
       status: 'FINISHED',

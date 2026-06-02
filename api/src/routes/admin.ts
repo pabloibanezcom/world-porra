@@ -11,6 +11,7 @@ import { Match } from '../models/Match';
 import { Prediction } from '../models/Prediction';
 import { TournamentPrediction } from '../models/TournamentPrediction';
 import { User } from '../models/User';
+import { UserDevice } from '../models/UserDevice';
 import { processFinishedMatches, syncAllFixtures } from '../services/syncService';
 import { syncOdds } from '../services/oddsService';
 import { seedTournamentScenarios } from '../jobs/seedScenario';
@@ -145,7 +146,7 @@ router.get('/users/:userId', authMiddleware, async (req: AuthRequest, res: Respo
       return;
     }
 
-    const [summary, predictionTotal, predictionScored, recentPredictions, groupPredictions, tournamentPrediction, groupStageCounts] = await Promise.all([
+    const [summary, predictionTotal, predictionScored, recentPredictions, groupPredictions, tournamentPrediction, groupStageCounts, devices] = await Promise.all([
       buildAdminUserSummary(user),
       Prediction.countDocuments({ userId: user._id }),
       Prediction.countDocuments({ userId: user._id, points: { $ne: null } }),
@@ -161,6 +162,7 @@ router.get('/users/:userId', authMiddleware, async (req: AuthRequest, res: Respo
         Match.countDocuments({ stage: 'GROUP' }),
         Match.countDocuments({ stage: 'GROUP', status: { $ne: 'FINISHED' } }),
       ]),
+      UserDevice.find({ userId: user._id }).sort({ lastSeenAt: -1 }).limit(20).lean(),
     ]);
     const groupStageComplete = groupStageCounts[0] > 0 && groupStageCounts[1] === 0;
 
@@ -223,6 +225,16 @@ router.get('/users/:userId', authMiddleware, async (req: AuthRequest, res: Respo
             updatedAt: new Date(tournamentPrediction.updatedAt).toISOString(),
           }
         : null,
+      devices: devices.map((device) => ({
+        _id: String(device._id),
+        deviceId: device.deviceId,
+        displayMode: device.displayMode,
+        platform: device.platform,
+        userAgent: device.userAgent,
+        browserLanguage: device.browserLanguage,
+        firstSeenAt: new Date(device.firstSeenAt).toISOString(),
+        lastSeenAt: new Date(device.lastSeenAt).toISOString(),
+      })),
     });
   } catch (error) {
     next(error);
