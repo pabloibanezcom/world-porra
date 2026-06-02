@@ -96,7 +96,10 @@ const translations: Record<Language, TranslationMap> = {
     'home.noMatches': 'No matches yet.',
     'home.fixturesSynced': 'Fixtures will appear once synced.',
     'home.predictionsAvailableTitle': 'Predictions available',
-    'home.predictionsAvailableBody': ({ count }) => `${count} ${Number(count) === 1 ? 'match still needs' : 'matches still need'} your pick.`,
+    'home.predictionsAvailableBody': 'You still have picks to place.',
+    'home.predictionsAvailableMatches': ({ count }) => `${count} ${Number(count) === 1 ? 'match pick' : 'match picks'}`,
+    'home.predictionsAvailableGroups': ({ count }) => `${count} ${Number(count) === 1 ? 'group standings pick' : 'group standings picks'}`,
+    'home.predictionsAvailableFinals': ({ count }) => `${count} ${Number(count) === 1 ? 'finals pick' : 'finals picks'}`,
     'home.predictionsAvailableAction': 'Pick now',
 
     'leagues.privatePools': ({ count }) => `${count} private pools`,
@@ -526,7 +529,10 @@ const translations: Record<Language, TranslationMap> = {
     'home.noMatches': 'Todavía no hay partidos.',
     'home.fixturesSynced': 'El calendario aparecerá cuando se sincronice.',
     'home.predictionsAvailableTitle': 'Pronósticos disponibles',
-    'home.predictionsAvailableBody': ({ count }) => `${count} ${Number(count) === 1 ? 'partido todavía necesita' : 'partidos todavía necesitan'} tu pronóstico.`,
+    'home.predictionsAvailableBody': 'Todavía tienes pronósticos por hacer.',
+    'home.predictionsAvailableMatches': ({ count }) => `${count} ${Number(count) === 1 ? 'pronóstico de partido' : 'pronósticos de partidos'}`,
+    'home.predictionsAvailableGroups': ({ count }) => `${count} ${Number(count) === 1 ? 'pronóstico de grupo' : 'pronósticos de grupos'}`,
+    'home.predictionsAvailableFinals': ({ count }) => `${count} ${Number(count) === 1 ? 'pronóstico de finales' : 'pronósticos de finales'}`,
     'home.predictionsAvailableAction': 'Pronosticar',
 
     'leagues.privatePools': ({ count }) => `${count} ligas privadas`,
