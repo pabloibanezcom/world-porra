@@ -95,6 +95,9 @@ const translations: Record<Language, TranslationMap> = {
     'home.recentResults': 'Recent Results',
     'home.noMatches': 'No matches yet.',
     'home.fixturesSynced': 'Fixtures will appear once synced.',
+    'home.predictionsAvailableTitle': 'Predictions available',
+    'home.predictionsAvailableBody': ({ count }) => `${count} ${Number(count) === 1 ? 'match still needs' : 'matches still need'} your pick.`,
+    'home.predictionsAvailableAction': 'Pick now',
 
     'leagues.privatePools': ({ count }) => `${count} private pools`,
     'leagues.joinPrivatePool': 'Join a private pool',
@@ -522,6 +525,9 @@ const translations: Record<Language, TranslationMap> = {
     'home.recentResults': 'Resultados recientes',
     'home.noMatches': 'Todavía no hay partidos.',
     'home.fixturesSynced': 'El calendario aparecerá cuando se sincronice.',
+    'home.predictionsAvailableTitle': 'Pronósticos disponibles',
+    'home.predictionsAvailableBody': ({ count }) => `${count} ${Number(count) === 1 ? 'partido todavía necesita' : 'partidos todavía necesitan'} tu pronóstico.`,
+    'home.predictionsAvailableAction': 'Pronosticar',
 
     'leagues.privatePools': ({ count }) => `${count} ligas privadas`,
     'leagues.joinPrivatePool': 'Únete a una liga privada',

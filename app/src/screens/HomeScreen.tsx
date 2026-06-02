@@ -6,7 +6,9 @@ import {
   StyleSheet,
   ScrollView,
   RefreshControl,
+  Pressable,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../store/authStore';
@@ -138,6 +140,13 @@ export default function HomeScreen() {
       ? matchesInNext24Hours
       : upcoming.slice(0, 3);
   const recentFinished = [...finished].reverse().slice(0, 4);
+  const missingPredictionMatches = upcoming.filter((match) => (
+    match.status === 'SCHEDULED' &&
+    !predMap[match._id] &&
+    !hasTbdTeam(match) &&
+    !isPredictionLocked(match)
+  ));
+  const missingPredictionCount = missingPredictionMatches.length;
 
   const totalPoints = predictions.reduce((sum, prediction) => sum + (prediction.points ?? 0), 0);
   const pointsSummary = loadFailed ? `- ${t('common.points')}` : `${totalPoints} ${t('common.points')}`;
@@ -183,6 +192,34 @@ export default function HomeScreen() {
             </View>
           </View>
         </View>
+
+        {missingPredictionCount > 0 && (
+          <Pressable
+            style={({ pressed }) => [
+              styles.predictionReminder,
+              pressed && styles.predictionReminderPressed,
+            ]}
+            onPress={() => navigation.navigate('Predictions')}
+          >
+            <View style={styles.predictionReminderIcon}>
+              <Ionicons name="football-outline" size={20} color={colors.accent} />
+            </View>
+            <View style={styles.predictionReminderCopy}>
+              <Text style={styles.predictionReminderTitle}>
+                {t('home.predictionsAvailableTitle')}
+              </Text>
+              <Text style={styles.predictionReminderBody}>
+                {t('home.predictionsAvailableBody', { count: missingPredictionCount })}
+              </Text>
+            </View>
+            <View style={styles.predictionReminderAction}>
+              <Text style={styles.predictionReminderActionText}>
+                {t('home.predictionsAvailableAction')}
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.accent} />
+            </View>
+          </Pressable>
+        )}
 
         {/* Next matches */}
         {nextMatches.length > 0 && (
@@ -289,6 +326,52 @@ const styles = StyleSheet.create({
   headerTitleRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 },
   userName: { color: colors.text, fontSize: 34, fontFamily: fonts.display, lineHeight: 38 },
   pointsSummary: { color: colors.accent, fontSize: 24, fontFamily: fonts.display, lineHeight: 28 },
+
+  predictionReminder: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.borderMid,
+    borderRadius: 12,
+    padding: 14,
+  },
+  predictionReminderPressed: { opacity: 0.82 },
+  predictionReminderIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.accentDim,
+  },
+  predictionReminderCopy: { flex: 1, minWidth: 0 },
+  predictionReminderTitle: {
+    color: colors.text,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 3,
+  },
+  predictionReminderBody: {
+    color: colors.muted,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  predictionReminderAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    flexShrink: 0,
+  },
+  predictionReminderActionText: {
+    color: colors.accent,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 12,
+    fontWeight: '700',
+  },
 
   sectionLabel: {
     fontSize: 11, fontWeight: '600', color: colors.dim,
