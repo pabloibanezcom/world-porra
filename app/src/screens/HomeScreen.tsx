@@ -8,7 +8,6 @@ import {
   RefreshControl,
   Pressable,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../store/authStore';
@@ -243,39 +242,33 @@ export default function HomeScreen() {
             ]}
             onPress={() => navigation.navigate('Predictions')}
           >
-            <View style={styles.predictionReminderIcon}>
-              <Ionicons name="football-outline" size={20} color={colors.accent} />
-            </View>
-            <View style={styles.predictionReminderCopy}>
+            <View style={styles.predictionReminderHeader}>
               <Text style={styles.predictionReminderTitle}>
                 {t('home.predictionsAvailableTitle')}
               </Text>
-              <Text style={styles.predictionReminderBody}>
-                {t('home.predictionsAvailableBody')}
-              </Text>
-              <View style={styles.predictionReminderItems}>
-                {missingMatchPredictionCount > 0 && (
-                  <Text style={styles.predictionReminderItem}>
-                    {t('home.predictionsAvailableMatches', { count: missingMatchPredictionCount })}
-                  </Text>
-                )}
-                {missingGroupPredictionCount > 0 && (
-                  <Text style={styles.predictionReminderItem}>
-                    {t('home.predictionsAvailableGroups', { count: missingGroupPredictionCount })}
-                  </Text>
-                )}
-                {missingTournamentPredictionCount > 0 && (
-                  <Text style={styles.predictionReminderItem}>
-                    {t('home.predictionsAvailableFinals', { count: missingTournamentPredictionCount })}
-                  </Text>
-                )}
-              </View>
-            </View>
-            <View style={styles.predictionReminderAction}>
               <Text style={styles.predictionReminderActionText}>
                 {t('home.predictionsAvailableAction')}
               </Text>
-              <Ionicons name="chevron-forward" size={16} color={colors.accent} />
+            </View>
+            <View style={styles.predictionReminderGrid}>
+              {missingMatchPredictionCount > 0 && (
+                <PredictionReminderTile
+                  count={missingMatchPredictionCount}
+                  label={t('home.predictionsAvailableMatchesLabel')}
+                />
+              )}
+              {missingGroupPredictionCount > 0 && (
+                <PredictionReminderTile
+                  count={missingGroupPredictionCount}
+                  label={t('home.predictionsAvailableGroupsLabel')}
+                />
+              )}
+              {missingTournamentPredictionCount > 0 && (
+                <PredictionReminderTile
+                  count={missingTournamentPredictionCount}
+                  label={t('home.predictionsAvailableFinalsLabel')}
+                />
+              )}
             </View>
           </Pressable>
         )}
@@ -376,6 +369,15 @@ export default function HomeScreen() {
   );
 }
 
+function PredictionReminderTile({ count, label }: { count: number; label: string }) {
+  return (
+    <View style={styles.predictionReminderTile}>
+      <Text style={styles.predictionReminderCount}>{count}</Text>
+      <Text style={styles.predictionReminderTileLabel}>{label}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   scroll: { padding: 18, paddingBottom: 16, gap: 18 },
@@ -387,57 +389,57 @@ const styles = StyleSheet.create({
   pointsSummary: { color: colors.accent, fontSize: 24, fontFamily: fonts.display, lineHeight: 28 },
 
   predictionReminder: {
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: 12,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.borderMid,
+    backgroundColor: colors.accent,
     borderRadius: 12,
-    padding: 14,
+    padding: 12,
   },
   predictionReminderPressed: { opacity: 0.82 },
-  predictionReminderIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
+  predictionReminderHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.accentDim,
+    justifyContent: 'space-between',
+    gap: 12,
   },
-  predictionReminderCopy: { flex: 1, minWidth: 0 },
   predictionReminderTitle: {
-    color: colors.text,
+    color: colors.bg,
     fontFamily: fonts.bodyMedium,
     fontSize: 14,
     fontWeight: '700',
-    marginBottom: 3,
+    flex: 1,
+    minWidth: 0,
   },
-  predictionReminderBody: {
-    color: colors.muted,
-    fontFamily: fonts.body,
-    fontSize: 12,
-    lineHeight: 16,
-  },
-  predictionReminderItems: {
-    gap: 2,
-    marginTop: 7,
-  },
-  predictionReminderItem: {
-    color: colors.text,
-    fontFamily: fonts.bodyMedium,
-    fontSize: 12,
-    fontWeight: '600',
-    lineHeight: 16,
-  },
-  predictionReminderAction: {
+  predictionReminderGrid: {
     flexDirection: 'row',
+    gap: 8,
+  },
+  predictionReminderTile: {
+    flex: 1,
+    minHeight: 58,
     alignItems: 'center',
-    gap: 2,
-    flexShrink: 0,
+    justifyContent: 'center',
+    borderRadius: 10,
+    backgroundColor: 'rgba(15,17,21,0.16)',
+    paddingHorizontal: 6,
+    paddingVertical: 8,
+  },
+  predictionReminderCount: {
+    color: colors.text,
+    fontFamily: fonts.display,
+    fontSize: 24,
+    lineHeight: 27,
+  },
+  predictionReminderTileLabel: {
+    color: 'rgba(255,255,255,0.82)',
+    fontFamily: fonts.bodyMedium,
+    fontSize: 10,
+    fontWeight: '700',
+    lineHeight: 13,
+    marginTop: 2,
+    textAlign: 'center',
   },
   predictionReminderActionText: {
-    color: colors.accent,
+    color: colors.bg,
     fontFamily: fonts.bodyMedium,
     fontSize: 12,
     fontWeight: '700',
