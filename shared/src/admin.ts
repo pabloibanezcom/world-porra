@@ -65,6 +65,17 @@ export interface AdminUserTournamentPrediction {
   updatedAt: string;
 }
 
+export interface AdminUserDevice {
+  _id: string;
+  deviceId: string;
+  displayMode: 'browser' | 'standalone' | 'unknown';
+  platform: 'web' | 'ios' | 'android' | 'unknown';
+  userAgent: string;
+  browserLanguage: string;
+  firstSeenAt: string;
+  lastSeenAt: string;
+}
+
 export interface AdminUserDetail {
   user: AdminUserSummary;
   predictions: {
@@ -75,4 +86,5 @@ export interface AdminUserDetail {
   };
   groupPredictions: AdminUserGroupPrediction[];
   tournamentPrediction: AdminUserTournamentPrediction | null;
+  devices: AdminUserDevice[];
 }

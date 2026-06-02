@@ -27,6 +27,19 @@ function formatDate(value: string, locale: string): string {
   return new Date(value).toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+function formatDeviceLastSeen(value: string, locale: string): string {
+  return new Date(value).toLocaleString(locale, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function summarizeUserAgent(userAgent: string): string {
+  if (!userAgent) return '';
+  if (/Edg\//.test(userAgent)) return 'Edge';
+  if (/CriOS|Chrome\//.test(userAgent)) return 'Chrome';
+  if (/Firefox\//.test(userAgent)) return 'Firefox';
+  if (/Safari\//.test(userAgent)) return 'Safari';
+  return userAgent.slice(0, 42);
+}
+
 export default function AdminUsersScreen() {
   const navigation = useNavigation();
   const { t, locale } = useI18n();
@@ -168,6 +181,37 @@ export default function AdminUsersScreen() {
                     <InfoRow label={t('adminUsers.updated')} value={formatDate(selected.user.updatedAt, locale)} />
                     <InfoRow label={t('adminUsers.groupPicks')} value={`${selected.user.groupPredictionCount}`} />
                     <InfoRow label={t('adminUsers.tournamentPicks')} value={selected.user.hasTournamentPrediction ? t('common.done') : t('common.missing')} />
+                  </View>
+                </View>
+
+                <View>
+                  <SectionLabel>{t('adminUsers.devices')}</SectionLabel>
+                  <View style={styles.infoCard}>
+                    {selected.devices.length === 0 ? (
+                      <Text style={styles.cardEmpty}>{t('adminUsers.noDevices')}</Text>
+                    ) : (
+                      selected.devices.map((device) => (
+                        <View key={device._id} style={styles.deviceRow}>
+                          <View style={styles.deviceTextBlock}>
+                            <View style={styles.deviceTitleRow}>
+                              <Text style={styles.deviceTitle}>
+                                {device.displayMode === 'standalone' ? t('adminUsers.pwa') : t('adminUsers.browser')}
+                              </Text>
+                              <Text style={[styles.statusPill, device.displayMode === 'standalone' && styles.statusPillOk]}>
+                                {device.platform.toUpperCase()}
+                              </Text>
+                            </View>
+                            <Text style={styles.deviceMeta}>
+                              {[
+                                summarizeUserAgent(device.userAgent),
+                                device.browserLanguage,
+                                t('adminUsers.lastSeen', { date: formatDeviceLastSeen(device.lastSeenAt, locale) }),
+                              ].filter(Boolean).join(' · ')}
+                            </Text>
+                          </View>
+                        </View>
+                      ))
+                    )}
                   </View>
                 </View>
 
@@ -424,6 +468,15 @@ const styles = StyleSheet.create({
   leagueTextBlock: { flex: 1, minWidth: 0 },
   leagueName: { color: colors.text, fontFamily: fonts.bodyMedium, fontSize: 13, fontWeight: '700' },
   leagueMeta: { color: colors.dim, fontFamily: fonts.body, fontSize: 11, marginTop: 2 },
+  deviceRow: {
+    padding: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  deviceTextBlock: { minWidth: 0 },
+  deviceTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  deviceTitle: { color: colors.text, fontFamily: fonts.bodyMedium, fontSize: 13, fontWeight: '700' },
+  deviceMeta: { color: colors.dim, fontFamily: fonts.body, fontSize: 11, marginTop: 4 },
   statusPill: {
     color: colors.muted,
     backgroundColor: 'rgba(255,255,255,0.06)',

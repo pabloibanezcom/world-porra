@@ -3,6 +3,7 @@ import { useAuthStore } from './authStore';
 import { TOKEN_STORAGE_KEY } from './tokenKey';
 import { deleteToken, getToken, setToken } from './tokenStorage';
 import { getMe, loginDev, loginWithGoogle, loginWithPassword, updateMe } from '../api/auth';
+import { sendDeviceHeartbeat } from '../api/devices';
 
 vi.mock('./tokenStorage', () => ({
   getToken: vi.fn(),
@@ -18,6 +19,10 @@ vi.mock('../api/auth', () => ({
   updateMe: vi.fn(),
 }));
 
+vi.mock('../api/devices', () => ({
+  sendDeviceHeartbeat: vi.fn(),
+}));
+
 const mockedGetToken = vi.mocked(getToken);
 const mockedSetToken = vi.mocked(setToken);
 const mockedDeleteToken = vi.mocked(deleteToken);
@@ -26,6 +31,7 @@ const mockedLoginWithGoogle = vi.mocked(loginWithGoogle);
 const mockedLoginDev = vi.mocked(loginDev);
 const mockedGetMe = vi.mocked(getMe);
 const mockedUpdateMe = vi.mocked(updateMe);
+const mockedSendDeviceHeartbeat = vi.mocked(sendDeviceHeartbeat);
 
 const user = {
   id: 'user-1',
@@ -52,6 +58,7 @@ describe('auth store', () => {
 
     expect(mockedLoginWithPassword).toHaveBeenCalledWith('player@example.test', 'password');
     expect(mockedSetToken).toHaveBeenCalledWith(TOKEN_STORAGE_KEY, 'token-1');
+    expect(mockedSendDeviceHeartbeat).toHaveBeenCalledOnce();
     expect(useAuthStore.getState()).toMatchObject({ user, token: 'token-1', isLoading: false });
   });
 
@@ -59,11 +66,13 @@ describe('auth store', () => {
     mockedLoginWithGoogle.mockResolvedValueOnce({ token: 'google-token', user });
     await useAuthStore.getState().signInWithGoogle('id-token');
     expect(mockedLoginWithGoogle).toHaveBeenCalledWith('id-token');
+    expect(mockedSendDeviceHeartbeat).toHaveBeenCalledOnce();
     expect(useAuthStore.getState().token).toBe('google-token');
 
     mockedLoginDev.mockResolvedValueOnce({ token: 'dev-token', user: { ...user, id: 'dev-user' } });
     await useAuthStore.getState().signInDev('dev@example.test');
     expect(mockedLoginDev).toHaveBeenCalledWith('dev@example.test');
+    expect(mockedSendDeviceHeartbeat).toHaveBeenCalledTimes(2);
     expect(useAuthStore.getState()).toMatchObject({
       token: 'dev-token',
       user: { id: 'dev-user' },
@@ -79,6 +88,7 @@ describe('auth store', () => {
 
     expect(mockedGetToken).toHaveBeenCalledWith(TOKEN_STORAGE_KEY);
     expect(mockedGetMe).toHaveBeenCalledOnce();
+    expect(mockedSendDeviceHeartbeat).toHaveBeenCalledOnce();
     expect(useAuthStore.getState()).toMatchObject({ user, token: 'stored-token', isLoading: false });
   });
 
