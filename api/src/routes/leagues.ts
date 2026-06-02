@@ -7,9 +7,9 @@ import { Prediction } from '../models/Prediction';
 import { LeagueReminderLog, LeagueReminderType } from '../models/LeagueReminderLog';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { User } from '../models/User';
+import { logger } from '../config/logger';
 import { getRequestLanguage, hydrateMatches } from '../services/countryTeamService';
 import { isLeagueCreationLocked, isTournamentStarted } from '../services/pollConfigService';
-import { canUserCreateLeagues } from './auth';
 import { currentDate } from '../utils/time';
 
 const router = Router();
@@ -75,6 +75,31 @@ async function canManageLeague(
   if (isLeagueAdmin(league, userId)) return true;
 
   return isMasterUser(userId);
+}
+
+async function notifyMastersOfNewLeague(league: { _id: unknown; name: string }, creator: { _id: unknown; name: string }): Promise<void> {
+  try {
+    const masterUsers = await User.find({
+      isMaster: true,
+      _id: { $ne: creator._id },
+    })
+      .select('_id')
+      .lean();
+
+    if (masterUsers.length === 0) return;
+
+    const { sendToUsers } = await import('../services/pushService.js');
+    await sendToUsers(
+      masterUsers.map((masterUser) => String(masterUser._id)),
+      {
+        title: 'New league created',
+        body: `${creator.name} created ${league.name}.`,
+        url: '/',
+      }
+    );
+  } catch (error) {
+    logger.error({ err: error, leagueId: String(league._id) }, 'Failed to notify master users about new league');
+  }
 }
 
 const paymentSettingsSchema = z
@@ -173,17 +198,15 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
     }
     const user = await User.findById(req.userId);
 
-    if (!user || !canUserCreateLeagues(user)) {
-      res.status(403).json({ error: 'You are not allowed to create leagues' });
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
       return;
     }
 
-    if (!user.isMaster) {
-      const existingLeague = await League.exists({ ownerId: req.userId });
-      if (existingLeague) {
-        res.status(403).json({ error: 'You can only create one league' });
-        return;
-      }
+    const existingLeague = await League.exists({ ownerId: req.userId });
+    if (existingLeague) {
+      res.status(403).json({ error: 'You can only create one league' });
+      return;
     }
 
     if (await isLeagueCreationLocked()) {
@@ -199,6 +222,8 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
       members: [{ userId: req.userId, isAdmin: true, hasPaid: false }],
       ...(paymentSettings ? { paymentSettings } : {}),
     });
+
+    await notifyMastersOfNewLeague(league, user);
 
     res.status(201).json({ league });
   } catch (error) {
