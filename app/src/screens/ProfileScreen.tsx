@@ -215,6 +215,15 @@ export default function ProfileScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.settingsRow, styles.settingsRowBorder]}
+                onPress={() => (navigation as any).navigate('AdminContactMessages')}
+              >
+                <Text style={styles.settingsLabel}>{t('profile.contactMessages')}</Text>
+                <View style={styles.settingsRight}>
+                  <Text style={styles.chevron}>›</Text>
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.settingsRow, styles.settingsRowBorder]}
                 onPress={() => setNotifyModalVisible(true)}
               >
                 <Text style={styles.settingsLabel}>{t('profile.notifyAll')}</Text>
@@ -280,6 +289,17 @@ export default function ProfileScreen() {
         <View>
           <SectionLabel>{t('profile.account')}</SectionLabel>
           <View style={styles.card}>
+            <TouchableOpacity
+              style={styles.settingsRowBorder}
+              onPress={() => (navigation as any).navigate('ContactMaster')}
+            >
+              <View style={styles.settingsRow}>
+                <Text style={styles.settingsLabel}>{t('profile.contactMaster')}</Text>
+                <View style={styles.settingsRight}>
+                  <Text style={styles.chevron}>›</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
             {accountItems.map((item, i) => (
               <TouchableOpacity
                 key={item.label}
