@@ -308,26 +308,20 @@ function PlayerPickerModal({
 
           {step === 'team' && (
             <ScrollView style={styles.sheetList} showsVerticalScrollIndicator={false}>
-              {filteredTeams.map((tm) => {
-                const count = players.filter((p) => p.code === tm.code).length;
-                return (
-                  <TouchableOpacity
-                    key={tm.code}
-                    style={styles.teamRow}
-                    onPress={() => selectTeam(tm)}
-                    activeOpacity={0.7}
-                  >
-                    <Flag code={tm.code} size={26} />
-                    <View style={styles.playerInfo}>
-                      <Text style={styles.teamRowName}>{tm.name}</Text>
-                      <Text style={styles.playerTeamSmall}>
-                        {count} {count === 1 ? t('tournament.player') : t('tournament.players')}
-                      </Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={14} color={colors.dim} />
-                  </TouchableOpacity>
-                );
-              })}
+              {filteredTeams.map((tm) => (
+                <TouchableOpacity
+                  key={tm.code}
+                  style={styles.teamRow}
+                  onPress={() => selectTeam(tm)}
+                  activeOpacity={0.7}
+                >
+                  <Flag code={tm.code} size={26} />
+                  <View style={styles.playerInfo}>
+                    <Text style={styles.teamRowName}>{tm.name}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={14} color={colors.dim} />
+                </TouchableOpacity>
+              ))}
               <View style={styles.listBottomPad} />
             </ScrollView>
           )}
@@ -657,7 +651,6 @@ const styles = StyleSheet.create({
   teamRowNameUnavailable: { color: colors.dim },
 
   playerInfo: { flex: 1, minWidth: 0 },
-  playerTeamSmall: { color: colors.muted, fontFamily: fonts.body, fontSize: 10, marginTop: 1 },
   playerRow: {
     flexDirection: 'row',
     alignItems: 'center',
