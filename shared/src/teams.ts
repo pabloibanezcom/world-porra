@@ -21,6 +21,7 @@ export const playerOptionSchema = z.object({
   name: z.string().min(1),
   team: z.string().min(1),
   code: z.string().min(1),
+  color: z.string().optional(),
   pos: playerPositionSchema,
   age: z.number().int().min(0).max(60),
   shirtNumber: z.number().int().min(1).max(99).optional(),
