@@ -1520,10 +1520,76 @@
               "mode": "raw",
               "raw": "{\n  \"subject\": \"Need help with my league\",\n  \"message\": \"Can you check my account when you have a moment?\"\n}"
             }
+        }
+      },
+      {
+        "name": "List My Contact Threads",
+        "description": "Returns the authenticated user's own contact threads, including replies from master users.",
+        "event": [
+          {
+            "listen": "test",
+            "script": {
+              "exec": [
+                "const json = pm.response.json();",
+                "if (json.messages?.[0]?.id) { pm.collectionVariables.set('contactMessageId', json.messages[0].id); }"
+              ],
+              "type": "text/javascript"
+            }
           }
-        },
-        {
-          "name": "List Contact Messages (Master only)",
+        ],
+        "request": {
+          "method": "GET",
+          "header": [
+            {
+              "key": "Authorization",
+              "value": "Bearer {{authToken}}"
+            }
+          ],
+          "url": {
+            "raw": "{{baseUrl}}/contact-messages",
+            "host": [
+              "{{baseUrl}}"
+            ],
+            "path": [
+              "contact-messages"
+            ]
+          }
+        }
+      },
+      {
+        "name": "Reply to Contact Thread",
+        "description": "Adds a reply to a contact thread. The original sender or any master user can reply.",
+        "request": {
+          "method": "POST",
+          "header": [
+            {
+              "key": "Authorization",
+              "value": "Bearer {{authToken}}"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "url": {
+            "raw": "{{baseUrl}}/contact-messages/{{contactMessageId}}/replies",
+            "host": [
+              "{{baseUrl}}"
+            ],
+            "path": [
+              "contact-messages",
+              "{{contactMessageId}}",
+              "replies"
+            ]
+          },
+          "body": {
+            "mode": "raw",
+            "raw": "{\n  \"message\": \"Thanks, I can help with that.\"\n}"
+          }
+        }
+      },
+      {
+        "name": "List Contact Messages (Master only)",
           "description": "Requires a normal bearer auth token for a master user. Optional status filter accepts new, read, or resolved.",
           "event": [
             {
