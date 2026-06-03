@@ -82,8 +82,12 @@ function mergeTournamentTeams(
 ): TournamentCatalogTeam[] {
   if (catalogTeams.length === 0) return fallbackTeams;
 
-  const catalogByCode = new Map(catalogTeams.map((team) => [team.code, team]));
-  return fallbackTeams.map((team) => catalogByCode.get(team.code) ?? team);
+  const mergedByCode = new Map(fallbackTeams.map((team) => [team.code, team]));
+  catalogTeams.forEach((team) => {
+    mergedByCode.set(team.code, team);
+  });
+
+  return Array.from(mergedByCode.values()).sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export function usePicksData() {
