@@ -37,9 +37,8 @@ export default function ContactMasterScreen() {
     setError(null);
     try {
       await createContactMessage(trimmedSubject, trimmedMessage);
-      Alert.alert(t('contactMaster.sentTitle'), t('contactMaster.sentBody'), [
-        { text: t('common.ok'), onPress: () => navigation.goBack() },
-      ]);
+      navigation.goBack();
+      Alert.alert(t('contactMaster.sentTitle'), t('contactMaster.sentBody'));
     } catch {
       setError(t('contactMaster.failed'));
     } finally {
