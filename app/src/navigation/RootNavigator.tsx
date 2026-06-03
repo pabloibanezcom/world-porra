@@ -24,6 +24,8 @@ import MatchDetailScreen from '../screens/MatchDetailScreen';
 import MemberScreen from '../screens/MemberScreen';
 import LeagueCreationInviteScreen from '../screens/LeagueCreationInviteScreen';
 import AdminUsersScreen from '../screens/AdminUsersScreen';
+import ContactMasterScreen from '../screens/ContactMasterScreen';
+import AdminContactMessagesScreen from '../screens/AdminContactMessagesScreen';
 import { useI18n } from '../i18n';
 
 const Stack = createNativeStackNavigator();
@@ -242,6 +244,16 @@ export default function RootNavigator() {
             <Stack.Screen
               name="AdminUsers"
               component={AdminUsersScreen}
+              options={{ headerShown: false, animation: 'slide_from_right' }}
+            />
+            <Stack.Screen
+              name="AdminContactMessages"
+              component={AdminContactMessagesScreen}
+              options={{ headerShown: false, animation: 'slide_from_right' }}
+            />
+            <Stack.Screen
+              name="ContactMaster"
+              component={ContactMasterScreen}
               options={{ headerShown: false, animation: 'slide_from_right' }}
             />
           </>

@@ -56,6 +56,11 @@
       "type": "string"
     },
     {
+      "key": "contactMessageId",
+      "value": "",
+      "type": "string"
+    },
+    {
       "key": "syncApiKey",
       "value": "",
       "type": "string"
@@ -1467,6 +1472,126 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"title\": \"Announcement\",\n  \"body\": \"Your message here\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Contact Messages",
+      "item": [
+        {
+          "name": "Create Contact Message",
+          "description": "Any authenticated user can send a private message to master users. The test script stores the created message id as contactMessageId.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.message?.id) { pm.collectionVariables.set('contactMessageId', json.message.id); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/contact-messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "contact-messages"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subject\": \"Need help with my league\",\n  \"message\": \"Can you check my account when you have a moment?\"\n}"
+            }
+          }
+        },
+        {
+          "name": "List Contact Messages (Master only)",
+          "description": "Requires a normal bearer auth token for a master user. Optional status filter accepts new, read, or resolved.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.messages?.[0]?.id) { pm.collectionVariables.set('contactMessageId', json.messages[0].id); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/contact-messages/admin?status=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "contact-messages",
+                "admin"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Contact Message Status (Master only)",
+          "description": "Marks a contact message as new, read, or resolved.",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/contact-messages/admin/{{contactMessageId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "contact-messages",
+                "admin",
+                "{{contactMessageId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"resolved\"\n}"
             }
           }
         }
