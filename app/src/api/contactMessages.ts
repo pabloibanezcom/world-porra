@@ -6,6 +6,16 @@ export async function createContactMessage(subject: string, message: string): Pr
   return data;
 }
 
+export async function fetchMyContactMessages(): Promise<ContactMessagesResponse> {
+  const { data } = await apiClient.get<ContactMessagesResponse>('/contact-messages');
+  return data;
+}
+
+export async function replyToContactMessage(messageId: string, message: string): Promise<ContactMessageResponse> {
+  const { data } = await apiClient.post<ContactMessageResponse>(`/contact-messages/${messageId}/replies`, { message });
+  return data;
+}
+
 export async function fetchAdminContactMessages(status?: ContactMessageStatus): Promise<ContactMessagesResponse> {
   const { data } = await apiClient.get<ContactMessagesResponse>('/contact-messages/admin', {
     params: status ? { status } : undefined,

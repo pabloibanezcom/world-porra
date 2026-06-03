@@ -72,9 +72,59 @@ describe('contact message routes', () => {
       status: 'resolved',
     });
 
+    const masterReply = await requestJson<any>(`/contact-messages/${created.body.message.id}/replies`, {
+      token: master.token,
+      body: { message: 'I can help with that.' },
+    });
+    expect(masterReply.status).toBe(201);
+    expect(masterReply.body.message).toMatchObject({
+      id: created.body.message.id,
+      status: 'read',
+      replies: [
+        {
+          message: 'I can help with that.',
+          sender: {
+            id: master.user.id,
+            email: 'master@worldporra.test',
+          },
+        },
+      ],
+    });
+
+    const memberThreads = await requestJson<any>('/contact-messages', { token: member.token });
+    expect(memberThreads.status).toBe(200);
+    expect(memberThreads.body.messages).toHaveLength(1);
+    expect(memberThreads.body.messages[0].replies[0]).toMatchObject({
+      message: 'I can help with that.',
+      sender: {
+        id: master.user.id,
+      },
+    });
+
+    const memberReply = await requestJson<any>(`/contact-messages/${created.body.message.id}/replies`, {
+      token: member.token,
+      body: { message: 'Thank you!' },
+    });
+    expect(memberReply.status).toBe(201);
+    expect(memberReply.body.message.status).toBe('new');
+    expect(memberReply.body.message.replies).toHaveLength(2);
+    expect(memberReply.body.message.replies[1]).toMatchObject({
+      message: 'Thank you!',
+      sender: {
+        id: member.user.id,
+      },
+    });
+
+    const other = await registerPlayer('other@worldporra.test', 'Other');
+    const forbiddenReply = await requestJson(`/contact-messages/${created.body.message.id}/replies`, {
+      token: other.token,
+      body: { message: 'Sneaky' },
+    });
+    expect(forbiddenReply.status).toBe(403);
+
     const newOnly = await requestJson<any>('/contact-messages/admin?status=new', { token: master.token });
     expect(newOnly.status).toBe(200);
-    expect(newOnly.body.messages).toEqual([]);
+    expect(newOnly.body.messages).toHaveLength(1);
   });
 
   it('returns 404 when master updates a missing contact message', async () => {

@@ -5,6 +5,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -12,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { ContactMessage, ContactMessageStatus } from '../types';
-import { fetchAdminContactMessages, updateAdminContactMessageStatus } from '../api/contactMessages';
+import { fetchAdminContactMessages, replyToContactMessage, updateAdminContactMessageStatus } from '../api/contactMessages';
 import Avatar from '../components/ui/Avatar';
 import { colors, fonts } from '../theme';
 import { useI18n } from '../i18n';
@@ -23,6 +24,11 @@ function formatDate(value: string, locale: string): string {
   return new Date(value).toLocaleString(locale, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
+function latestPreview(message: ContactMessage): string {
+  const latestReply = message.replies[message.replies.length - 1];
+  return latestReply?.message ?? message.message;
+}
+
 export default function AdminContactMessagesScreen() {
   const navigation = useNavigation();
   const { t, locale } = useI18n();
@@ -31,6 +37,7 @@ export default function AdminContactMessagesScreen() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<ContactMessage | null>(null);
   const [updating, setUpdating] = useState(false);
+  const [replyText, setReplyText] = useState('');
 
   const loadMessages = useCallback(async () => {
     setLoading(true);
@@ -53,6 +60,19 @@ export default function AdminContactMessagesScreen() {
     setUpdating(true);
     try {
       const response = await updateAdminContactMessageStatus(selected.id, status);
+      setSelected(response.message);
+      setMessages((current) => current.map((message) => (message.id === response.message.id ? response.message : message)));
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const sendReply = async () => {
+    if (!selected || !replyText.trim()) return;
+    setUpdating(true);
+    try {
+      const response = await replyToContactMessage(selected.id, replyText.trim());
+      setReplyText('');
       setSelected(response.message);
       setMessages((current) => current.map((message) => (message.id === response.message.id ? response.message : message)));
     } finally {
@@ -91,7 +111,10 @@ export default function AdminContactMessagesScreen() {
       ) : (
         <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
           {messages.map((message) => (
-            <TouchableOpacity key={message.id} activeOpacity={0.85} style={styles.messageCard} onPress={() => setSelected(message)}>
+            <TouchableOpacity key={message.id} activeOpacity={0.85} style={styles.messageCard} onPress={() => {
+              setReplyText('');
+              setSelected(message);
+            }}>
               <Avatar name={message.user?.name ?? '?'} color={message.status === 'new' ? colors.accent : colors.blue} imageUrl={message.user?.avatarUrl} size={42} />
               <View style={styles.messageMain}>
                 <View style={styles.messageTitleRow}>
@@ -101,7 +124,7 @@ export default function AdminContactMessagesScreen() {
                   </Text>
                 </View>
                 <Text style={styles.messageUser} numberOfLines={1}>{message.user?.name ?? t('adminContact.unknownUser')} · {formatDate(message.createdAt, locale)}</Text>
-                <Text style={styles.messagePreview} numberOfLines={2}>{message.message}</Text>
+                <Text style={styles.messagePreview} numberOfLines={2}>{latestPreview(message)}</Text>
               </View>
             </TouchableOpacity>
           ))}
@@ -123,13 +146,32 @@ export default function AdminContactMessagesScreen() {
                     </Text>
                   </View>
                 </View>
-                <TouchableOpacity style={styles.closeBtn} onPress={() => setSelected(null)}>
+                <TouchableOpacity style={styles.closeBtn} onPress={() => {
+                  setReplyText('');
+                  setSelected(null);
+                }}>
                   <Ionicons name="close" size={18} color={colors.text} />
                 </TouchableOpacity>
               </View>
 
               <ScrollView contentContainerStyle={styles.detailScroll} showsVerticalScrollIndicator={false}>
-                <Text style={styles.fullMessage}>{selected.message}</Text>
+                <View style={styles.chatBubble}>
+                  <Text style={styles.chatAuthor}>{selected.user?.name ?? t('adminContact.unknownUser')}</Text>
+                  <Text style={styles.chatText}>{selected.message}</Text>
+                  <Text style={styles.chatTime}>{formatDate(selected.createdAt, locale)}</Text>
+                </View>
+                {selected.replies.map((reply) => {
+                  const fromUser = reply.sender?.id === selected.user?.id;
+                  return (
+                    <View key={reply.id} style={[styles.chatBubble, !fromUser && styles.chatBubbleMaster]}>
+                      <Text style={styles.chatAuthor}>
+                        {fromUser ? selected.user?.name ?? t('adminContact.unknownUser') : t('adminContact.master')}
+                      </Text>
+                      <Text style={styles.chatText}>{reply.message}</Text>
+                      <Text style={styles.chatTime}>{formatDate(reply.createdAt, locale)}</Text>
+                    </View>
+                  );
+                })}
                 <View style={styles.actions}>
                   {(['read', 'resolved'] as ContactMessageStatus[]).map((status) => (
                     <TouchableOpacity
@@ -144,6 +186,27 @@ export default function AdminContactMessagesScreen() {
                       </Text>
                     </TouchableOpacity>
                   ))}
+                </View>
+                <View style={styles.replyBox}>
+                  <TextInput
+                    multiline
+                    maxLength={2000}
+                    onChangeText={setReplyText}
+                    placeholder={t('adminContact.replyPlaceholder')}
+                    placeholderTextColor={colors.dim}
+                    style={styles.replyInput}
+                    textAlignVertical="top"
+                    value={replyText}
+                  />
+                  <TouchableOpacity
+                    activeOpacity={0.85}
+                    disabled={updating || !replyText.trim()}
+                    onPress={sendReply}
+                    style={[styles.replyButton, (!replyText.trim() || updating) && styles.replyButtonDisabled]}
+                  >
+                    <Ionicons name="send" size={15} color="#fff" />
+                    <Text style={styles.replyButtonText}>{t('adminContact.reply')}</Text>
+                  </TouchableOpacity>
                 </View>
               </ScrollView>
             </View>
@@ -233,7 +296,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   detailScroll: { padding: 18, paddingBottom: 28, gap: 18 },
-  fullMessage: { color: colors.text, fontFamily: fonts.body, fontSize: 15, lineHeight: 22 },
+  chatBubble: {
+    alignSelf: 'flex-start',
+    maxWidth: '92%',
+    backgroundColor: colors.card,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 12,
+    gap: 4,
+  },
+  chatBubbleMaster: {
+    alignSelf: 'flex-end',
+    backgroundColor: colors.accentDim,
+    borderColor: 'rgba(102,112,255,0.32)',
+  },
+  chatAuthor: { color: colors.muted, fontFamily: fonts.bodyMedium, fontSize: 11, fontWeight: '700' },
+  chatText: { color: colors.text, fontFamily: fonts.body, fontSize: 14, lineHeight: 20 },
+  chatTime: { color: colors.dim, fontFamily: fonts.body, fontSize: 10 },
   actions: { flexDirection: 'row', gap: 10 },
   actionButton: {
     flex: 1,
@@ -249,4 +329,29 @@ const styles = StyleSheet.create({
   actionButtonActive: { backgroundColor: colors.accent, borderColor: colors.accent },
   actionText: { color: colors.text, fontFamily: fonts.bodyMedium, fontSize: 13, fontWeight: '700' },
   actionTextActive: { color: '#fff' },
+  replyBox: { gap: 10 },
+  replyInput: {
+    minHeight: 92,
+    backgroundColor: colors.card,
+    borderColor: colors.border,
+    borderRadius: 14,
+    borderWidth: 1,
+    color: colors.text,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    lineHeight: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  replyButton: {
+    minHeight: 44,
+    borderRadius: 12,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  replyButtonDisabled: { opacity: 0.6 },
+  replyButtonText: { color: '#fff', fontFamily: fonts.bodyMedium, fontSize: 13, fontWeight: '700' },
 });

@@ -206,6 +206,9 @@ const translations: Record<Language, TranslationMap> = {
     'contactMaster.failed': 'Failed to send message. Please try again.',
     'contactMaster.sentTitle': 'Message sent',
     'contactMaster.sentBody': 'The master has received your message.',
+    'contactMaster.previousMessages': 'Previous messages',
+    'contactMaster.replyPlaceholder': 'Write a reply',
+    'contactMaster.reply': 'Reply',
 
     'adminContact.title': 'Contact messages',
     'adminContact.subtitle': ({ count, newCount }) => `${count} messages · ${newCount} new`,
@@ -220,6 +223,9 @@ const translations: Record<Language, TranslationMap> = {
     'adminContact.status.resolved': 'Resolved',
     'adminContact.mark.read': 'Mark read',
     'adminContact.mark.resolved': 'Resolve',
+    'adminContact.master': 'Master',
+    'adminContact.replyPlaceholder': 'Write a reply to this user',
+    'adminContact.reply': 'Reply',
 
     'scenario.label': 'Tournament phase',
     'scenario.select': 'Select tournament phase',
@@ -671,6 +677,9 @@ const translations: Record<Language, TranslationMap> = {
     'contactMaster.failed': 'No se pudo enviar el mensaje. Inténtalo de nuevo.',
     'contactMaster.sentTitle': 'Mensaje enviado',
     'contactMaster.sentBody': 'El master ha recibido tu mensaje.',
+    'contactMaster.previousMessages': 'Mensajes anteriores',
+    'contactMaster.replyPlaceholder': 'Escribe una respuesta',
+    'contactMaster.reply': 'Responder',
 
     'adminContact.title': 'Mensajes de contacto',
     'adminContact.subtitle': ({ count, newCount }) => `${count} mensajes · ${newCount} nuevos`,
@@ -685,6 +694,9 @@ const translations: Record<Language, TranslationMap> = {
     'adminContact.status.resolved': 'Resuelto',
     'adminContact.mark.read': 'Marcar leído',
     'adminContact.mark.resolved': 'Resolver',
+    'adminContact.master': 'Master',
+    'adminContact.replyPlaceholder': 'Escribe una respuesta a este usuario',
+    'adminContact.reply': 'Responder',
 
     'scenario.label': 'Fase del torneo',
     'scenario.select': 'Seleccionar fase del torneo',

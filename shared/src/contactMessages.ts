@@ -13,10 +13,19 @@ export interface ContactMessage {
   _id: string;
   subject: string;
   message: string;
+  replies: ContactMessageReply[];
   status: ContactMessageStatus;
   createdAt: string;
   updatedAt: string;
   user: ContactMessageUser | null;
+}
+
+export interface ContactMessageReply {
+  id: string;
+  _id: string;
+  message: string;
+  createdAt: string;
+  sender: ContactMessageUser | null;
 }
 
 export interface ContactMessageResponse {
