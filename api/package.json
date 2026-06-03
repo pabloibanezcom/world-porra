@@ -13,6 +13,7 @@
     "seed:scenario": "tsx src/jobs/seedScenario.ts",
     "seed:league-points": "tsx src/jobs/seedLeaguePoints.ts",
     "seed:team-players": "tsx src/jobs/seedTeamPlayers.ts",
+    "seed:fifa-team-players": "tsx src/jobs/seedFifaTeamPlayers.ts",
     "seed:odds": "tsx src/jobs/seedOdds.ts",
     "seed:team-colors": "tsx src/jobs/seedTeamColors.ts"
   },
