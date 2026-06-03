@@ -37,6 +37,7 @@ export const playerOptionSchema = z.object({
   code: z.string().min(1),
   pos: playerPositionSchema,
   age: z.number().int().min(0).max(60),
+  shirtNumber: z.number().int().min(1).max(99).optional(),
 });
 
 export type TeamOption = z.infer<typeof teamOptionSchema>;

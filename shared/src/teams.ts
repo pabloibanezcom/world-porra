@@ -23,6 +23,7 @@ export const playerOptionSchema = z.object({
   code: z.string().min(1),
   pos: playerPositionSchema,
   age: z.number().int().min(0).max(60),
+  shirtNumber: z.number().int().min(1).max(99).optional(),
 });
 
 export const tournamentCatalogTeamSchema = teamOptionSchema.extend({
@@ -31,6 +32,7 @@ export const tournamentCatalogTeamSchema = teamOptionSchema.extend({
     name: z.string(),
     pos: playerPositionSchema,
     age: z.number(),
+    shirtNumber: z.number().int().min(1).max(99).optional(),
   })),
 });
 
@@ -55,5 +57,6 @@ export interface TournamentCatalogTeam extends TeamOption {
     name: string;
     pos: PlayerPosition;
     age: number;
+    shirtNumber?: number;
   }>;
 }

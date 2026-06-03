@@ -18,6 +18,7 @@ export interface TournamentCatalogTeam extends LocalizedTeamInfo {
     name: string;
     pos: 'FW' | 'MF' | 'DF' | 'GK';
     age: number;
+    shirtNumber?: number;
   }>;
 }
 
@@ -108,6 +109,7 @@ function serializeCatalogTeam(team: TeamCatalogEntry, language: ApiLanguage): To
       name: player.name,
       pos: player.pos,
       age: player.age,
+      shirtNumber: player.shirtNumber,
     })),
   };
 }

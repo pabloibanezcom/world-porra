@@ -9,6 +9,7 @@ export interface ICountryTeam extends Document {
     name: string;
     pos: 'FW' | 'MF' | 'DF' | 'GK';
     age: number;
+    shirtNumber?: number;
   }>;
   createdAt: Date;
   updatedAt: Date;
@@ -19,6 +20,7 @@ const countryTeamPlayerSchema = new Schema(
     name: { type: String, required: true, trim: true },
     pos: { type: String, required: true, enum: ['FW', 'MF', 'DF', 'GK'] },
     age: { type: Number, required: true, min: 0, max: 60 },
+    shirtNumber: { type: Number, required: false, min: 1, max: 99 },
   },
   { _id: false }
 );

@@ -6,6 +6,7 @@ interface PlayerPick {
   code: string;
   pos: string;
   age: number;
+  shirtNumber?: number;
 }
 
 export interface ITournamentPrediction extends Document {
@@ -22,7 +23,7 @@ export interface ITournamentPrediction extends Document {
 }
 
 const playerPickSchema = new Schema<PlayerPick>(
-  { name: String, team: String, code: String, pos: String, age: Number },
+  { name: String, team: String, code: String, pos: String, age: Number, shirtNumber: Number },
   { _id: false }
 );
 

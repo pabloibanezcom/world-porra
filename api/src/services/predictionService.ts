@@ -273,6 +273,7 @@ async function validateTournamentPredictionCatalog(data: TournamentPredictionInp
       normalizePlayerName(catalogPlayer.name) === normalizePlayerName(player.name)
       && catalogPlayer.pos === player.pos
       && catalogPlayer.age === player.age
+      && (player.shirtNumber == null || catalogPlayer.shirtNumber === player.shirtNumber)
     ));
   });
   if (invalidPlayer) return `Unknown tournament player "${invalidPlayer.name}"`;
