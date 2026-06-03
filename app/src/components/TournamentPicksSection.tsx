@@ -44,9 +44,42 @@ const POS_BG: Record<string, string> = {
   DF: 'rgba(236,126,0,0.15)',
   GK: 'rgba(226,59,74,0.15)',
 };
+const GOALKEEPER_JERSEY_COLORS = ['#f2c94c', colors.accent, colors.blue];
 
 function getTeamNameByCode(teams: TeamOption[], code: string, fallback: string) {
   return teams.find((option) => option.code === code)?.name ?? fallback;
+}
+
+function getCodeHash(code: string): number {
+  return code.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
+}
+
+function normalizeColor(color: string | undefined): string {
+  return color?.trim().toLowerCase() ?? '';
+}
+
+function getGoalkeeperJerseyColor(player: PlayerOption): string {
+  const teamColor = normalizeColor(player.color);
+  const startIndex = getCodeHash(player.code) % GOALKEEPER_JERSEY_COLORS.length;
+
+  return GOALKEEPER_JERSEY_COLORS.find((_, index) => (
+    normalizeColor(GOALKEEPER_JERSEY_COLORS[(startIndex + index) % GOALKEEPER_JERSEY_COLORS.length]) !== teamColor
+  )) ?? colors.blue;
+}
+
+function getJerseyColor(player: PlayerOption): string {
+  return player.pos === 'GK' ? getGoalkeeperJerseyColor(player) : player.color || colors.muted;
+}
+
+function getJerseyTextColor(jerseyColor: string): string {
+  const hex = jerseyColor.replace('#', '').trim();
+  if (!/^[0-9a-f]{6}$/i.test(hex)) return '#fff';
+
+  const r = parseInt(hex.slice(0, 2), 16) / 255;
+  const g = parseInt(hex.slice(2, 4), 16) / 255;
+  const b = parseInt(hex.slice(4, 6), 16) / 255;
+  const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return luminance > 0.62 ? colors.bg : '#fff';
 }
 
 function SectionLabel({ children }: { children: string }) {
@@ -55,6 +88,26 @@ function SectionLabel({ children }: { children: string }) {
 
 function CheckIcon() {
   return <Ionicons name="checkmark" size={15} color={colors.accent} />;
+}
+
+function JerseyNumber({ player }: { player: PlayerOption }) {
+  if (!player.shirtNumber) return null;
+
+  const jerseyColor = getJerseyColor(player);
+  return (
+    <View style={styles.jerseyNumber}>
+      <Ionicons name="shirt" size={29} color={jerseyColor} />
+      <Text
+        style={[
+          styles.jerseyNumberText,
+          { color: getJerseyTextColor(jerseyColor) },
+          player.shirtNumber > 9 && styles.jerseyNumberTextDouble,
+        ]}
+      >
+        {player.shirtNumber}
+      </Text>
+    </View>
+  );
 }
 
 // ─── TEAM SLOT CARD ────────────────────────────────────────────
@@ -345,6 +398,7 @@ function PlayerPickerModal({
                         {player.name}
                       </Text>
                     </View>
+                    <JerseyNumber player={player} />
                     <View style={[styles.posBadge, { backgroundColor: POS_BG[player.pos] }]}>
                       <Text style={[styles.posBadgeText, { color: POS_COLOR[player.pos] }]}>
                         {player.pos}
@@ -377,6 +431,7 @@ export default function TournamentPicksSection({
         ...player,
         team: team.name,
         code: team.code,
+        color: team.color,
       }))
     ),
     [teams],
@@ -667,6 +722,22 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accentDim,
     borderColor: `${colors.accent}44`,
   },
+  jerseyNumber: {
+    width: 30,
+    height: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  jerseyNumberText: {
+    position: 'absolute',
+    top: 9,
+    fontFamily: fonts.displayBold,
+    fontSize: 10,
+    fontWeight: '800',
+    lineHeight: 11,
+  },
+  jerseyNumberTextDouble: { fontSize: 9 },
   posBadge: {
     borderRadius: 9999,
     paddingHorizontal: 7,
