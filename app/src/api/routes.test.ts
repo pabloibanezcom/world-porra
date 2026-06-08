@@ -3,6 +3,7 @@ import { getMe, loginDev, loginWithGoogle, loginWithPassword, updateMe } from '.
 import { createLeague, deleteLeague, fetchLeague, fetchMemberPredictions, fetchMyLeagues, joinLeague, leaveLeague, notifyLeagueMembers } from './leagues';
 import { fetchMatch, fetchMatches } from './matches';
 import { fetchPollConfig } from './config';
+import { deleteAdminUser } from './admin';
 import { apiClient } from './client';
 
 vi.mock('./client', () => ({
@@ -84,6 +85,16 @@ describe('API route helpers', () => {
 
     await expect(fetchPollConfig()).resolves.toBe(config);
     expect(mockedApiClient.get).toHaveBeenCalledWith('/config/poll');
+  });
+
+  it('calls admin user deletion with typed confirmation', async () => {
+    mockedApiClient.delete.mockResolvedValueOnce({ data: {} });
+
+    await expect(deleteAdminUser('user-1', 'player@example.test')).resolves.toBeUndefined();
+
+    expect(mockedApiClient.delete).toHaveBeenCalledWith('/admin/users/user-1', {
+      data: { confirmation: 'player@example.test' },
+    });
   });
 
   it('calls league endpoints and unwraps response data', async () => {

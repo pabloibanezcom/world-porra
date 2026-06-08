@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Modal,
   ScrollView,
   StyleSheet,
@@ -12,12 +13,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { fetchAdminUserDetail, fetchAdminUsers } from '../api/admin';
+import { deleteAdminUser, fetchAdminUserDetail, fetchAdminUsers } from '../api/admin';
 import { AdminUserDetail, AdminUserSummary } from '../types';
 import Avatar from '../components/ui/Avatar';
 import Flag from '../components/ui/Flag';
 import { colors, fonts } from '../theme';
 import { useI18n } from '../i18n';
+import { getApiErrorMessage } from '../utils/apiError';
+import { useAuthStore } from '../store/authStore';
 
 function SectionLabel({ children }: { children: string }) {
   return <Text style={styles.sectionLabel}>{children.toUpperCase()}</Text>;
@@ -43,11 +46,14 @@ function summarizeUserAgent(userAgent: string): string {
 export default function AdminUsersScreen() {
   const navigation = useNavigation();
   const { t, locale } = useI18n();
+  const currentUser = useAuthStore((s) => s.user);
   const [users, setUsers] = useState<AdminUserSummary[]>([]);
   const [totalUsers, setTotalUsers] = useState(0);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [deletingUser, setDeletingUser] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [selected, setSelected] = useState<AdminUserDetail | null>(null);
 
   const loadUsers = useCallback(async () => {
@@ -69,13 +75,37 @@ export default function AdminUsersScreen() {
   }, [loadUsers]);
 
   const orphanCount = useMemo(() => users.filter((user) => user.leagueCount === 0).length, [users]);
+  const deleteConfirmationMatches = !!selected && deleteConfirmation.trim() === selected.user.email;
+  const isSelectedCurrentUser = !!selected && selected.user.id === currentUser?.id;
 
   const openUser = async (userId: string) => {
     setDetailLoading(true);
     try {
+      setDeleteConfirmation('');
       setSelected(await fetchAdminUserDetail(userId));
     } finally {
       setDetailLoading(false);
+    }
+  };
+
+  const closeUser = () => {
+    setSelected(null);
+    setDeleteConfirmation('');
+  };
+
+  const onDeleteSelectedUser = async () => {
+    if (!selected || !deleteConfirmationMatches || deletingUser) return;
+
+    setDeletingUser(true);
+    try {
+      await deleteAdminUser(selected.user.id, deleteConfirmation.trim());
+      setSelected(null);
+      setDeleteConfirmation('');
+      await loadUsers();
+    } catch (err) {
+      Alert.alert(t('common.error'), getApiErrorMessage(err, t('adminUsers.deleteFailed')));
+    } finally {
+      setDeletingUser(false);
     }
   };
 
@@ -145,7 +175,7 @@ export default function AdminUsersScreen() {
         </View>
       )}
 
-      <Modal visible={!!selected} transparent animationType="slide" onRequestClose={() => setSelected(null)}>
+      <Modal visible={!!selected} transparent animationType="slide" onRequestClose={closeUser}>
         <View style={styles.modalBackdrop}>
           {selected && (
             <View style={styles.detailPanel}>
@@ -162,7 +192,7 @@ export default function AdminUsersScreen() {
                     <Text style={styles.detailEmail} numberOfLines={1}>{selected.user.email}</Text>
                   </View>
                 </View>
-                <TouchableOpacity style={styles.closeBtn} onPress={() => setSelected(null)}>
+                <TouchableOpacity style={styles.closeBtn} onPress={closeUser}>
                   <Ionicons name="close" size={18} color={colors.text} />
                 </TouchableOpacity>
               </View>
@@ -304,6 +334,52 @@ export default function AdminUsersScreen() {
                     ) : (
                       <Text style={styles.cardEmpty}>{t('adminUsers.noTournamentPicks')}</Text>
                     )}
+                  </View>
+                </View>
+
+                <View>
+                  <SectionLabel>{t('adminUsers.dangerZone')}</SectionLabel>
+                  <View style={[styles.infoCard, styles.dangerCard]}>
+                    <Text style={styles.dangerTitle}>{t('adminUsers.deleteTitle')}</Text>
+                    <Text style={styles.dangerBody}>
+                      {t('adminUsers.deleteBody', {
+                        email: selected.user.email,
+                        leagues: selected.user.leagueCount,
+                        picks: selected.predictions.total + selected.user.groupPredictionCount + (selected.user.hasTournamentPrediction ? 1 : 0),
+                      })}
+                    </Text>
+                    {isSelectedCurrentUser ? (
+                      <Text style={styles.selfDeleteBlocked}>{t('adminUsers.deleteSelfBlocked')}</Text>
+                    ) : (
+                      <>
+                        <Text style={styles.deleteInputLabel}>{t('adminUsers.deleteInputLabel', { email: selected.user.email })}</Text>
+                        <TextInput
+                          style={styles.deleteInput}
+                          value={deleteConfirmation}
+                          onChangeText={setDeleteConfirmation}
+                          placeholder={selected.user.email}
+                          placeholderTextColor={colors.dim}
+                          autoCapitalize="none"
+                          autoCorrect={false}
+                          keyboardType="email-address"
+                        />
+                        <TouchableOpacity
+                          style={[styles.deleteUserBtn, (!deleteConfirmationMatches || deletingUser) && styles.deleteUserBtnDisabled]}
+                          onPress={onDeleteSelectedUser}
+                          disabled={!deleteConfirmationMatches || deletingUser}
+                          activeOpacity={0.85}
+                        >
+                          {deletingUser ? (
+                            <ActivityIndicator color={colors.text} size="small" />
+                          ) : (
+                            <>
+                              <Ionicons name="trash-outline" size={16} color={colors.text} />
+                              <Text style={styles.deleteUserBtnText}>{t('adminUsers.deleteAction')}</Text>
+                            </>
+                          )}
+                        </TouchableOpacity>
+                      </>
+                      )}
                   </View>
                 </View>
               </ScrollView>
@@ -501,4 +577,30 @@ const styles = StyleSheet.create({
   pickTeams: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 7, minWidth: 0 },
   pickText: { color: colors.text, fontFamily: fonts.body, fontSize: 12, flexShrink: 1 },
   pickPoints: { color: colors.muted, fontFamily: fonts.bodyMedium, fontSize: 12, fontWeight: '700' },
+  dangerCard: { padding: 14, gap: 10 },
+  dangerTitle: { color: colors.danger, fontFamily: fonts.bodyMedium, fontSize: 14, fontWeight: '700' },
+  dangerBody: { color: colors.muted, fontFamily: fonts.body, fontSize: 12, lineHeight: 18 },
+  selfDeleteBlocked: { color: colors.warning, fontFamily: fonts.bodyMedium, fontSize: 12, lineHeight: 18 },
+  deleteInputLabel: { color: colors.text, fontFamily: fonts.bodyMedium, fontSize: 12, fontWeight: '700' },
+  deleteInput: {
+    color: colors.text,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontFamily: fonts.body,
+    fontSize: 13,
+  },
+  deleteUserBtn: {
+    minHeight: 42,
+    borderRadius: 10,
+    backgroundColor: colors.danger,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  deleteUserBtnDisabled: { opacity: 0.45 },
+  deleteUserBtnText: { color: colors.text, fontFamily: fonts.bodyMedium, fontSize: 13, fontWeight: '700' },
 });
