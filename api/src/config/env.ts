@@ -40,6 +40,12 @@ const envSchema = z.object({
   VAPID_PUBLIC_KEY: z.string().default(''),
   VAPID_PRIVATE_KEY: z.string().default(''),
   VAPID_EMAIL: z.string().default(''),
+  RESEND_API_KEY: z.string().default(''),
+  EMAIL_FROM: z.string().default(''),
+  EMAIL_REPLY_TO: z.string().default(''),
+  EMAIL_DAILY_LIMIT: z.coerce.number().int().min(0).default(90),
+  EMAIL_PWA_RECENT_DAYS: z.coerce.number().int().positive().default(30),
+  APP_BASE_URL: z.string().default('https://app.worldporra.com'),
 });
 
 export const env = envSchema.parse(process.env);

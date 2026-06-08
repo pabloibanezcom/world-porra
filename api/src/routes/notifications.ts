@@ -61,6 +61,39 @@ const broadcastSchema = z.object({
   body: z.string().min(1).max(300),
 });
 
+const testEmailSchema = z.object({
+  to: z.string().email().optional(),
+});
+
+router.post('/test-email', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  const user = await (await import('../models/User.js')).User.findById(req.userId);
+  if (!user?.isMaster) {
+    res.status(403).json({ error: 'Master access required' });
+    return;
+  }
+
+  try {
+    const { to } = testEmailSchema.parse(req.body ?? {});
+    const { isEmailConfigured, sendTestEmail } = await import('../services/emailService.js');
+    if (!isEmailConfigured()) {
+      res.status(503).json({ error: 'Email is not configured' });
+      return;
+    }
+
+    const result = await sendTestEmail({
+      to: to ?? user.email,
+      name: user.name,
+    });
+    res.json({ ok: true, to: to ?? user.email, providerMessageId: result.providerMessageId });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: 'Invalid email payload', details: error.errors });
+      return;
+    }
+    throw error;
+  }
+});
+
 router.post('/broadcast', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   const user = await (await import('../models/User.js')).User.findById(req.userId);
   if (!user?.isMaster) {

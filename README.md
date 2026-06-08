@@ -86,6 +86,24 @@ POLL_TOURNAMENT_PREDICTIONS_DEADLINE=
 
 Use `POLL_PICKS_DEADLINE` when group standings and tournament picks share one deadline. Use the more specific variables when they need separate defaults. Master users can override these values through the global poll config stored in MongoDB.
 
+Optional email notification setup:
+
+1. Create a Resend account and add the `worldporra.com` domain.
+2. Add the DNS records Resend gives you for SPF/DKIM/domain verification.
+3. Create a real inbox or alias for replies, such as `admin@worldporra.com`.
+4. Configure the API environment:
+
+```env
+APP_BASE_URL=https://app.worldporra.com
+RESEND_API_KEY=...
+EMAIL_FROM=World Porra <notifications@worldporra.com>
+EMAIL_REPLY_TO=admin@worldporra.com
+EMAIL_DAILY_LIMIT=90
+EMAIL_PWA_RECENT_DAYS=30
+```
+
+Missing-pick reminders use push notifications first. Email is only sent to users who are missing picks and have no recent PWA `standalone` device or push subscription.
+
 3. Seed match data:
 
 ```bash
