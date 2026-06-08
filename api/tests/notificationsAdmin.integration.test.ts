@@ -8,6 +8,11 @@ const pushMocks = vi.hoisted(() => ({
   sendToUsers: vi.fn().mockResolvedValue(undefined),
 }));
 
+const emailMocks = vi.hoisted(() => ({
+  isEmailConfigured: vi.fn().mockReturnValue(true),
+  sendTestEmail: vi.fn().mockResolvedValue({ providerMessageId: 'email-test-1' }),
+}));
+
 const syncMocks = vi.hoisted(() => ({
   syncAllFixtures: vi.fn().mockResolvedValue({ fixturesSynced: 3 }),
   processFinishedMatches: vi.fn().mockResolvedValue({
@@ -18,6 +23,7 @@ const syncMocks = vi.hoisted(() => ({
 }));
 
 vi.mock('../src/services/pushService', () => pushMocks);
+vi.mock('../src/services/emailService', () => emailMocks);
 vi.mock('../src/services/syncService', () => syncMocks);
 
 beforeAll(async () => {
@@ -103,6 +109,34 @@ describe('notification routes', () => {
       title: 'Test notification',
       body: 'Push notifications are working!',
       url: '/',
+    });
+  });
+
+  it('allows only master users to send test emails', async () => {
+    const master = await registerPlayer('master@worldporra.test', 'Master');
+    const player = await registerPlayer('player@worldporra.test');
+
+    const forbidden = await requestJson('/notifications/test-email', {
+      token: player.token,
+      body: { to: 'pabloiveron@gmail.com' },
+    });
+    expect(forbidden.status).toBe(403);
+
+    const invalid = await requestJson('/notifications/test-email', {
+      token: master.token,
+      body: { to: 'not-an-email' },
+    });
+    expect(invalid.status).toBe(400);
+
+    const sent = await requestJson('/notifications/test-email', {
+      token: master.token,
+      body: { to: 'pabloiveron@gmail.com' },
+    });
+    expect(sent.status).toBe(200);
+    expect(sent.body).toEqual({ ok: true, to: 'pabloiveron@gmail.com', providerMessageId: 'email-test-1' });
+    expect(emailMocks.sendTestEmail).toHaveBeenCalledWith({
+      to: 'pabloiveron@gmail.com',
+      name: 'Master',
     });
   });
 

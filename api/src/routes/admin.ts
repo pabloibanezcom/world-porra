@@ -7,8 +7,12 @@ import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { syncAuthMiddleware } from '../middleware/syncAuth';
 import { GroupPrediction } from '../models/GroupPrediction';
 import { League } from '../models/League';
+import { ContactMessage } from '../models/ContactMessage';
+import { LeagueCreationInvite } from '../models/LeagueCreationInvite';
+import { LeagueReminderLog } from '../models/LeagueReminderLog';
 import { Match } from '../models/Match';
 import { Prediction } from '../models/Prediction';
+import { PushSubscription } from '../models/PushSubscription';
 import { TournamentPrediction } from '../models/TournamentPrediction';
 import { User } from '../models/User';
 import { UserDevice } from '../models/UserDevice';
@@ -32,6 +36,10 @@ const seedScenariosSchema = z.object({
 
 const listUsersSchema = z.object({
   search: z.string().trim().max(100).optional(),
+});
+
+const deleteUserSchema = z.object({
+  confirmation: z.string().trim().min(1),
 });
 
 function redactSensitiveError(value: string): string {
@@ -237,6 +245,121 @@ router.get('/users/:userId', authMiddleware, async (req: AuthRequest, res: Respo
       })),
     });
   } catch (error) {
+    next(error);
+  }
+});
+
+router.delete('/users/:userId', authMiddleware, async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    if (!(await requireMasterUser(req, res))) return;
+
+    const userId = req.params.userId;
+    if (typeof userId !== 'string') {
+      res.status(400).json({ error: 'Invalid user id' });
+      return;
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      res.status(400).json({ error: 'Invalid user id' });
+      return;
+    }
+
+    if (userId === req.userId) {
+      res.status(400).json({ error: 'You cannot delete your own account' });
+      return;
+    }
+
+    const { confirmation } = deleteUserSchema.parse(req.body ?? {});
+    const user = await User.findById(userId).select('email isMaster').lean();
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    if (confirmation !== user.email) {
+      res.status(400).json({ error: "Type the user's email to confirm deletion" });
+      return;
+    }
+
+    if (user.isMaster) {
+      const masterCount = await User.countDocuments({ isMaster: true });
+      if (masterCount <= 1) {
+        res.status(400).json({ error: 'Cannot delete the last master user' });
+        return;
+      }
+    }
+
+    const targetUserId = new mongoose.Types.ObjectId(userId);
+    const ownedLeagues = await League.find({ ownerId: targetUserId }).select('_id').lean();
+    const ownedLeagueIds = ownedLeagues.map((league) => league._id);
+
+    const [
+      predictions,
+      groupPredictions,
+      tournamentPredictions,
+      devices,
+      pushSubscriptions,
+      contactMessages,
+      leagueCreationInvites,
+    ] = await Promise.all([
+      Prediction.deleteMany({ userId: targetUserId }),
+      GroupPrediction.deleteMany({ userId: targetUserId }),
+      TournamentPrediction.deleteMany({ userId: targetUserId }),
+      UserDevice.deleteMany({ userId: targetUserId }),
+      PushSubscription.deleteMany({ userId: targetUserId }),
+      ContactMessage.deleteMany({ userId: targetUserId }),
+      LeagueCreationInvite.deleteMany({ $or: [{ createdBy: targetUserId }, { usedBy: targetUserId }] }),
+    ]);
+
+    if (ownedLeagueIds.length > 0) {
+      await League.deleteMany({ _id: { $in: ownedLeagueIds } });
+      await LeagueReminderLog.deleteMany({ leagueId: { $in: ownedLeagueIds } });
+    }
+
+    await Promise.all([
+      League.updateMany(
+        { _id: { $nin: ownedLeagueIds }, 'members.userId': targetUserId },
+        { $pull: { members: { userId: targetUserId } } }
+      ),
+      ContactMessage.updateMany({ 'replies.senderId': targetUserId }, { $pull: { replies: { senderId: targetUserId } } }),
+      User.updateMany({ leagueOrder: { $in: ownedLeagueIds } }, { $pull: { leagueOrder: { $in: ownedLeagueIds } } }),
+    ]);
+
+    const deletedUser = await User.deleteOne({ _id: targetUserId });
+    if (deletedUser.deletedCount === 0) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    logger.info(
+      {
+        adminUserId: req.userId,
+        deletedUserId: userId,
+        deletedUserEmail: user.email,
+        ownedLeagueCount: ownedLeagueIds.length,
+      },
+      'Master user deleted an account'
+    );
+
+    res.json({
+      message: 'User deleted successfully',
+      deleted: {
+        userId,
+        leagues: ownedLeagueIds.length,
+        predictions: predictions.deletedCount,
+        groupPredictions: groupPredictions.deletedCount,
+        tournamentPredictions: tournamentPredictions.deletedCount,
+        devices: devices.deletedCount,
+        pushSubscriptions: pushSubscriptions.deletedCount,
+        contactMessages: contactMessages.deletedCount,
+        leagueCreationInvites: leagueCreationInvites.deletedCount,
+      },
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: 'Invalid delete confirmation', details: error.errors });
+      return;
+    }
     next(error);
   }
 });

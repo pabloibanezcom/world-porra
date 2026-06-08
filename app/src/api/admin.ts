@@ -12,3 +12,7 @@ export async function fetchAdminUserDetail(userId: string): Promise<AdminUserDet
   const { data } = await apiClient.get<AdminUserDetail>(`/admin/users/${userId}`);
   return data;
 }
+
+export async function deleteAdminUser(userId: string, confirmation: string): Promise<void> {
+  await apiClient.delete(`/admin/users/${userId}`, { data: { confirmation } });
+}

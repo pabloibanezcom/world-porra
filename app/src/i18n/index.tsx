@@ -194,6 +194,14 @@ const translations: Record<Language, TranslationMap> = {
     'adminUsers.pwa': 'PWA',
     'adminUsers.browser': 'Browser',
     'adminUsers.lastSeen': ({ date }) => `Last seen ${date}`,
+    'adminUsers.dangerZone': 'Danger zone',
+    'adminUsers.deleteTitle': 'Delete user',
+    'adminUsers.deleteBody': ({ email, leagues, picks }) =>
+      `This permanently deletes ${email}, their devices, ${picks} picks, and removes them from ${leagues} leagues. Leagues owned by this user will also be deleted.`,
+    'adminUsers.deleteInputLabel': ({ email }) => `Type "${email}" to confirm`,
+    'adminUsers.deleteAction': 'Delete user',
+    'adminUsers.deleteFailed': 'Failed to delete user',
+    'adminUsers.deleteSelfBlocked': 'You cannot delete the account you are currently using.',
 
     'contactMaster.title': 'Contact master',
     'contactMaster.subtitle': 'Send a private message to the master account.',
@@ -665,6 +673,14 @@ const translations: Record<Language, TranslationMap> = {
     'adminUsers.pwa': 'PWA',
     'adminUsers.browser': 'Navegador',
     'adminUsers.lastSeen': ({ date }) => `Visto por última vez ${date}`,
+    'adminUsers.dangerZone': 'Zona de peligro',
+    'adminUsers.deleteTitle': 'Eliminar usuario',
+    'adminUsers.deleteBody': ({ email, leagues, picks }) =>
+      `Esto elimina permanentemente a ${email}, sus dispositivos, ${picks} pronósticos y lo quita de ${leagues} ligas. También se eliminarán las ligas de las que sea propietario.`,
+    'adminUsers.deleteInputLabel': ({ email }) => `Escribe "${email}" para confirmar`,
+    'adminUsers.deleteAction': 'Eliminar usuario',
+    'adminUsers.deleteFailed': 'No se pudo eliminar el usuario',
+    'adminUsers.deleteSelfBlocked': 'No puedes eliminar la cuenta que estás usando actualmente.',
 
     'contactMaster.title': 'Contactar con master',
     'contactMaster.subtitle': 'Envía un mensaje privado a la cuenta master.',
