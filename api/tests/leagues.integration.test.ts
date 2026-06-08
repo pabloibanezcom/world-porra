@@ -759,7 +759,7 @@ describe('league membership', () => {
 });
 
 describe('league member prediction visibility', () => {
-  it('returns finished predictions and upcoming pick status for league members only', async () => {
+  it('returns started predictions to members and pending pick status only to admins', async () => {
     const master = await registerPlayer('master@worldporra.test', 'Master');
     const member = await registerPlayer('member@worldporra.test', 'Member');
     const outsider = await registerPlayer('outsider@worldporra.test', 'Outsider');
@@ -777,6 +777,17 @@ describe('league member prediction visibility', () => {
       status: 'FINISHED',
       result: { homeGoals: 2, awayGoals: 1, winner: 'HOME' },
     });
+    const live = await Match.create({
+      externalId: 703,
+      stage: 'GROUP',
+      group: 'A',
+      matchday: 1,
+      homeTeamCode: 'URU',
+      awayTeamCode: 'POR',
+      utcDate: new Date(Date.now() - 60 * 60 * 1000),
+      status: 'LIVE',
+      result: { homeGoals: 0, awayGoals: 0, winner: 'DRAW' },
+    });
     const upcoming = await Match.create({
       externalId: 702,
       stage: 'GROUP',
@@ -789,6 +800,7 @@ describe('league member prediction visibility', () => {
     });
     await Prediction.create([
       { userId: member.user.id, matchId: finished._id, homeGoals: 2, awayGoals: 1, predictedWinner: 'HOME', points: 10 },
+      { userId: member.user.id, matchId: live._id, homeGoals: 1, awayGoals: 1, predictedWinner: 'DRAW' },
       { userId: member.user.id, matchId: upcoming._id, homeGoals: 1, awayGoals: 1, predictedWinner: 'DRAW' },
     ]);
 
@@ -797,13 +809,22 @@ describe('league member prediction visibility', () => {
     });
     expect(forbidden.status).toBe(403);
 
-    const response = await requestJson<{ finishedMatches: Array<{ prediction: { points: number } }>; upcomingMatches: Array<{ hasPick: boolean }> }>(
+    const memberResponse = await requestJson<{ finishedMatches: Array<{ status: string; prediction: { points: number | null } }>; upcomingMatches: Array<{ hasPick: boolean }> }>(
+      `/leagues/${league._id}/members/${member.user.id}/predictions`,
+      { token: member.token }
+    );
+    expect(memberResponse.status).toBe(200);
+    expect(memberResponse.body.finishedMatches.map((match) => match.status).sort()).toEqual(['FINISHED', 'LIVE']);
+    expect(memberResponse.body.finishedMatches.find((match) => match.status === 'FINISHED')?.prediction.points).toBe(10);
+    expect(memberResponse.body.upcomingMatches).toHaveLength(0);
+
+    const response = await requestJson<{ finishedMatches: Array<{ status: string; prediction: { points: number } }>; upcomingMatches: Array<{ hasPick: boolean }> }>(
       `/leagues/${league._id}/members/${member.user.id}/predictions`,
       { token: master.token }
     );
     expect(response.status).toBe(200);
-    expect(response.body.finishedMatches).toHaveLength(1);
-    expect(response.body.finishedMatches[0].prediction.points).toBe(10);
+    expect(response.body.finishedMatches).toHaveLength(2);
+    expect(response.body.finishedMatches.find((match) => match.status === 'FINISHED')?.prediction.points).toBe(10);
     expect(response.body.upcomingMatches).toHaveLength(1);
     expect(response.body.upcomingMatches[0].hasPick).toBe(true);
   });

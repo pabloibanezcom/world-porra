@@ -153,6 +153,7 @@ export default function MemberScreen() {
     upcomingMatches.filter((m) => m.hasPick).length;
   const pending = upcomingMatches.filter((m) => !m.hasPick).length;
   const missingUpcomingMatches = upcomingMatches.filter((m) => !m.hasPick);
+  const canSeePendingPicks = !!params.isAdmin || !!currentUser?.isMaster;
   const displayName = adminDetail?.user.name ?? params.memberName ?? t('adminContact.unknownUser');
   const displayEmail = adminDetail?.user.email;
   const avatarUrl = adminDetail?.user.avatarUrl ?? params.memberAvatarUrl;
@@ -222,16 +223,29 @@ export default function MemberScreen() {
 
         <View style={styles.statsRow}>
           {hasLeagueContext ? (
-            <>
-              <StatCard label={t('member.picksMade')} value={`${picksMade}/${picksTotal}`} color={colors.text} loading={leagueLoading} />
-              <StatCard label={t('member.pending')} value={`${pending}`} color={colors.warning} loading={leagueLoading} />
-              <StatCard
-                label={t('common.rank')}
-                value={`#${params.memberRank ?? '—'}/${params.totalMembers ?? '—'}`}
-                color={colors.accent}
-                loading={leagueLoading}
-              />
-            </>
+            canSeePendingPicks ? (
+              <>
+                <StatCard label={t('member.picksMade')} value={`${picksMade}/${picksTotal}`} color={colors.text} loading={leagueLoading} />
+                <StatCard label={t('member.pending')} value={`${pending}`} color={colors.warning} loading={leagueLoading} />
+                <StatCard
+                  label={t('common.rank')}
+                  value={`#${params.memberRank ?? '—'}/${params.totalMembers ?? '—'}`}
+                  color={colors.accent}
+                  loading={leagueLoading}
+                />
+              </>
+            ) : (
+              <>
+                <StatCard label={t('common.points')} value={`${params.memberPoints ?? 0}`} color={colors.text} loading={leagueLoading} />
+                <StatCard label={t('member.startedMatches')} value={`${finishedMatches.length}`} color={colors.blue} loading={leagueLoading} />
+                <StatCard
+                  label={t('common.rank')}
+                  value={`#${params.memberRank ?? '—'}/${params.totalMembers ?? '—'}`}
+                  color={colors.accent}
+                  loading={leagueLoading}
+                />
+              </>
+            )
           ) : (
             <>
               <StatCard label={t('common.points')} value={`${adminDetail?.user.totalPoints ?? 0}`} color={colors.accent} loading={adminLoading} />
@@ -320,7 +334,7 @@ export default function MemberScreen() {
               </View>
             )}
 
-            {hasLeagueContext && missingUpcomingMatches.length > 0 && (
+            {hasLeagueContext && canSeePendingPicks && missingUpcomingMatches.length > 0 && (
               <View>
                 <SectionLabel>{t('member.pendingPicks')}</SectionLabel>
                 <View style={styles.cardsColumn}>
@@ -499,9 +513,12 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 function FinishedMatchCard({ match }: { match: MemberMatchPrediction }) {
   const { t, locale } = useI18n();
   const result =
-    match.prediction && match.result
+    match.status === 'FINISHED' && match.prediction && match.result
       ? getResult(match.prediction, match.result)
       : null;
+  const points = match.status === 'FINISHED' && match.prediction?.points !== null && match.prediction?.points !== undefined
+    ? `${match.prediction.points} ${t('common.pointsShort')}`
+    : null;
 
   return (
     <View style={styles.matchCard}>
@@ -509,7 +526,7 @@ function FinishedMatchCard({ match }: { match: MemberMatchPrediction }) {
         <Text style={styles.matchMeta}>
           {match.group ? t('common.group', { group: match.group }) : match.stage.replace(/_/g, ' ')} · {formatMatchDate(match.utcDate, locale)}
         </Text>
-        {result ? <ResultBadge result={result} /> : <Text style={styles.noPick}>{t('member.noPick')}</Text>}
+        {result ? <ResultBadge result={result} /> : <Text style={styles.noPick}>{match.status === 'LIVE' ? t('common.live') : t('member.noPick')}</Text>}
       </View>
       <View style={styles.matchRow}>
         <View style={styles.teamSide}>
@@ -525,6 +542,7 @@ function FinishedMatchCard({ match }: { match: MemberMatchPrediction }) {
               {t('common.pick')}: {match.prediction.homeGoals}–{match.prediction.awayGoals}
             </Text>
           )}
+          {points && <Text style={styles.pointsEarned}>{points}</Text>}
         </View>
         <View style={[styles.teamSide, styles.teamSideRight]}>
           <Text style={styles.teamName}>{match.awayTeam.name}</Text>
@@ -638,6 +656,7 @@ const styles = StyleSheet.create({
   scoreBlock: { paddingHorizontal: 8, minWidth: 72, alignItems: 'center' },
   score: { color: colors.text, fontFamily: fonts.displayBold, fontSize: 16, fontWeight: '700' },
   pickLabel: { color: colors.dim, fontFamily: fonts.body, fontSize: 10, marginTop: 1 },
+  pointsEarned: { color: colors.accent, fontFamily: fonts.bodyMedium, fontSize: 10, fontWeight: '700', marginTop: 1 },
 
   badge: { borderRadius: 9999, paddingHorizontal: 10, paddingVertical: 3 },
   badgeText: { fontFamily: fonts.displayBold, fontSize: 11, fontWeight: '700' },
