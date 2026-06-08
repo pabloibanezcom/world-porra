@@ -22,6 +22,7 @@ import { useI18n } from '../i18n';
 type SortKey = 'created' | 'points' | 'device' | 'completion';
 type DeviceFilter = 'all' | 'pwa' | 'web';
 type CompletionFilter = 'all' | 'complete' | 'incomplete';
+type LeagueFilter = 'all' | 'enrolled' | 'none';
 
 function completionPercent(user: AdminUserSummary): number {
   const completion = user.predictionCompletion;
@@ -36,6 +37,13 @@ function deviceLabel(user: AdminUserSummary): string {
   return 'No device';
 }
 
+function leagueSummary(user: AdminUserSummary, noLeaguesLabel: string): string {
+  if (user.leagues.length === 0) return noLeaguesLabel;
+  const names = user.leagues.slice(0, 2).map((league) => league.name);
+  const extra = user.leagues.length - names.length;
+  return extra > 0 ? `${names.join(', ')} +${extra}` : names.join(', ');
+}
+
 export default function AdminUsersScreen() {
   const navigation = useNavigation<any>();
   const { t } = useI18n();
@@ -46,6 +54,7 @@ export default function AdminUsersScreen() {
   const [sortKey, setSortKey] = useState<SortKey>('created');
   const [deviceFilter, setDeviceFilter] = useState<DeviceFilter>('all');
   const [completionFilter, setCompletionFilter] = useState<CompletionFilter>('all');
+  const [leagueFilter, setLeagueFilter] = useState<LeagueFilter>('all');
   const [notifyVisible, setNotifyVisible] = useState(false);
 
   const loadUsers = useCallback(async () => {
@@ -79,7 +88,11 @@ export default function AdminUsersScreen() {
         completionFilter === 'all' ||
         (completionFilter === 'complete' && user.predictionCompletion.complete) ||
         (completionFilter === 'incomplete' && !user.predictionCompletion.complete);
-      return matchesDevice && matchesCompletion;
+      const matchesLeague =
+        leagueFilter === 'all' ||
+        (leagueFilter === 'enrolled' && user.leagueCount > 0) ||
+        (leagueFilter === 'none' && user.leagueCount === 0);
+      return matchesDevice && matchesCompletion && matchesLeague;
     });
 
     return [...filtered].sort((a, b) => {
@@ -88,7 +101,7 @@ export default function AdminUsersScreen() {
       if (sortKey === 'device') return deviceLabel(a).localeCompare(deviceLabel(b));
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
-  }, [completionFilter, deviceFilter, sortKey, users]);
+  }, [completionFilter, deviceFilter, leagueFilter, sortKey, users]);
 
   const notifyFilteredUsers = async (title: string, body: string) => {
     const recipients = visibleUsers.map((user) => user.id);
@@ -151,6 +164,9 @@ export default function AdminUsersScreen() {
           <FilterChip label={t('adminUsers.filterAllPredictions')} selected={completionFilter === 'all'} onPress={() => setCompletionFilter('all')} />
           <FilterChip label={t('adminUsers.filterIncomplete')} selected={completionFilter === 'incomplete'} onPress={() => setCompletionFilter('incomplete')} />
           <FilterChip label={t('adminUsers.filterComplete')} selected={completionFilter === 'complete'} onPress={() => setCompletionFilter('complete')} />
+          <FilterChip label={t('adminUsers.filterAllLeagues')} selected={leagueFilter === 'all'} onPress={() => setLeagueFilter('all')} />
+          <FilterChip label={t('adminUsers.filterEnrolled')} selected={leagueFilter === 'enrolled'} onPress={() => setLeagueFilter('enrolled')} />
+          <FilterChip label={t('adminUsers.filterNoLeagues')} selected={leagueFilter === 'none'} onPress={() => setLeagueFilter('none')} />
         </ScrollView>
         <View style={styles.resultActionRow}>
           <Text style={styles.resultCount}>{t('adminUsers.filteredCount', { count: visibleUsers.length })}</Text>
@@ -183,11 +199,7 @@ export default function AdminUsersScreen() {
                 </View>
                 <Text style={styles.userEmail} numberOfLines={1}>{user.email}</Text>
                 <Text style={styles.userMeta}>
-                  {user.leagueCount === 0
-                    ? t('adminUsers.noLeagues')
-                    : t('adminUsers.leaguesCount', { count: user.leagueCount })}
-                  {' · '}
-                  {t('adminUsers.predictionsCount', { count: user.predictionCount })}
+                  {leagueSummary(user, t('adminUsers.noLeagues'))}
                 </Text>
                 <View style={styles.statusRow}>
                   <InfoChip label={deviceLabel(user)} tone={user.device.kind === 'pwa' ? 'ok' : user.device.kind === 'none' ? 'warn' : 'neutral'} />
