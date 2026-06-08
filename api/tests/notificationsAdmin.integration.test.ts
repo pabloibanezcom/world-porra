@@ -165,6 +165,36 @@ describe('notification routes', () => {
     expect(pushMocks.sendToAll).toHaveBeenCalledWith({ title: 'Hello', body: 'Everyone', url: '/' });
   });
 
+  it('allows only master users to notify selected users', async () => {
+    const master = await registerPlayer('master@worldporra.test', 'Master');
+    const player = await registerPlayer('player@worldporra.test');
+    const other = await registerPlayer('other@worldporra.test');
+
+    const forbidden = await requestJson('/notifications/users', {
+      token: player.token,
+      body: { title: 'Picks', body: 'Please finish your picks', userIds: [player.user.id] },
+    });
+    expect(forbidden.status).toBe(403);
+
+    const invalid = await requestJson('/notifications/users', {
+      token: master.token,
+      body: { title: 'Picks', body: 'Please finish your picks', userIds: [] },
+    });
+    expect(invalid.status).toBe(400);
+
+    const sent = await requestJson('/notifications/users', {
+      token: master.token,
+      body: { title: 'Picks', body: 'Please finish your picks', userIds: [player.user.id, player.user.id, other.user.id] },
+    });
+    expect(sent.status).toBe(200);
+    expect(sent.body).toEqual({ ok: true, recipients: 2 });
+    expect(pushMocks.sendToUsers).toHaveBeenCalledWith([player.user.id, other.user.id], {
+      title: 'Picks',
+      body: 'Please finish your picks',
+      url: '/',
+    });
+  });
+
   it('notifies master users when a new user registers', async () => {
     const master = await registerPlayer('master@worldporra.test', 'Master');
     pushMocks.sendToUsers.mockClear();

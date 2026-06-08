@@ -16,3 +16,12 @@ export async function fetchAdminUserDetail(userId: string): Promise<AdminUserDet
 export async function deleteAdminUser(userId: string, confirmation: string): Promise<void> {
   await apiClient.delete(`/admin/users/${userId}`, { data: { confirmation } });
 }
+
+export async function notifyAdminUsers(userIds: string[], title: string, body: string): Promise<{ recipients: number }> {
+  const { data } = await apiClient.post<{ ok: true; recipients: number }>('/notifications/users', {
+    userIds,
+    title,
+    body,
+  });
+  return { recipients: data.recipients };
+}
