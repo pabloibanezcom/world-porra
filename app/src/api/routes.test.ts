@@ -3,7 +3,7 @@ import { getMe, loginDev, loginWithGoogle, loginWithPassword, updateMe } from '.
 import { createLeague, deleteLeague, fetchLeague, fetchMemberPredictions, fetchMyLeagues, joinLeague, leaveLeague, notifyLeagueMembers } from './leagues';
 import { fetchMatch, fetchMatches } from './matches';
 import { fetchPollConfig } from './config';
-import { deleteAdminUser } from './admin';
+import { deleteAdminUser, notifyAdminUsers } from './admin';
 import { apiClient } from './client';
 
 vi.mock('./client', () => ({
@@ -94,6 +94,18 @@ describe('API route helpers', () => {
 
     expect(mockedApiClient.delete).toHaveBeenCalledWith('/admin/users/user-1', {
       data: { confirmation: 'player@example.test' },
+    });
+  });
+
+  it('calls targeted admin notification endpoint', async () => {
+    mockedApiClient.post.mockResolvedValueOnce({ data: { ok: true, recipients: 2 } });
+
+    await expect(notifyAdminUsers(['user-1', 'user-2'], 'Title', 'Body')).resolves.toEqual({ recipients: 2 });
+
+    expect(mockedApiClient.post).toHaveBeenCalledWith('/notifications/users', {
+      userIds: ['user-1', 'user-2'],
+      title: 'Title',
+      body: 'Body',
     });
   });
 

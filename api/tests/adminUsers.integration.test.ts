@@ -129,7 +129,25 @@ describe('admin user management routes', () => {
     });
     expect(updatedDeviceHeartbeat.status).toBe(200);
 
-    const list = await requestJson<{ users: Array<{ id: string; email: string; leagueCount: number; predictionCount: number; leagues: unknown[] }> }>(
+    const list = await requestJson<{
+      users: Array<{
+        id: string;
+        email: string;
+        leagueCount: number;
+        predictionCount: number;
+        leagues: unknown[];
+        device: { kind: string; platform: string | null };
+        predictionCompletion: {
+          matchesMade: number;
+          matchesTotal: number;
+          groupsMade: number;
+          groupsTotal: number;
+          tournamentMade: number;
+          tournamentTotal: number;
+          complete: boolean;
+        };
+      }>;
+    }>(
       '/admin/users',
       { token: master.token }
     );
@@ -142,6 +160,7 @@ describe('admin user management routes', () => {
       leagueCount: 0,
       predictionCount: 0,
       leagues: [],
+      device: { kind: 'none', platform: null },
     });
 
     const memberSummary = list.body.users.find((user) => user.id === member.user.id);
@@ -149,6 +168,16 @@ describe('admin user management routes', () => {
       email: 'member@worldporra.test',
       leagueCount: 1,
       predictionCount: 2,
+      device: { kind: 'pwa', platform: 'web' },
+      predictionCompletion: {
+        matchesMade: 2,
+        matchesTotal: 2,
+        groupsMade: 1,
+        groupsTotal: 1,
+        tournamentMade: 2,
+        tournamentTotal: 7,
+        complete: false,
+      },
     });
 
     const search = await requestJson<{ users: Array<{ email: string }> }>('/admin/users?search=orph', {

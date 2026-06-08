@@ -42,6 +42,14 @@ const deleteUserSchema = z.object({
   confirmation: z.string().trim().min(1),
 });
 
+const TOURNAMENT_PICK_FIELDS = ['championCode', 'runnerUpCode', 'semi1Code', 'semi2Code', 'bestPlayer', 'topScorer', 'bestYoung'] as const;
+
+interface AdminUserCompletionTotals {
+  matchTotal: number;
+  groupTotal: number;
+  tournamentTotal: number;
+}
+
 function redactSensitiveError(value: string): string {
   const withoutMongoCredentials = value.replace(/mongodb(?:\+srv)?:\/\/[^@\s]+@/gu, 'mongodb://<redacted>@');
   return env.SYNC_API_KEY ? withoutMongoCredentials.replace(new RegExp(env.SYNC_API_KEY, 'gu'), '<redacted>') : withoutMongoCredentials;
@@ -69,8 +77,18 @@ function escapeRegex(value: string): string {
 function serializeAdminUser(user: any, leagues: any[], counts: {
   predictions: number;
   groupPredictions: number;
-  hasTournamentPrediction: boolean;
+  tournamentPrediction: any;
+  deviceSummary: {
+    kind: 'pwa' | 'web' | 'unknown' | 'none';
+    platform: 'web' | 'ios' | 'android' | 'unknown' | null;
+    lastSeenAt: string | null;
+  };
+  totals: AdminUserCompletionTotals;
 }) {
+  const tournamentMade = counts.tournamentPrediction
+    ? TOURNAMENT_PICK_FIELDS.filter((field) => !!counts.tournamentPrediction[field]).length
+    : 0;
+
   return {
     id: String(user._id),
     _id: String(user._id),
@@ -85,7 +103,20 @@ function serializeAdminUser(user: any, leagues: any[], counts: {
     leagueCount: leagues.length,
     predictionCount: counts.predictions,
     groupPredictionCount: counts.groupPredictions,
-    hasTournamentPrediction: counts.hasTournamentPrediction,
+    hasTournamentPrediction: !!counts.tournamentPrediction,
+    device: counts.deviceSummary,
+    predictionCompletion: {
+      matchesMade: counts.predictions,
+      matchesTotal: counts.totals.matchTotal,
+      groupsMade: counts.groupPredictions,
+      groupsTotal: counts.totals.groupTotal,
+      tournamentMade,
+      tournamentTotal: counts.totals.tournamentTotal,
+      complete:
+        counts.predictions >= counts.totals.matchTotal &&
+        counts.groupPredictions >= counts.totals.groupTotal &&
+        tournamentMade >= counts.totals.tournamentTotal,
+    },
     leagues: leagues.map((league) => {
       const member = league.members.find((entry: any) => entry.userId?.toString() === user._id.toString());
       return {
@@ -100,19 +131,58 @@ function serializeAdminUser(user: any, leagues: any[], counts: {
   };
 }
 
-async function buildAdminUserSummary(user: any) {
+async function getAdminUserCompletionTotals(): Promise<AdminUserCompletionTotals> {
+  const [matchTotal, groups] = await Promise.all([
+    Match.countDocuments({
+      status: { $ne: 'POSTPONED' },
+      homeTeamCode: { $nin: ['TBD', ''] },
+      awayTeamCode: { $nin: ['TBD', ''] },
+    }),
+    Match.distinct('group', {
+      stage: 'GROUP',
+      group: { $ne: null },
+      homeTeamCode: { $nin: ['TBD', ''] },
+      awayTeamCode: { $nin: ['TBD', ''] },
+    }),
+  ]);
+
+  return {
+    matchTotal,
+    groupTotal: groups.filter(Boolean).length,
+    tournamentTotal: TOURNAMENT_PICK_FIELDS.length,
+  };
+}
+
+async function buildAdminUserSummary(user: any, totals?: AdminUserCompletionTotals) {
   const userId = user._id;
-  const [leagues, predictionCount, groupPredictionCount, tournamentPrediction] = await Promise.all([
+  const resolvedTotals = totals ?? await getAdminUserCompletionTotals();
+  const [leagues, predictionCount, groupPredictionCount, tournamentPrediction, latestDevice, standaloneDevice] = await Promise.all([
     League.find({ 'members.userId': userId }).select('name inviteCode ownerId members createdAt').lean(),
     Prediction.countDocuments({ userId }),
     GroupPrediction.countDocuments({ userId }),
-    TournamentPrediction.exists({ userId }),
+    TournamentPrediction.findOne({ userId }).select(TOURNAMENT_PICK_FIELDS.join(' ')).lean(),
+    UserDevice.findOne({ userId }).sort({ lastSeenAt: -1 }).lean(),
+    UserDevice.findOne({ userId, displayMode: 'standalone' }).sort({ lastSeenAt: -1 }).lean(),
   ]);
+  const device = standaloneDevice ?? latestDevice;
+  const deviceKind = standaloneDevice
+    ? 'pwa'
+    : latestDevice?.displayMode === 'browser'
+      ? 'web'
+      : latestDevice
+        ? 'unknown'
+        : 'none';
 
   return serializeAdminUser(user, leagues, {
     predictions: predictionCount,
     groupPredictions: groupPredictionCount,
-    hasTournamentPrediction: !!tournamentPrediction,
+    tournamentPrediction,
+    deviceSummary: {
+      kind: deviceKind,
+      platform: device?.platform ?? null,
+      lastSeenAt: device?.lastSeenAt ? new Date(device.lastSeenAt).toISOString() : null,
+    },
+    totals: resolvedTotals,
   });
 }
 
@@ -130,8 +200,11 @@ router.get('/users', authMiddleware, async (req: AuthRequest, res: Response, nex
         }
       : {};
 
-    const users = await User.find(query).select('-passwordHash -__v').sort({ createdAt: -1 }).limit(200).lean();
-    const summaries = await Promise.all(users.map(buildAdminUserSummary));
+    const [users, totals] = await Promise.all([
+      User.find(query).select('-passwordHash -__v').sort({ createdAt: -1 }).limit(200).lean(),
+      getAdminUserCompletionTotals(),
+    ]);
+    const summaries = await Promise.all(users.map((user) => buildAdminUserSummary(user, totals)));
     const total = await User.countDocuments(query);
 
     res.json({ users: summaries, total });
