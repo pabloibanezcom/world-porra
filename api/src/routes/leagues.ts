@@ -871,9 +871,10 @@ router.get('/:id/members/:userId/predictions', authMiddleware, async (req: AuthR
       return;
     }
 
+    const canViewPending = await canManageLeague(league, req.userId);
     const [rawFinishedMatches, rawUpcomingMatches] = await Promise.all([
-      Match.find({ status: 'FINISHED' }).lean(),
-      Match.find({ status: 'SCHEDULED' }).sort({ utcDate: 1 }).lean(),
+      Match.find({ status: { $in: ['LIVE', 'FINISHED'] } }).sort({ utcDate: -1 }).lean(),
+      canViewPending ? Match.find({ status: 'SCHEDULED' }).sort({ utcDate: 1 }).lean() : Promise.resolve([]),
     ]);
     const language = getRequestLanguage(req);
     const [finishedMatches, upcomingMatches] = await Promise.all([
@@ -900,6 +901,7 @@ router.get('/:id/members/:userId/predictions', authMiddleware, async (req: AuthR
           awayTeam: m.awayTeam,
           utcDate: m.utcDate,
           stage: m.stage,
+          status: m.status,
           group: m.group,
           result: m.result,
           prediction: pred

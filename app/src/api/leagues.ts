@@ -8,6 +8,7 @@ export interface MemberMatchPrediction {
   awayTeam: Match['awayTeam'];
   utcDate: string;
   stage: Match['stage'];
+  status: Match['status'];
   group: string | null;
   result: MatchResult | null;
   prediction: { homeGoals: number; awayGoals: number; points: number | null } | null;
