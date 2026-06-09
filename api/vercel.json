@@ -11,11 +11,5 @@
   ],
   "rewrites": [
     { "source": "/(.*)", "destination": "/src/serverless.ts" }
-  ],
-  "crons": [
-    {
-      "path": "/cron/daily-odds",
-      "schedule": "0 7 * * *"
-    }
   ]
 }

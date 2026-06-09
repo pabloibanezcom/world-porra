@@ -210,6 +210,7 @@ export async function syncOdds(options: SyncOddsOptions = {}): Promise<{ matches
     const awayCode = nameToCode.get(normalizeName(event.away_team));
     const eventDate = new Date(event.commence_time);
     let match: (typeof matches)[number] | null = null;
+    let reverseOdds = false;
 
     if (!homeCode || !awayCode) {
       // Only fall back by date when there is a single possible match. World Cup
@@ -217,7 +218,10 @@ export async function syncOdds(options: SyncOddsOptions = {}): Promise<{ matches
       match = findDateFallbackMatch(matches, eventDate);
     } else {
       match = matchIndex.get(`${homeCode}:${awayCode}`) ?? null;
-      if (!match) match = matchIndex.get(`${awayCode}:${homeCode}`) ?? null;
+      if (!match) {
+        match = matchIndex.get(`${awayCode}:${homeCode}`) ?? null;
+        reverseOdds = Boolean(match);
+      }
     }
 
     if (!match) {
@@ -236,7 +240,9 @@ export async function syncOdds(options: SyncOddsOptions = {}): Promise<{ matches
       eventsSkipped++;
       continue;
     }
-    match.odds = { ...computed, fetchedAt: new Date() };
+    match.odds = reverseOdds
+      ? { home: computed.away, draw: computed.draw, away: computed.home, fetchedAt: new Date() }
+      : { ...computed, fetchedAt: new Date() };
     await match.save();
     matchesUpdated++;
   }
