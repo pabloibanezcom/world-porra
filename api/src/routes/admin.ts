@@ -7,8 +7,12 @@ import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { syncAuthMiddleware } from '../middleware/syncAuth';
 import { GroupPrediction } from '../models/GroupPrediction';
 import { League } from '../models/League';
+import { ContactMessage } from '../models/ContactMessage';
+import { LeagueCreationInvite } from '../models/LeagueCreationInvite';
+import { LeagueReminderLog } from '../models/LeagueReminderLog';
 import { Match } from '../models/Match';
 import { Prediction } from '../models/Prediction';
+import { PushSubscription } from '../models/PushSubscription';
 import { TournamentPrediction } from '../models/TournamentPrediction';
 import { User } from '../models/User';
 import { UserDevice } from '../models/UserDevice';
@@ -33,6 +37,18 @@ const seedScenariosSchema = z.object({
 const listUsersSchema = z.object({
   search: z.string().trim().max(100).optional(),
 });
+
+const deleteUserSchema = z.object({
+  confirmation: z.string().trim().min(1),
+});
+
+const TOURNAMENT_PICK_FIELDS = ['championCode', 'runnerUpCode', 'semi1Code', 'semi2Code', 'bestPlayer', 'topScorer', 'bestYoung'] as const;
+
+interface AdminUserCompletionTotals {
+  matchTotal: number;
+  groupTotal: number;
+  tournamentTotal: number;
+}
 
 function redactSensitiveError(value: string): string {
   const withoutMongoCredentials = value.replace(/mongodb(?:\+srv)?:\/\/[^@\s]+@/gu, 'mongodb://<redacted>@');
@@ -61,8 +77,18 @@ function escapeRegex(value: string): string {
 function serializeAdminUser(user: any, leagues: any[], counts: {
   predictions: number;
   groupPredictions: number;
-  hasTournamentPrediction: boolean;
+  tournamentPrediction: any;
+  deviceSummary: {
+    kind: 'pwa' | 'web' | 'unknown' | 'none';
+    platform: 'web' | 'ios' | 'android' | 'unknown' | null;
+    lastSeenAt: string | null;
+  };
+  totals: AdminUserCompletionTotals;
 }) {
+  const tournamentMade = counts.tournamentPrediction
+    ? TOURNAMENT_PICK_FIELDS.filter((field) => !!counts.tournamentPrediction[field]).length
+    : 0;
+
   return {
     id: String(user._id),
     _id: String(user._id),
@@ -77,7 +103,20 @@ function serializeAdminUser(user: any, leagues: any[], counts: {
     leagueCount: leagues.length,
     predictionCount: counts.predictions,
     groupPredictionCount: counts.groupPredictions,
-    hasTournamentPrediction: counts.hasTournamentPrediction,
+    hasTournamentPrediction: !!counts.tournamentPrediction,
+    device: counts.deviceSummary,
+    predictionCompletion: {
+      matchesMade: counts.predictions,
+      matchesTotal: counts.totals.matchTotal,
+      groupsMade: counts.groupPredictions,
+      groupsTotal: counts.totals.groupTotal,
+      tournamentMade,
+      tournamentTotal: counts.totals.tournamentTotal,
+      complete:
+        counts.predictions >= counts.totals.matchTotal &&
+        counts.groupPredictions >= counts.totals.groupTotal &&
+        tournamentMade >= counts.totals.tournamentTotal,
+    },
     leagues: leagues.map((league) => {
       const member = league.members.find((entry: any) => entry.userId?.toString() === user._id.toString());
       return {
@@ -92,19 +131,58 @@ function serializeAdminUser(user: any, leagues: any[], counts: {
   };
 }
 
-async function buildAdminUserSummary(user: any) {
+async function getAdminUserCompletionTotals(): Promise<AdminUserCompletionTotals> {
+  const [matchTotal, groups] = await Promise.all([
+    Match.countDocuments({
+      status: { $ne: 'POSTPONED' },
+      homeTeamCode: { $nin: ['TBD', ''] },
+      awayTeamCode: { $nin: ['TBD', ''] },
+    }),
+    Match.distinct('group', {
+      stage: 'GROUP',
+      group: { $ne: null },
+      homeTeamCode: { $nin: ['TBD', ''] },
+      awayTeamCode: { $nin: ['TBD', ''] },
+    }),
+  ]);
+
+  return {
+    matchTotal,
+    groupTotal: groups.filter(Boolean).length,
+    tournamentTotal: TOURNAMENT_PICK_FIELDS.length,
+  };
+}
+
+async function buildAdminUserSummary(user: any, totals?: AdminUserCompletionTotals) {
   const userId = user._id;
-  const [leagues, predictionCount, groupPredictionCount, tournamentPrediction] = await Promise.all([
+  const resolvedTotals = totals ?? await getAdminUserCompletionTotals();
+  const [leagues, predictionCount, groupPredictionCount, tournamentPrediction, latestDevice, standaloneDevice] = await Promise.all([
     League.find({ 'members.userId': userId }).select('name inviteCode ownerId members createdAt').lean(),
     Prediction.countDocuments({ userId }),
     GroupPrediction.countDocuments({ userId }),
-    TournamentPrediction.exists({ userId }),
+    TournamentPrediction.findOne({ userId }).select(TOURNAMENT_PICK_FIELDS.join(' ')).lean(),
+    UserDevice.findOne({ userId }).sort({ lastSeenAt: -1 }).lean(),
+    UserDevice.findOne({ userId, displayMode: 'standalone' }).sort({ lastSeenAt: -1 }).lean(),
   ]);
+  const device = standaloneDevice ?? latestDevice;
+  const deviceKind = standaloneDevice
+    ? 'pwa'
+    : latestDevice?.displayMode === 'browser'
+      ? 'web'
+      : latestDevice
+        ? 'unknown'
+        : 'none';
 
   return serializeAdminUser(user, leagues, {
     predictions: predictionCount,
     groupPredictions: groupPredictionCount,
-    hasTournamentPrediction: !!tournamentPrediction,
+    tournamentPrediction,
+    deviceSummary: {
+      kind: deviceKind,
+      platform: device?.platform ?? null,
+      lastSeenAt: device?.lastSeenAt ? new Date(device.lastSeenAt).toISOString() : null,
+    },
+    totals: resolvedTotals,
   });
 }
 
@@ -122,8 +200,11 @@ router.get('/users', authMiddleware, async (req: AuthRequest, res: Response, nex
         }
       : {};
 
-    const users = await User.find(query).select('-passwordHash -__v').sort({ createdAt: -1 }).limit(200).lean();
-    const summaries = await Promise.all(users.map(buildAdminUserSummary));
+    const [users, totals] = await Promise.all([
+      User.find(query).select('-passwordHash -__v').sort({ createdAt: -1 }).limit(200).lean(),
+      getAdminUserCompletionTotals(),
+    ]);
+    const summaries = await Promise.all(users.map((user) => buildAdminUserSummary(user, totals)));
     const total = await User.countDocuments(query);
 
     res.json({ users: summaries, total });
@@ -237,6 +318,121 @@ router.get('/users/:userId', authMiddleware, async (req: AuthRequest, res: Respo
       })),
     });
   } catch (error) {
+    next(error);
+  }
+});
+
+router.delete('/users/:userId', authMiddleware, async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    if (!(await requireMasterUser(req, res))) return;
+
+    const userId = req.params.userId;
+    if (typeof userId !== 'string') {
+      res.status(400).json({ error: 'Invalid user id' });
+      return;
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      res.status(400).json({ error: 'Invalid user id' });
+      return;
+    }
+
+    if (userId === req.userId) {
+      res.status(400).json({ error: 'You cannot delete your own account' });
+      return;
+    }
+
+    const { confirmation } = deleteUserSchema.parse(req.body ?? {});
+    const user = await User.findById(userId).select('email isMaster').lean();
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    if (confirmation !== user.email) {
+      res.status(400).json({ error: "Type the user's email to confirm deletion" });
+      return;
+    }
+
+    if (user.isMaster) {
+      const masterCount = await User.countDocuments({ isMaster: true });
+      if (masterCount <= 1) {
+        res.status(400).json({ error: 'Cannot delete the last master user' });
+        return;
+      }
+    }
+
+    const targetUserId = new mongoose.Types.ObjectId(userId);
+    const ownedLeagues = await League.find({ ownerId: targetUserId }).select('_id').lean();
+    const ownedLeagueIds = ownedLeagues.map((league) => league._id);
+
+    const [
+      predictions,
+      groupPredictions,
+      tournamentPredictions,
+      devices,
+      pushSubscriptions,
+      contactMessages,
+      leagueCreationInvites,
+    ] = await Promise.all([
+      Prediction.deleteMany({ userId: targetUserId }),
+      GroupPrediction.deleteMany({ userId: targetUserId }),
+      TournamentPrediction.deleteMany({ userId: targetUserId }),
+      UserDevice.deleteMany({ userId: targetUserId }),
+      PushSubscription.deleteMany({ userId: targetUserId }),
+      ContactMessage.deleteMany({ userId: targetUserId }),
+      LeagueCreationInvite.deleteMany({ $or: [{ createdBy: targetUserId }, { usedBy: targetUserId }] }),
+    ]);
+
+    if (ownedLeagueIds.length > 0) {
+      await League.deleteMany({ _id: { $in: ownedLeagueIds } });
+      await LeagueReminderLog.deleteMany({ leagueId: { $in: ownedLeagueIds } });
+    }
+
+    await Promise.all([
+      League.updateMany(
+        { _id: { $nin: ownedLeagueIds }, 'members.userId': targetUserId },
+        { $pull: { members: { userId: targetUserId } } }
+      ),
+      ContactMessage.updateMany({ 'replies.senderId': targetUserId }, { $pull: { replies: { senderId: targetUserId } } }),
+      User.updateMany({ leagueOrder: { $in: ownedLeagueIds } }, { $pull: { leagueOrder: { $in: ownedLeagueIds } } }),
+    ]);
+
+    const deletedUser = await User.deleteOne({ _id: targetUserId });
+    if (deletedUser.deletedCount === 0) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    logger.info(
+      {
+        adminUserId: req.userId,
+        deletedUserId: userId,
+        deletedUserEmail: user.email,
+        ownedLeagueCount: ownedLeagueIds.length,
+      },
+      'Master user deleted an account'
+    );
+
+    res.json({
+      message: 'User deleted successfully',
+      deleted: {
+        userId,
+        leagues: ownedLeagueIds.length,
+        predictions: predictions.deletedCount,
+        groupPredictions: groupPredictions.deletedCount,
+        tournamentPredictions: tournamentPredictions.deletedCount,
+        devices: devices.deletedCount,
+        pushSubscriptions: pushSubscriptions.deletedCount,
+        contactMessages: contactMessages.deletedCount,
+        leagueCreationInvites: leagueCreationInvites.deletedCount,
+      },
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: 'Invalid delete confirmation', details: error.errors });
+      return;
+    }
     next(error);
   }
 });

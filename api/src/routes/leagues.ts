@@ -5,8 +5,11 @@ import { League, LEAGUE_MAX_MEMBERS } from '../models/League';
 import { Match } from '../models/Match';
 import { Prediction } from '../models/Prediction';
 import { LeagueReminderLog, LeagueReminderType } from '../models/LeagueReminderLog';
+import { PushSubscription } from '../models/PushSubscription';
+import { UserDevice } from '../models/UserDevice';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { User } from '../models/User';
+import { env } from '../config/env';
 import { logger } from '../config/logger';
 import { getRequestLanguage, hydrateMatches } from '../services/countryTeamService';
 import { isLeagueCreationLocked, isTournamentStarted } from '../services/pollConfigService';
@@ -642,6 +645,41 @@ async function getMissingPickReminderPreview(league: {
   return { matchesToPick, missingMemberIds };
 }
 
+async function getEmailFallbackRecipients(userIds: string[]) {
+  if (userIds.length === 0) return [];
+
+  const recentStandaloneSince = new Date(currentDate().getTime() - env.EMAIL_PWA_RECENT_DAYS * 24 * 60 * 60 * 1000);
+  const [users, standaloneDevices, pushSubscriptions] = await Promise.all([
+    User.find({ _id: { $in: userIds } }).select('_id email name').lean(),
+    UserDevice.find({
+      userId: { $in: userIds },
+      displayMode: 'standalone',
+      lastSeenAt: { $gte: recentStandaloneSince },
+    })
+      .select('userId')
+      .lean(),
+    PushSubscription.find({ userId: { $in: userIds } }).select('userId').lean(),
+  ]);
+
+  const standaloneUserIds = new Set(standaloneDevices.map((device) => String(device.userId)));
+  const pushUserIds = new Set(pushSubscriptions.map((subscription) => String(subscription.userId)));
+
+  return users
+    .filter((user) => !standaloneUserIds.has(String(user._id)) && !pushUserIds.has(String(user._id)))
+    .map((user) => ({
+      userId: String(user._id),
+      email: user.email,
+      name: user.name,
+    }));
+}
+
+function getMissingPicksDedupeKey(matchesToPick: Array<{ _id: unknown }>): string {
+  return matchesToPick
+    .map((match) => String(match._id))
+    .sort()
+    .join(',');
+}
+
 router.post('/:id/notify', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   const league = await League.findById(req.params.id);
   if (!league) {
@@ -724,6 +762,7 @@ router.get('/:id/picks/remind-missing/preview', authMiddleware, async (req: Auth
   }
 
   const { matchesToPick, missingMemberIds } = await getMissingPickReminderPreview(league);
+  const emailFallbackRecipients = await getEmailFallbackRecipients(missingMemberIds);
   const users = await User.find({ _id: { $in: missingMemberIds } })
     .select('name avatarUrl')
     .lean();
@@ -732,6 +771,7 @@ router.get('/:id/picks/remind-missing/preview', authMiddleware, async (req: Auth
   res.json({
     matches: matchesToPick.length,
     recipients: missingMemberIds.length,
+    emailFallbackRecipients: emailFallbackRecipients.length,
     members: missingMemberIds.map((userId) => {
       const user = usersById.get(userId);
       return {
@@ -780,15 +820,34 @@ router.post('/:id/picks/remind-missing', authMiddleware, async (req: AuthRequest
     body: 'You have matches locking soon without picks.',
     url: '/',
   });
+  const emailFallbackRecipients = await getEmailFallbackRecipients(missingMemberIds);
+  const { sendMissingPickReminderEmails } = await import('../services/emailService.js');
+  const emailSummary = await sendMissingPickReminderEmails({
+    recipients: emailFallbackRecipients,
+    leagueName: league.name,
+    matchCount: matchesToPick.length,
+    dedupeKey: getMissingPicksDedupeKey(matchesToPick),
+  });
   await logReminder({
     leagueId,
     senderId: req.userId!,
     type: 'missing_picks',
     recipients: missingMemberIds.length,
-    metadata: { matches: matchesToPick.length },
+    metadata: { matches: matchesToPick.length, email: emailSummary },
   });
 
-  res.json({ ok: true, recipients: missingMemberIds.length, matches: matchesToPick.length });
+  res.json({
+    ok: true,
+    recipients: missingMemberIds.length,
+    matches: matchesToPick.length,
+    pushRecipients: missingMemberIds.length,
+    emailRecipients: emailSummary.sent,
+    emailSkipped:
+      emailSummary.skippedAlreadySent +
+      emailSummary.skippedQuota +
+      emailSummary.skippedNotConfigured +
+      emailSummary.failed,
+  });
 });
 
 router.get('/:id/members/:userId/predictions', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
@@ -812,9 +871,10 @@ router.get('/:id/members/:userId/predictions', authMiddleware, async (req: AuthR
       return;
     }
 
+    const canViewPending = await canManageLeague(league, req.userId);
     const [rawFinishedMatches, rawUpcomingMatches] = await Promise.all([
-      Match.find({ status: 'FINISHED' }).lean(),
-      Match.find({ status: 'SCHEDULED' }).sort({ utcDate: 1 }).lean(),
+      Match.find({ status: { $in: ['LIVE', 'FINISHED'] } }).sort({ utcDate: -1 }).lean(),
+      canViewPending ? Match.find({ status: 'SCHEDULED' }).sort({ utcDate: 1 }).lean() : Promise.resolve([]),
     ]);
     const language = getRequestLanguage(req);
     const [finishedMatches, upcomingMatches] = await Promise.all([
@@ -841,6 +901,7 @@ router.get('/:id/members/:userId/predictions', authMiddleware, async (req: AuthR
           awayTeam: m.awayTeam,
           utcDate: m.utcDate,
           stage: m.stage,
+          status: m.status,
           group: m.group,
           result: m.result,
           prediction: pred

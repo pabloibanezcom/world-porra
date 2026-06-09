@@ -8,6 +8,7 @@ export interface MemberMatchPrediction {
   awayTeam: Match['awayTeam'];
   utcDate: string;
   stage: Match['stage'];
+  status: Match['status'];
   group: string | null;
   result: MatchResult | null;
   prediction: { homeGoals: number; awayGoals: number; points: number | null } | null;
@@ -31,6 +32,7 @@ export interface MemberPredictionsResponse {
 export interface MissingPickReminderPreview {
   matches: number;
   recipients: number;
+  emailFallbackRecipients: number;
   members: Array<{ id: string; name: string; avatarUrl: string }>;
 }
 
@@ -88,11 +90,28 @@ export async function remindUnpaidLeagueMembers(id: string): Promise<{ recipient
   return { recipients: data.recipients };
 }
 
-export async function remindMissingPickMembers(id: string): Promise<{ recipients: number; matches: number }> {
-  const { data } = await apiClient.post<{ ok: true; recipients: number; matches: number }>(
-    `/leagues/${id}/picks/remind-missing`
-  );
-  return { recipients: data.recipients, matches: data.matches };
+export async function remindMissingPickMembers(id: string): Promise<{
+  recipients: number;
+  matches: number;
+  pushRecipients: number;
+  emailRecipients: number;
+  emailSkipped: number;
+}> {
+  const { data } = await apiClient.post<{
+    ok: true;
+    recipients: number;
+    matches: number;
+    pushRecipients: number;
+    emailRecipients: number;
+    emailSkipped: number;
+  }>(`/leagues/${id}/picks/remind-missing`);
+  return {
+    recipients: data.recipients,
+    matches: data.matches,
+    pushRecipients: data.pushRecipients,
+    emailRecipients: data.emailRecipients,
+    emailSkipped: data.emailSkipped,
+  };
 }
 
 export async function fetchMissingPickReminderPreview(id: string): Promise<MissingPickReminderPreview> {

@@ -18,6 +18,20 @@ export interface AdminUserSummary extends User {
   predictionCount: number;
   groupPredictionCount: number;
   hasTournamentPrediction: boolean;
+  device: {
+    kind: 'pwa' | 'web' | 'unknown' | 'none';
+    platform: 'web' | 'ios' | 'android' | 'unknown' | null;
+    lastSeenAt: string | null;
+  };
+  predictionCompletion: {
+    matchesMade: number;
+    matchesTotal: number;
+    groupsMade: number;
+    groupsTotal: number;
+    tournamentMade: number;
+    tournamentTotal: number;
+    complete: boolean;
+  };
   leagues: AdminUserLeague[];
 }
 

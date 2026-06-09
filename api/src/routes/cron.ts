@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { env } from '../config/env';
 import { logger } from '../config/logger';
 import { syncOdds } from '../services/oddsService';
+import { processFinishedMatches, syncAllFixtures } from '../services/syncService';
 
 const router = Router();
 
@@ -39,6 +40,42 @@ router.get('/daily-odds', async (req: Request, res: Response): Promise<void> => 
   } catch (error) {
     logger.error({ err: error }, 'Daily odds cron failed');
     res.status(500).json({ error: 'Daily odds cron failed' });
+  }
+});
+
+router.get('/sync-results', async (req: Request, res: Response): Promise<void> => {
+  if (!env.CRON_SECRET && !env.SYNC_API_KEY) {
+    logger.warn('Results cron rejected: no cron secret or sync key configured');
+    res.status(503).json({ error: 'CRON_SECRET or SYNC_API_KEY must be configured' });
+    return;
+  }
+
+  if (!isAuthorized(req)) {
+    logger.warn('Results cron rejected: unauthorized request');
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
+  if (!env.FOOTBALL_DATA_API_KEY) {
+    logger.warn('Results cron rejected: football data API key is not configured');
+    res.status(503).json({ error: 'FOOTBALL_DATA_API_KEY is not configured on the server' });
+    return;
+  }
+
+  try {
+    logger.info('Results cron started');
+    const fixtureResult = await syncAllFixtures();
+    const scoringResult = await processFinishedMatches();
+    logger.info({ ...fixtureResult, ...scoringResult }, 'Results cron complete');
+    res.json({
+      ok: true,
+      ...fixtureResult,
+      ...scoringResult,
+      ranAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    logger.error({ err: error }, 'Results cron failed');
+    res.status(500).json({ error: 'Results cron failed' });
   }
 });
 

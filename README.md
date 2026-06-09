@@ -86,6 +86,24 @@ POLL_TOURNAMENT_PREDICTIONS_DEADLINE=
 
 Use `POLL_PICKS_DEADLINE` when group standings and tournament picks share one deadline. Use the more specific variables when they need separate defaults. Master users can override these values through the global poll config stored in MongoDB.
 
+Optional email notification setup:
+
+1. Create a Resend account and add the `worldporra.com` domain.
+2. Add the DNS records Resend gives you for SPF/DKIM/domain verification.
+3. Create a real inbox or alias for replies, such as `admin@worldporra.com`.
+4. Configure the API environment:
+
+```env
+APP_BASE_URL=https://app.worldporra.com
+RESEND_API_KEY=...
+EMAIL_FROM=World Porra <notifications@worldporra.com>
+EMAIL_REPLY_TO=admin@worldporra.com
+EMAIL_DAILY_LIMIT=90
+EMAIL_PWA_RECENT_DAYS=30
+```
+
+Missing-pick reminders use push notifications first. Email is only sent to users who are missing picks and have no recent PWA `standalone` device or push subscription.
+
 3. Seed match data:
 
 ```bash
@@ -147,13 +165,13 @@ npm run app:vercel:scenario -- group-mid
 The app keeps using the Vercel API URL and sends `X-WC-Scenario` with each request. You can also hit the API directly with `?scenario=group-mid`, for example:
 
 ```bash
-https://world-porra-api.vercel.app/health?scenario=group-mid
+https://api.worldporra.com/health?scenario=group-mid
 ```
 
 If your current network cannot connect to Atlas, deploy the API and seed the scenario databases from Vercel instead:
 
 ```bash
-curl -X POST https://world-porra-api.vercel.app/admin/scenarios/seed \
+curl -X POST https://api.worldporra.com/admin/scenarios/seed \
   -H "x-sync-api-key: $SYNC_API_KEY" \
   -H "content-type: application/json" \
   -d '{"scenarios":["group-mid"]}'
@@ -162,7 +180,7 @@ curl -X POST https://world-porra-api.vercel.app/admin/scenarios/seed \
 To seed every scenario from Vercel:
 
 ```bash
-curl -X POST https://world-porra-api.vercel.app/admin/scenarios/seed \
+curl -X POST https://api.worldporra.com/admin/scenarios/seed \
   -H "x-sync-api-key: $SYNC_API_KEY" \
   -H "content-type: application/json" \
   -d '{"scenarios":"all"}'
@@ -170,19 +188,40 @@ curl -X POST https://world-porra-api.vercel.app/admin/scenarios/seed \
 
 If Vercel times out while creating all databases, run one scenario at a time. This endpoint uses the same `SYNC_API_KEY` protection as `/admin/sync`.
 
-### Daily Odds Sync
+### Production Sync Scheduler
 
-The API registers a Vercel Cron Job that calls `/cron/daily-odds` once per day at `07:00 UTC`. Configure these API environment variables in Vercel:
+The hosted API exposes protected cron endpoints for tournament operations, but `api/vercel.json` intentionally does not register Vercel Cron Jobs. Vercel Hobby only supports daily cron schedules, so use a free external scheduler such as https://cron-job.org/ for sub-daily tournament polling.
+
+Create these cron-job.org jobs:
+
+- `GET https://api.worldporra.com/cron/sync-results`
+  - schedule: every 5 minutes
+  - header: `x-sync-api-key: <SYNC_API_KEY>`
+  - purpose: sync fixtures/results and score newly finished matches
+- `GET https://api.worldporra.com/cron/daily-odds`
+  - schedule: every 6 hours, or daily to conserve odds API quota
+  - header: `x-sync-api-key: <SYNC_API_KEY>`
+  - purpose: refresh upcoming odds. The service skips the external odds request when all stored odds are still fresh.
+
+Configure these API environment variables in Vercel:
 
 ```env
+FOOTBALL_DATA_API_KEY=...
 ODDS_API_KEY=...
-CRON_SECRET=...
+SYNC_API_KEY=...
 ```
 
-Vercel sends `CRON_SECRET` as a bearer token for scheduled cron calls. For a manual run, you can also use the existing sync key:
+For a manual odds run:
 
 ```bash
-curl https://world-porra-api.vercel.app/cron/daily-odds \
+curl https://api.worldporra.com/cron/daily-odds \
+  -H "x-sync-api-key: $SYNC_API_KEY"
+```
+
+For a manual result sync:
+
+```bash
+curl https://api.worldporra.com/cron/sync-results \
   -H "x-sync-api-key: $SYNC_API_KEY"
 ```
 

@@ -4,12 +4,26 @@ import { Types } from 'mongoose';
 import { League } from '../src/models/League';
 import { Match } from '../src/models/Match';
 import { Prediction } from '../src/models/Prediction';
+import { PushSubscription } from '../src/models/PushSubscription';
+import { UserDevice } from '../src/models/UserDevice';
 
 const pushMocks = vi.hoisted(() => ({
   sendToUsers: vi.fn().mockResolvedValue(undefined),
 }));
 
+const emailMocks = vi.hoisted(() => ({
+  sendMissingPickReminderEmails: vi.fn().mockResolvedValue({
+    attempted: 1,
+    sent: 1,
+    skippedAlreadySent: 0,
+    skippedQuota: 0,
+    skippedNotConfigured: 0,
+    failed: 0,
+  }),
+}));
+
 vi.mock('../src/services/pushService', () => pushMocks);
+vi.mock('../src/services/emailService', () => emailMocks);
 
 beforeAll(async () => {
   await startIntegrationServer();
@@ -529,15 +543,30 @@ describe('league membership', () => {
     expect(preview.body).toEqual({
       matches: 1,
       recipients: 1,
+      emailFallbackRecipients: 1,
       members: [{ id: missingMember.user.id, name: 'Missing', avatarUrl: '' }],
     });
 
-    const reminded = await requestJson<{ ok: true; recipients: number; matches: number }>(
+    const reminded = await requestJson<{
+      ok: true;
+      recipients: number;
+      matches: number;
+      pushRecipients: number;
+      emailRecipients: number;
+      emailSkipped: number;
+    }>(
       `/leagues/${league._id}/picks/remind-missing`,
       { token: master.token, body: {} }
     );
     expect(reminded.status).toBe(200);
-    expect(reminded.body).toEqual({ ok: true, recipients: 1, matches: 1 });
+    expect(reminded.body).toEqual({
+      ok: true,
+      recipients: 1,
+      matches: 1,
+      pushRecipients: 1,
+      emailRecipients: 1,
+      emailSkipped: 0,
+    });
     expect(pushMocks.sendToUsers).toHaveBeenCalledWith(
       [missingMember.user.id],
       expect.objectContaining({
@@ -545,6 +574,12 @@ describe('league membership', () => {
         url: '/',
       })
     );
+    expect(emailMocks.sendMissingPickReminderEmails).toHaveBeenCalledWith({
+      recipients: [{ userId: missingMember.user.id, email: 'missing@worldporra.test', name: 'Missing' }],
+      leagueName: 'Friends League',
+      matchCount: 1,
+      dedupeKey: String(match._id),
+    });
 
     const repeated = await requestJson(`/leagues/${league._id}/picks/remind-missing`, {
       token: master.token,
@@ -567,6 +602,83 @@ describe('league membership', () => {
     });
     expect(upToDate.status).toBe(400);
     expect(upToDate.body).toEqual({ error: 'All league members have picks for upcoming matches' });
+  });
+
+  it('emails only missing-pick members without recent PWA use or push subscriptions', async () => {
+    const master = await registerPlayer('master@worldporra.test', 'Master');
+    const emailOnly = await registerPlayer('email-only@worldporra.test', 'Email Only');
+    const pwaUser = await registerPlayer('pwa@worldporra.test', 'PWA User');
+    const pushUser = await registerPlayer('push@worldporra.test', 'Push User');
+    const league = await createLeague(master.token);
+    await requestJson('/leagues/join', { token: emailOnly.token, body: { inviteCode: league.inviteCode } });
+    await requestJson('/leagues/join', { token: pwaUser.token, body: { inviteCode: league.inviteCode } });
+    await requestJson('/leagues/join', { token: pushUser.token, body: { inviteCode: league.inviteCode } });
+
+    const match = await Match.create({
+      externalId: 662,
+      stage: 'GROUP',
+      group: 'A',
+      matchday: 1,
+      homeTeamCode: 'ARG',
+      awayTeamCode: 'ESP',
+      utcDate: new Date(Date.now() + 2 * 60 * 60 * 1000),
+      status: 'SCHEDULED',
+    });
+    await Prediction.create({
+      userId: master.user.id,
+      matchId: match._id,
+      homeGoals: 1,
+      awayGoals: 0,
+      predictedWinner: 'HOME',
+    });
+    await UserDevice.create({
+      userId: pwaUser.user.id,
+      deviceId: 'pwa-device-1',
+      displayMode: 'standalone',
+      platform: 'web',
+      userAgent: '',
+      browserLanguage: 'en',
+      firstSeenAt: new Date(),
+      lastSeenAt: new Date(),
+    });
+    await PushSubscription.create({
+      userId: pushUser.user.id,
+      endpoint: 'https://push.example.test/subscription/push-user',
+      keys: { p256dh: 'key', auth: 'auth' },
+    });
+
+    emailMocks.sendMissingPickReminderEmails.mockResolvedValueOnce({
+      attempted: 1,
+      sent: 1,
+      skippedAlreadySent: 0,
+      skippedQuota: 0,
+      skippedNotConfigured: 0,
+      failed: 0,
+    });
+
+    const preview = await requestJson<{ matches: number; recipients: number; emailFallbackRecipients: number }>(
+      `/leagues/${league._id}/picks/remind-missing/preview`,
+      { token: master.token }
+    );
+    expect(preview.status).toBe(200);
+    expect(preview.body).toMatchObject({ matches: 1, recipients: 3, emailFallbackRecipients: 1 });
+
+    const reminded = await requestJson<{ ok: true; recipients: number; emailRecipients: number }>(
+      `/leagues/${league._id}/picks/remind-missing`,
+      { token: master.token, body: {} }
+    );
+
+    expect(reminded.status).toBe(200);
+    expect(reminded.body).toMatchObject({ ok: true, recipients: 3, emailRecipients: 1 });
+    expect(pushMocks.sendToUsers).toHaveBeenCalledWith(
+      expect.arrayContaining([emailOnly.user.id, pwaUser.user.id, pushUser.user.id]),
+      expect.objectContaining({ title: 'Friends League: picks reminder' })
+    );
+    expect(emailMocks.sendMissingPickReminderEmails).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recipients: [{ userId: emailOnly.user.id, email: 'email-only@worldporra.test', name: 'Email Only' }],
+      })
+    );
   });
 
   it('locks payment rules after the tournament starts', async () => {
@@ -647,7 +759,7 @@ describe('league membership', () => {
 });
 
 describe('league member prediction visibility', () => {
-  it('returns finished predictions and upcoming pick status for league members only', async () => {
+  it('returns started predictions to members and pending pick status only to admins', async () => {
     const master = await registerPlayer('master@worldporra.test', 'Master');
     const member = await registerPlayer('member@worldporra.test', 'Member');
     const outsider = await registerPlayer('outsider@worldporra.test', 'Outsider');
@@ -665,6 +777,17 @@ describe('league member prediction visibility', () => {
       status: 'FINISHED',
       result: { homeGoals: 2, awayGoals: 1, winner: 'HOME' },
     });
+    const live = await Match.create({
+      externalId: 703,
+      stage: 'GROUP',
+      group: 'A',
+      matchday: 1,
+      homeTeamCode: 'URU',
+      awayTeamCode: 'POR',
+      utcDate: new Date(Date.now() - 60 * 60 * 1000),
+      status: 'LIVE',
+      result: { homeGoals: 0, awayGoals: 0, winner: 'DRAW' },
+    });
     const upcoming = await Match.create({
       externalId: 702,
       stage: 'GROUP',
@@ -677,6 +800,7 @@ describe('league member prediction visibility', () => {
     });
     await Prediction.create([
       { userId: member.user.id, matchId: finished._id, homeGoals: 2, awayGoals: 1, predictedWinner: 'HOME', points: 10 },
+      { userId: member.user.id, matchId: live._id, homeGoals: 1, awayGoals: 1, predictedWinner: 'DRAW' },
       { userId: member.user.id, matchId: upcoming._id, homeGoals: 1, awayGoals: 1, predictedWinner: 'DRAW' },
     ]);
 
@@ -685,13 +809,22 @@ describe('league member prediction visibility', () => {
     });
     expect(forbidden.status).toBe(403);
 
-    const response = await requestJson<{ finishedMatches: Array<{ prediction: { points: number } }>; upcomingMatches: Array<{ hasPick: boolean }> }>(
+    const memberResponse = await requestJson<{ finishedMatches: Array<{ status: string; prediction: { points: number | null } }>; upcomingMatches: Array<{ hasPick: boolean }> }>(
+      `/leagues/${league._id}/members/${member.user.id}/predictions`,
+      { token: member.token }
+    );
+    expect(memberResponse.status).toBe(200);
+    expect(memberResponse.body.finishedMatches.map((match) => match.status).sort()).toEqual(['FINISHED', 'LIVE']);
+    expect(memberResponse.body.finishedMatches.find((match) => match.status === 'FINISHED')?.prediction.points).toBe(10);
+    expect(memberResponse.body.upcomingMatches).toHaveLength(0);
+
+    const response = await requestJson<{ finishedMatches: Array<{ status: string; prediction: { points: number } }>; upcomingMatches: Array<{ hasPick: boolean }> }>(
       `/leagues/${league._id}/members/${member.user.id}/predictions`,
       { token: master.token }
     );
     expect(response.status).toBe(200);
-    expect(response.body.finishedMatches).toHaveLength(1);
-    expect(response.body.finishedMatches[0].prediction.points).toBe(10);
+    expect(response.body.finishedMatches).toHaveLength(2);
+    expect(response.body.finishedMatches.find((match) => match.status === 'FINISHED')?.prediction.points).toBe(10);
     expect(response.body.upcomingMatches).toHaveLength(1);
     expect(response.body.upcomingMatches[0].hasPick).toBe(true);
   });
