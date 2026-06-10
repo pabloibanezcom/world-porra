@@ -31,7 +31,7 @@ const FIFA_TEAM_SLUGS: Record<string, string> = {
   COL: 'colombia',
   CPV: 'cabo-verde',
   CRO: 'croatia',
-  CUR: 'curacao',
+  CUW: 'curacao',
   CZE: 'czechia',
   ECU: 'ecuador',
   EGY: 'egypt',

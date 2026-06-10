@@ -49,6 +49,11 @@ const STATUS_MAP: Record<string, MatchStatus> = {
   AWARDED: 'FINISHED',
 };
 
+const TEAM_CODE_ALIASES: Record<string, string> = {
+  CUR: 'CUW',
+  URY: 'URU',
+};
+
 function mapStage(stage: string): MatchStage {
   const mapped = STAGE_MAP[stage];
   if (!mapped) {
@@ -77,16 +82,20 @@ function mapTeamName(name: string | null): string {
   return name?.trim() || 'TBD';
 }
 
+function canonicalTeamCode(code: string): string {
+  const normalizedCode = code.trim().toUpperCase();
+  return TEAM_CODE_ALIASES[normalizedCode] ?? normalizedCode;
+}
+
 function mapTeamCode(team: { name: string | null; tla: string | null }): string {
-  if (team.tla) return team.tla;
+  if (team.tla) return canonicalTeamCode(team.tla);
   if (!team.name) return 'TBD';
 
-  return team.name
+  return canonicalTeamCode(team.name
     .split(/\s+/)
     .map((part) => part[0])
     .join('')
-    .slice(0, 3)
-    .toUpperCase();
+    .slice(0, 3));
 }
 
 function deriveWinner(home: number, away: number): MatchWinner {

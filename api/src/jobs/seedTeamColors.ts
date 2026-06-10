@@ -22,7 +22,7 @@ const TEAM_COLORS: Record<string, string> = {
   COL: '#FFE800',
   CPV: '#003893',
   CRO: '#FF0000',
-  CUR: '#002B7F',
+  CUW: '#002B7F',
   CZE: '#D7141A',
   ECU: '#FFD100',
   EGY: '#CE1126',

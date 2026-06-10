@@ -74,11 +74,6 @@ export const TEAM_PLAYERS: Record<string, TeamPlayerSeed[]> = {
     { name: 'Josko Gvardiol', pos: 'DF', age: 24 },
     { name: 'Martin Baturina', pos: 'MF', age: 23 },
   ],
-  CUR: [
-    { name: 'Leandro Bacuna', pos: 'MF', age: 34 },
-    { name: 'Juninho Bacuna', pos: 'MF', age: 28 },
-    { name: 'Vurnon Anita', pos: 'MF', age: 37 },
-  ],
   CUW: [
     { name: 'Leandro Bacuna', pos: 'MF', age: 34 },
     { name: 'Juninho Bacuna', pos: 'MF', age: 28 },

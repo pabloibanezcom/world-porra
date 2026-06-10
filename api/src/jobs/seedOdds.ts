@@ -100,7 +100,7 @@ const TEAM_ELO: Record<string, number> = {
   GUA: 1401,
   CUB: 1339,
   TRI: 1421, // Trinidad & Tobago
-  CUR: 1382, // Curaçao
+  CUW: 1382, // Curaçao
   GUY: 1355, // Guyana
 
   // Oceania

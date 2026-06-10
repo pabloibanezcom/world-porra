@@ -16,6 +16,7 @@ const FLAG_SOURCES: Record<string, ImageSourcePropType> = {
   CPV: require('../../../assets/flags/CPV.png'),
   CRO: require('../../../assets/flags/CRO.png'),
   CUR: require('../../../assets/flags/CUW.png'),
+  CUW: require('../../../assets/flags/CUW.png'),
   CZE: require('../../../assets/flags/CZE.png'),
   ECU: require('../../../assets/flags/ECU.png'),
   EGY: require('../../../assets/flags/EGY.png'),
@@ -49,6 +50,7 @@ const FLAG_SOURCES: Record<string, ImageSourcePropType> = {
   TUN: require('../../../assets/flags/TUN.png'),
   TUR: require('../../../assets/flags/TUR.png'),
   URU: require('../../../assets/flags/URU.png'),
+  URY: require('../../../assets/flags/URU.png'),
   USA: require('../../../assets/flags/USA.png'),
   UZB: require('../../../assets/flags/UZB.png'),
 };
