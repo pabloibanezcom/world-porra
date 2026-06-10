@@ -9,10 +9,12 @@ import { colors, fonts } from '../theme';
 import { fetchLeagueInvitePreview, joinLeague } from '../api/leagues';
 import { usePendingInviteStore } from '../store/pendingInviteStore';
 import { usePendingLeagueCreationInviteStore } from '../store/pendingLeagueCreationInviteStore';
-import { parseInviteFromUrl, parseLeagueCreationInviteTokenFromUrl } from '../utils/inviteLinks';
+import { parseInviteFromUrl, parseLeagueCreationInviteTokenFromUrl, parsePasswordResetTokenFromUrl } from '../utils/inviteLinks';
 
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
+import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
+import ResetPasswordScreen from '../screens/ResetPasswordScreen';
 import HomeScreen from '../screens/HomeScreen';
 import LeaguesScreen from '../screens/LeaguesScreen';
 import PicksScreen from '../screens/PicksScreen';
@@ -131,6 +133,13 @@ export default function RootNavigator() {
       const leagueCreationToken = parseLeagueCreationInviteTokenFromUrl(url);
       if (leagueCreationToken) {
         setPendingLeagueCreationToken(leagueCreationToken).catch(() => {});
+        return;
+      }
+
+      const passwordResetToken = parsePasswordResetTokenFromUrl(url);
+      if (passwordResetToken) {
+        const rootNavigation = navigationRef as unknown as { navigate: (screen: string, params?: object) => void };
+        rootNavigation.navigate('ResetPassword', { token: passwordResetToken });
         return;
       }
 
@@ -261,6 +270,8 @@ export default function RootNavigator() {
           <>
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Register" component={RegisterScreen} />
+            <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+            <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
           </>
         )}
       </Stack.Navigator>

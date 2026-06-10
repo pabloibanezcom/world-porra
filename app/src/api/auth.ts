@@ -21,6 +21,15 @@ export async function loginWithGoogle(idToken: string): Promise<AuthResponse> {
   return data;
 }
 
+export async function requestPasswordReset(email: string): Promise<void> {
+  await apiClient.post('/auth/password/forgot', { email });
+}
+
+export async function resetPassword(token: string, password: string): Promise<AuthResponse> {
+  const { data } = await apiClient.post<AuthResponse>('/auth/password/reset', { token, password });
+  return data;
+}
+
 export async function loginDev(email?: string): Promise<AuthResponse> {
   const { data } = await apiClient.post<AuthResponse>('/auth/dev', email ? { email } : undefined);
   return data;

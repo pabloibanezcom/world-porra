@@ -1,4 +1,5 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import crypto from 'crypto';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { clearDatabase, requestJson, startIntegrationServer, stopIntegrationServer } from './helpers/integration';
 import { User } from '../src/models/User';
 
@@ -8,6 +9,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await clearDatabase();
+  vi.restoreAllMocks();
 });
 
 afterAll(async () => {
@@ -84,6 +86,60 @@ describe('auth routes', () => {
     expect(login.status).toBe(200);
     expect(login.body.token).toEqual(expect.any(String));
     expect(login.body.user).toMatchObject({ email: 'player@worldporra.test', name: 'Player' });
+  });
+
+  it('resets a password with a one-time email recovery token', async () => {
+    await requestJson('/auth/register', {
+      body: { email: 'player@worldporra.test', name: 'Player', password: 'old-password' },
+    });
+
+    const resetToken = Buffer.alloc(32, 7).toString('hex');
+    vi.spyOn(crypto, 'randomBytes').mockReturnValue(Buffer.alloc(32, 7));
+
+    const forgot = await requestJson('/auth/password/forgot', {
+      body: { email: 'PLAYER@WORLDPORRA.TEST' },
+    });
+    expect(forgot.status).toBe(200);
+    expect(forgot.body).toEqual({ ok: true });
+
+    const storedWithReset = await User.findOne({ email: 'player@worldporra.test' })
+      .select('+passwordResetTokenHash')
+      .lean();
+    expect(storedWithReset?.passwordResetTokenHash).toEqual(expect.any(String));
+    expect(storedWithReset?.passwordResetTokenHash).not.toBe(resetToken);
+    expect(storedWithReset?.passwordResetExpiresAt?.getTime()).toBeGreaterThan(Date.now());
+
+    const reset = await requestJson<{ token: string; user: { email: string } }>('/auth/password/reset', {
+      body: { token: resetToken, password: 'new-password' },
+    });
+    expect(reset.status).toBe(200);
+    expect(reset.body.token).toEqual(expect.any(String));
+    expect(reset.body.user.email).toBe('player@worldporra.test');
+
+    const oldLogin = await requestJson('/auth/login', {
+      body: { email: 'player@worldporra.test', password: 'old-password' },
+    });
+    expect(oldLogin.status).toBe(401);
+
+    const newLogin = await requestJson('/auth/login', {
+      body: { email: 'player@worldporra.test', password: 'new-password' },
+    });
+    expect(newLogin.status).toBe(200);
+
+    const reused = await requestJson('/auth/password/reset', {
+      body: { token: resetToken, password: 'another-password' },
+    });
+    expect(reused.status).toBe(400);
+    expect(reused.body).toEqual({ error: 'Invalid or expired password reset token' });
+  });
+
+  it('does not reveal whether a password reset email exists', async () => {
+    const response = await requestJson('/auth/password/forgot', {
+      body: { email: 'missing@worldporra.test' },
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ ok: true });
   });
 
   it('protects authenticated routes from missing and invalid tokens', async () => {

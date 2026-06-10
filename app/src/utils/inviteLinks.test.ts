@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { buildInviteUrl, parseInviteCodeFromUrl, parseInviteFromUrl } from './inviteLinks';
+import { buildInviteUrl, parseInviteCodeFromUrl, parseInviteFromUrl, parsePasswordResetTokenFromUrl } from './inviteLinks';
 
 describe('invite link helpers', () => {
   afterEach(() => {
@@ -38,5 +38,12 @@ describe('invite link helpers', () => {
   it('ignores invalid invite codes', () => {
     expect(parseInviteCodeFromUrl('https://app.worldporra.com/join/no')).toBeNull();
     expect(parseInviteCodeFromUrl('https://app.worldporra.com/join/too-long-code')).toBeNull();
+  });
+
+  it('parses password reset tokens from links', () => {
+    const token = 'a'.repeat(64);
+    expect(parsePasswordResetTokenFromUrl(`https://app.worldporra.com/reset-password?token=${token}`)).toBe(token);
+    expect(parsePasswordResetTokenFromUrl(`worldporra://reset-password/${token}`)).toBe(token);
+    expect(parsePasswordResetTokenFromUrl('https://app.worldporra.com/reset-password?token=short')).toBeNull();
   });
 });

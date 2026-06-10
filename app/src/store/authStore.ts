@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { getToken, setToken, deleteToken } from './tokenStorage';
 import { TOKEN_STORAGE_KEY } from './tokenKey';
 import { User } from '../types';
-import { loginWithGoogle, loginWithPassword, loginDev, getMe, updateMe, registerWithPassword } from '../api/auth';
+import { loginWithGoogle, loginWithPassword, loginDev, getMe, updateMe, registerWithPassword, resetPassword } from '../api/auth';
 import { sendDeviceHeartbeat } from '../api/devices';
 
 interface AuthState {
@@ -13,6 +13,7 @@ interface AuthState {
   signInWithPassword: (email: string, password: string) => Promise<void>;
   signInWithGoogle: (idToken: string) => Promise<void>;
   signInDev: (email?: string) => Promise<void>;
+  resetPassword: (token: string, password: string) => Promise<void>;
   restoreSession: () => Promise<void>;
   refreshUser: () => Promise<void>;
   updateProfileName: (name: string) => Promise<void>;
@@ -47,6 +48,13 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   signInDev: async (email?: string) => {
     const { token, user } = await loginDev(email);
+    await setToken(TOKEN_STORAGE_KEY, token);
+    await sendDeviceHeartbeat();
+    set({ user, token, isLoading: false });
+  },
+
+  resetPassword: async (resetToken: string, password: string) => {
+    const { token, user } = await resetPassword(resetToken, password);
     await setToken(TOKEN_STORAGE_KEY, token);
     await sendDeviceHeartbeat();
     set({ user, token, isLoading: false });

@@ -63,6 +63,7 @@ export function parseInviteCodeFromUrl(url: string | null | undefined): string |
 }
 
 const LEAGUE_CREATION_INVITE_TOKEN_PATTERN = /^[a-f0-9]{32}$/iu;
+const PASSWORD_RESET_TOKEN_PATTERN = /^[a-f0-9]{64}$/iu;
 
 export function buildLeagueCreationInviteUrl(token: string): string {
   return `${getAppBaseUrl()}/create-league-invite/${token}`;
@@ -79,6 +80,24 @@ export function parseLeagueCreationInviteTokenFromUrl(url: string | null | undef
     return null;
   } catch {
     const match = url.match(/create-league-invite\/([a-f0-9]{32})/iu);
+    return match?.[1] ?? null;
+  }
+}
+
+export function parsePasswordResetTokenFromUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const parsedUrl = new URL(url);
+    const pathParts = parsedUrl.pathname.split('/').filter(Boolean);
+    const idx = pathParts.findIndex((part) => part.toLowerCase() === 'reset-password');
+    const pathToken = idx >= 0 ? pathParts[idx + 1] : null;
+    const schemeToken = parsedUrl.hostname.toLowerCase() === 'reset-password' ? pathParts[0] : null;
+    const queryToken = parsedUrl.searchParams.get('token');
+    const token = pathToken ?? schemeToken ?? queryToken;
+    if (token && PASSWORD_RESET_TOKEN_PATTERN.test(token)) return token;
+    return null;
+  } catch {
+    const match = url.match(/reset-password(?:\/|\?token=)([a-f0-9]{64})/iu);
     return match?.[1] ?? null;
   }
 }

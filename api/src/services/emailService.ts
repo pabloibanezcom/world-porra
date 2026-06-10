@@ -21,6 +21,13 @@ type TestEmailInput = {
   name?: string;
 };
 
+type PasswordResetEmailInput = {
+  to: string;
+  name: string;
+  resetUrl: string;
+  expiresInMinutes: number;
+};
+
 export type EmailSendSummary = {
   attempted: number;
   sent: number;
@@ -71,6 +78,10 @@ function firstName(name: string): string {
 
 export function isEmailConfigured(): boolean {
   return Boolean(env.RESEND_API_KEY && env.EMAIL_FROM);
+}
+
+export function getAppBaseUrl(): string {
+  return normalizeAppUrl();
 }
 
 async function sendViaResend(input: {
@@ -207,4 +218,33 @@ export async function sendTestEmail(input: TestEmailInput): Promise<{ providerMe
   });
 
   return { providerMessageId };
+}
+
+export async function sendPasswordResetEmail(input: PasswordResetEmailInput): Promise<{ providerMessageId: string | null; skipped: boolean }> {
+  if (!isEmailConfigured()) {
+    return { providerMessageId: null, skipped: true };
+  }
+
+  const greeting = firstName(input.name);
+  const providerMessageId = await sendViaResend({
+    to: input.to,
+    subject: 'Reset your World Porra password',
+    text: [
+      `Hi ${greeting},`,
+      '',
+      'We received a request to reset your World Porra password.',
+      '',
+      `Reset your password: ${input.resetUrl}`,
+      '',
+      `This link expires in ${input.expiresInMinutes} minutes. If you did not request this, you can ignore this email.`,
+    ].join('\n'),
+    html: [
+      `<p>Hi ${escapeHtml(greeting)},</p>`,
+      '<p>We received a request to reset your World Porra password.</p>',
+      `<p><a href="${escapeHtml(input.resetUrl)}">Reset your password</a></p>`,
+      `<p>This link expires in ${input.expiresInMinutes} minutes. If you did not request this, you can ignore this email.</p>`,
+    ].join(''),
+  });
+
+  return { providerMessageId, skipped: false };
 }

@@ -28,6 +28,7 @@ import PwaInstallPrompt from '../components/PwaInstallPrompt';
 type AuthStackParamList = {
   Login: undefined;
   Register: undefined;
+  ForgotPassword: undefined;
 };
 
 WebBrowser.maybeCompleteAuthSession();
@@ -182,6 +183,13 @@ export default function LoginScreen() {
               value={password}
               onChangeText={setPassword}
             />
+            <TouchableOpacity
+              style={styles.forgotLink}
+              onPress={() => navigation.navigate('ForgotPassword')}
+              disabled={isSigningIn}
+            >
+              <Text style={styles.forgotLinkText}>{t('login.forgotPassword')}</Text>
+            </TouchableOpacity>
             <TouchableOpacity
               style={[styles.passwordBtn, isSigningIn && styles.googleBtnDisabled]}
               onPress={handlePasswordLogin}
@@ -394,13 +402,21 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   passwordBtn: {
-    marginTop: 6,
     minHeight: 52,
     borderRadius: 12,
     backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 18,
+  },
+  forgotLink: {
+    alignSelf: 'flex-end',
+    paddingVertical: 2,
+  },
+  forgotLinkText: {
+    color: colors.accent,
+    fontSize: 13,
+    fontWeight: '600',
   },
   passwordBtnText: {
     color: '#fff',

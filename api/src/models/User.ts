@@ -6,6 +6,8 @@ export interface IUser extends Document {
   name: string;
   avatarUrl: string;
   passwordHash: string | null;
+  passwordResetTokenHash: string | null;
+  passwordResetExpiresAt: Date | null;
   isMaster: boolean;
   canCreateLeagues: boolean;
   leagueOrder: Types.ObjectId[];
@@ -21,6 +23,8 @@ const userSchema = new Schema<IUser>(
     name: { type: String, required: true },
     avatarUrl: { type: String, default: '' },
     passwordHash: { type: String, default: null, select: false },
+    passwordResetTokenHash: { type: String, default: null, select: false },
+    passwordResetExpiresAt: { type: Date, default: null },
     isMaster: { type: Boolean, default: false },
     canCreateLeagues: { type: Boolean, default: false },
     leagueOrder: [{ type: Schema.Types.ObjectId, ref: 'League' }],

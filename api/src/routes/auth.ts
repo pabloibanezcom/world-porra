@@ -1,4 +1,5 @@
 import { Router, Response } from 'express';
+import crypto from 'crypto';
 import { OAuth2Client } from 'google-auth-library';
 import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
@@ -8,9 +9,11 @@ import { env } from '../config/env';
 import { logger } from '../config/logger';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { hashPassword, verifyPassword } from '../utils/password';
+import { getAppBaseUrl, sendPasswordResetEmail } from '../services/emailService';
 
 const router = Router();
 const googleClient = new OAuth2Client(env.GOOGLE_CLIENT_ID);
+const PASSWORD_RESET_EXPIRES_MINUTES = 60;
 
 const registerSchema = z.object({
   email: z.string().email(),
@@ -21,6 +24,15 @@ const registerSchema = z.object({
 const passwordLoginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
+});
+
+const passwordResetRequestSchema = z.object({
+  email: z.string().email(),
+});
+
+const passwordResetConfirmSchema = z.object({
+  token: z.string().min(32).max(256),
+  password: z.string().min(8).max(128),
 });
 
 const googleAuthSchema = z.object({
@@ -73,6 +85,19 @@ function signToken(user: { _id: unknown; email: string; isMaster?: boolean }): s
     env.JWT_SECRET,
     { expiresIn: '30d' }
   );
+}
+
+function generatePasswordResetToken(): string {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+function hashPasswordResetToken(token: string): string {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+function buildPasswordResetUrl(token: string): string {
+  const appUrl = getAppBaseUrl();
+  return `${appUrl}/reset-password?token=${encodeURIComponent(token)}`;
 }
 
 function serializeUser(user: {
@@ -190,6 +215,71 @@ router.post('/login', async (req, res: Response): Promise<void> => {
   } catch (error) {
     if (error instanceof z.ZodError) {
       res.status(400).json({ error: 'Invalid login data', details: error.errors });
+      return;
+    }
+    throw error;
+  }
+});
+
+router.post('/password/forgot', async (req, res: Response): Promise<void> => {
+  try {
+    const { email } = passwordResetRequestSchema.parse(req.body);
+    const normalizedEmail = normalizeEmail(email);
+    const user = await User.findOne({ email: normalizedEmail }).select('+passwordResetTokenHash');
+
+    if (user) {
+      const resetToken = generatePasswordResetToken();
+      user.passwordResetTokenHash = hashPasswordResetToken(resetToken);
+      user.passwordResetExpiresAt = new Date(Date.now() + PASSWORD_RESET_EXPIRES_MINUTES * 60 * 1000);
+      await user.save();
+
+      try {
+        await sendPasswordResetEmail({
+          to: user.email,
+          name: user.name,
+          resetUrl: buildPasswordResetUrl(resetToken),
+          expiresInMinutes: PASSWORD_RESET_EXPIRES_MINUTES,
+        });
+      } catch (error) {
+        logger.error({ err: error, userId: String(user._id) }, 'Password reset email send failed');
+      }
+    }
+
+    res.json({ ok: true });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: 'Invalid password reset request', details: error.errors });
+      return;
+    }
+    throw error;
+  }
+});
+
+router.post('/password/reset', async (req, res: Response): Promise<void> => {
+  try {
+    const { token, password } = passwordResetConfirmSchema.parse(req.body);
+    const tokenHash = hashPasswordResetToken(token);
+    const user = await User.findOne({
+      passwordResetTokenHash: tokenHash,
+      passwordResetExpiresAt: { $gt: new Date() },
+    }).select('+passwordHash +passwordResetTokenHash');
+
+    if (!user) {
+      res.status(400).json({ error: 'Invalid or expired password reset token' });
+      return;
+    }
+
+    user.passwordHash = await hashPassword(password);
+    user.passwordResetTokenHash = null;
+    user.passwordResetExpiresAt = null;
+    user.isMaster = user.isMaster || isMasterEmail(user.email);
+    await user.save();
+
+    const authToken = signToken(user);
+    res.json({ token: authToken, user: serializeUser(user) });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: 'Invalid password reset data', details: error.errors });
       return;
     }
     throw error;

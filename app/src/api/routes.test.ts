@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, Mock, vi } from 'vitest';
-import { getMe, loginDev, loginWithGoogle, loginWithPassword, updateMe } from './auth';
+import { getMe, loginDev, loginWithGoogle, loginWithPassword, requestPasswordReset, resetPassword, updateMe } from './auth';
 import { createLeague, deleteLeague, fetchLeague, fetchMemberPredictions, fetchMyLeagues, joinLeague, leaveLeague, notifyLeagueMembers } from './leagues';
 import { fetchMatch, fetchMatches } from './matches';
 import { fetchPollConfig } from './config';
@@ -39,6 +39,17 @@ describe('API route helpers', () => {
     mockedApiClient.post.mockResolvedValueOnce({ data: authResponse });
     await expect(loginWithGoogle('google-token')).resolves.toBe(authResponse);
     expect(mockedApiClient.post).toHaveBeenCalledWith('/auth/google', { idToken: 'google-token' });
+
+    mockedApiClient.post.mockResolvedValueOnce({ data: {} });
+    await expect(requestPasswordReset('player@example.test')).resolves.toBeUndefined();
+    expect(mockedApiClient.post).toHaveBeenCalledWith('/auth/password/forgot', { email: 'player@example.test' });
+
+    mockedApiClient.post.mockResolvedValueOnce({ data: authResponse });
+    await expect(resetPassword('reset-token', 'new-password')).resolves.toBe(authResponse);
+    expect(mockedApiClient.post).toHaveBeenCalledWith('/auth/password/reset', {
+      token: 'reset-token',
+      password: 'new-password',
+    });
 
     mockedApiClient.post.mockResolvedValueOnce({ data: authResponse });
     await expect(loginDev()).resolves.toBe(authResponse);
