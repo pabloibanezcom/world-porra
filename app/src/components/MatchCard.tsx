@@ -297,7 +297,7 @@ export default function MatchCard({ match, prediction, result, locked, lockLabel
   } else if (state === 'live') {
     action = <LiveBadge />;
   } else if (result) {
-    action = <Badge result={result} />;
+    action = <Badge result={result} points={prediction?.points} />;
   } else if (state === 'finished' && !prediction) {
     action = <Badge result="wrong" />;
   } else {

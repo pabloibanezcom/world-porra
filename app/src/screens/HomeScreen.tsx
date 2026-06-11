@@ -159,7 +159,7 @@ export default function HomeScreen() {
     matchesInNext24Hours.length >= 3
       ? matchesInNext24Hours
       : upcoming.slice(0, 3);
-  const recentFinished = [...finished].reverse().slice(0, 4);
+  const recentFinished = [...finished].reverse().slice(0, 2);
 
   const totalPoints = predictions.reduce((sum, prediction) => sum + (prediction.points ?? 0), 0);
   const pointsSummary = loadFailed ? `- ${t('common.points')}` : `${totalPoints} ${t('common.points')}`;
@@ -245,32 +245,6 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* Next matches */}
-        {nextMatches.length > 0 && (
-          <View>
-            <SectionLabel>{t('home.nextMatches')}</SectionLabel>
-            <View style={styles.nextMatchesList}>
-              {nextMatches.map((match) => {
-                const myPred = predMap[match._id] ?? null;
-                const canPredict = !isPredictionLocked(match) && !hasTbdTeam(match);
-
-                return (
-                  <MatchCard
-                    key={match._id}
-                    match={match}
-                    prediction={myPred}
-                    onPress={
-                      canPredict
-                        ? () => setSelectedMatch(match)
-                        : undefined
-                    }
-                  />
-                );
-              })}
-            </View>
-          </View>
-        )}
-
         {/* Leagues */}
         {homeLeagues.length > 0 && (
           <View>
@@ -309,6 +283,32 @@ export default function HomeScreen() {
                     prediction={pred}
                     result={result}
                     onPress={() => setSelectedResult(m)}
+                  />
+                );
+              })}
+            </View>
+          </View>
+        )}
+
+        {/* Next matches */}
+        {nextMatches.length > 0 && (
+          <View>
+            <SectionLabel>{t('home.nextMatches')}</SectionLabel>
+            <View style={styles.nextMatchesList}>
+              {nextMatches.map((match) => {
+                const myPred = predMap[match._id] ?? null;
+                const canPredict = !isPredictionLocked(match) && !hasTbdTeam(match);
+
+                return (
+                  <MatchCard
+                    key={match._id}
+                    match={match}
+                    prediction={myPred}
+                    onPress={
+                      canPredict
+                        ? () => setSelectedMatch(match)
+                        : undefined
+                    }
                   />
                 );
               })}
