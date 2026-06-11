@@ -37,6 +37,9 @@ export interface IMatch extends Document {
   result: IMatchResult | null;
   odds: IMatchOdds | null;
   scoresProcessed: boolean;
+  // When true, the result was entered by an admin and must not be overwritten
+  // by the football-data sync (which may report a finished match with no score).
+  manualResult: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -93,6 +96,7 @@ const matchSchema = new Schema<IMatch>(
       default: null,
     },
     scoresProcessed: { type: Boolean, default: false },
+    manualResult: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

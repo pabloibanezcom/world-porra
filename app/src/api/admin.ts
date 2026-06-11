@@ -1,5 +1,25 @@
 import { apiClient } from './client';
-import { AdminUserDetail, AdminUsersResponse } from '../types';
+import { AdminUserDetail, AdminUsersResponse, MatchResult, MatchWinner } from '../types';
+
+export interface SetMatchResultResponse {
+  message: string;
+  match: {
+    _id: string;
+    externalId: number;
+    status: string;
+    result: MatchResult | null;
+    manualResult: boolean;
+  };
+  scoring: { matchesProcessed: number; predictionsScored: number; leaguesUpdated: number };
+}
+
+export async function setMatchResult(
+  matchId: string,
+  input: { homeGoals: number; awayGoals: number; winner?: MatchWinner },
+): Promise<SetMatchResultResponse> {
+  const { data } = await apiClient.put<SetMatchResultResponse>(`/admin/matches/${matchId}/result`, input);
+  return data;
+}
 
 export async function fetchAdminUsers(search?: string): Promise<AdminUsersResponse> {
   const { data } = await apiClient.get<AdminUsersResponse>('/admin/users', {
