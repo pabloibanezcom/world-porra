@@ -114,6 +114,7 @@ export default function MemberScreen() {
   const [deletingUser, setDeletingUser] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [view, setView] = useState<'member' | 'admin'>('member');
+  const [memberTab, setMemberTab] = useState<'results' | 'groups' | 'finals'>('results');
 
   const loadLeagueDetail = useCallback(async () => {
     if (!params.leagueId || !params.memberId) {
@@ -159,7 +160,6 @@ export default function MemberScreen() {
   const picksMade = finishedMatches.filter((m) => m.prediction !== null).length +
     upcomingMatches.filter((m) => m.hasPick).length;
   const pending = upcomingMatches.filter((m) => !m.hasPick).length;
-  const missingUpcomingMatches = upcomingMatches.filter((m) => !m.hasPick);
   const canSeePendingPicks = !!params.isAdmin || !!currentUser?.isMaster;
   const displayName = adminDetail?.user.name ?? params.memberName ?? t('adminContact.unknownUser');
   const displayEmail = adminDetail?.user.email;
@@ -356,50 +356,58 @@ export default function MemberScreen() {
               </>
             )}
 
-            {showMemberSections && finishedMatches.length > 0 && (
-              <View>
-                <SectionLabel>{t('member.latestPicks')}</SectionLabel>
-                <View style={styles.cardsColumn}>
-                  {finishedMatches.map((m) => (
-                    <FinishedMatchCard key={m._id} match={m} />
-                  ))}
+            {showMemberSections && (
+              <>
+                <View style={styles.memberTabBar}>
+                  {(['results', 'groups', 'finals'] as const).map((tabKey) => {
+                    const active = memberTab === tabKey;
+                    return (
+                      <TouchableOpacity
+                        key={tabKey}
+                        style={[styles.memberTab, active && styles.memberTabActive]}
+                        onPress={() => setMemberTab(tabKey)}
+                        activeOpacity={0.85}
+                      >
+                        <Text style={[styles.memberTabText, active && styles.memberTabTextActive]}>
+                          {tabKey === 'results' ? t('picks.results') : tabKey === 'groups' ? t('picks.groups') : t('picks.finals')}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
-              </View>
-            )}
 
-            {showMemberSections && groupPredictions.length > 0 && (
-              <View>
-                <SectionLabel>{t('member.groupPicks')}</SectionLabel>
-                <View style={styles.groupPredictionCards}>
-                  {groupPredictions.map((prediction) => (
-                    <GroupPredictionCard
-                      key={prediction._id}
-                      group={{ id: prediction.group, teams: prediction.orderedTeams }}
-                      order={prediction.orderedTeams}
-                      progress={prediction.progress}
-                      onDragStateChange={() => {}}
-                    />
-                  ))}
-                </View>
-              </View>
-            )}
-
-            {showMemberSections && tournamentPrediction && (
-              <View>
-                <SectionLabel>{t('member.finalPicks')}</SectionLabel>
-                <TournamentPicksSection picks={tournamentPrediction} teams={[]} />
-              </View>
-            )}
-
-            {showMemberSections && canSeePendingPicks && missingUpcomingMatches.length > 0 && (
-              <View>
-                <SectionLabel>{t('member.pendingPicks')}</SectionLabel>
-                <View style={styles.cardsColumn}>
-                  {missingUpcomingMatches.map((m) => (
-                    <PendingMatchRow key={m._id} match={m} />
-                  ))}
-                </View>
-              </View>
+                {memberTab === 'results' ? (
+                  finishedMatches.length > 0 ? (
+                    <View style={styles.cardsColumn}>
+                      {finishedMatches.map((m) => (
+                        <FinishedMatchCard key={m._id} match={m} />
+                      ))}
+                    </View>
+                  ) : (
+                    <EmptyState text={t('picks.noResults')} />
+                  )
+                ) : memberTab === 'groups' ? (
+                  groupPredictions.length > 0 ? (
+                    <View style={styles.groupPredictionCards}>
+                      {groupPredictions.map((prediction) => (
+                        <GroupPredictionCard
+                          key={prediction._id}
+                          group={{ id: prediction.group, teams: prediction.orderedTeams }}
+                          order={prediction.orderedTeams}
+                          progress={prediction.progress}
+                          onDragStateChange={() => {}}
+                        />
+                      ))}
+                    </View>
+                  ) : (
+                    <EmptyState text={t('member.noGroupPicks')} />
+                  )
+                ) : tournamentPrediction ? (
+                  <TournamentPicksSection picks={tournamentPrediction} teams={[]} />
+                ) : (
+                  <EmptyState text={t('member.noFinalPicks')} />
+                )}
+              </>
             )}
 
             {showGlobalRecentPicks && (
@@ -610,18 +618,10 @@ function FinishedMatchCard({ match }: { match: MemberMatchPrediction }) {
   );
 }
 
-function PendingMatchRow({ match }: { match: MemberUpcomingMatch }) {
-  const { t } = useI18n();
+function EmptyState({ text }: { text: string }) {
   return (
-    <View style={styles.pendingRow}>
-      <View style={styles.pendingTeams}>
-        <Flag code={match.homeTeam.code} size={18} />
-        <Text style={styles.pendingTeamText}>
-          {match.homeTeam.name} {t('common.vs')} {match.awayTeam.name}
-        </Text>
-        <Flag code={match.awayTeam.code} size={18} />
-      </View>
-      <Text style={styles.missingLabel}>{t('common.missing')}</Text>
+    <View style={styles.memberEmpty}>
+      <Text style={styles.memberEmptyText}>{text}</Text>
     </View>
   );
 }
@@ -738,21 +738,26 @@ const styles = StyleSheet.create({
   badge: { borderRadius: 9999, paddingHorizontal: 10, paddingVertical: 3 },
   badgeText: { fontFamily: fonts.displayBold, fontSize: 11, fontWeight: '700' },
 
-  pendingRow: {
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(236,126,0,0.25)',
-    padding: 12,
-    paddingHorizontal: 16,
+  memberTabBar: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 10,
+    gap: 4,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    padding: 4,
   },
-  pendingTeams: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
-  pendingTeamText: { color: colors.muted, fontFamily: fonts.bodyMedium, fontSize: 12, flexShrink: 1 },
-  missingLabel: { color: colors.warning, fontFamily: fonts.bodyMedium, fontSize: 10, fontWeight: '600' },
+  memberTab: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  memberTabActive: { backgroundColor: colors.accent },
+  memberTabText: { color: colors.muted, fontFamily: fonts.bodyMedium, fontSize: 12, fontWeight: '600' },
+  memberTabTextActive: { color: '#fff' },
+  memberEmpty: { alignItems: 'center', paddingVertical: 32 },
+  memberEmptyText: { color: colors.muted, fontFamily: fonts.body, fontSize: 13 },
 
   leagueRow: {
     padding: 14,
