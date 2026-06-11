@@ -27,7 +27,7 @@ import { colors, fonts } from '../theme';
 import { submitPrediction } from '../api/predictions';
 import { useI18n } from '../i18n';
 import { isPredictionLocked } from '../utils/prediction';
-import { getMatchRefreshDelay } from '../utils/matchRefresh';
+import { getMatchRefreshDelay, POST_KICKOFF_REFRESH_WINDOW_MS } from '../utils/matchRefresh';
 
 function SectionLabel({ children }: { children: string }) {
   return (
@@ -65,6 +65,29 @@ function getPredictableGroupSizes(matches: Match[]): Record<string, number> {
       .filter(([, teams]) => teams.size >= 2)
       .map(([group, teams]) => [group, teams.size]),
   );
+}
+
+function kickoffTime(match: Match): number {
+  return new Date(match.utcDate).getTime();
+}
+
+function isLiveOrInProgress(match: Match, now: Date): boolean {
+  if (match.status === 'LIVE') return true;
+  if (match.status !== 'SCHEDULED') return false;
+
+  const kickoff = kickoffTime(match);
+  if (!Number.isFinite(kickoff)) return false;
+
+  const currentTime = now.getTime();
+  return kickoff <= currentTime && currentTime <= kickoff + POST_KICKOFF_REFRESH_WINDOW_MS;
+}
+
+function cardMatchForHome(match: Match, now: Date): Match {
+  if (match.status === 'SCHEDULED' && isLiveOrInProgress(match, now)) {
+    return { ...match, status: 'LIVE' };
+  }
+
+  return match;
 }
 
 export default function HomeScreen() {
@@ -150,19 +173,24 @@ export default function HomeScreen() {
 
   const upcoming = [...matches]
     .filter((m) => {
-      if (m.status === 'LIVE') return true;
+      if (isLiveOrInProgress(m, now)) return true;
       if (m.status !== 'SCHEDULED') return false;
-      return new Date(m.utcDate) >= now;
+      return kickoffTime(m) >= now.getTime();
     })
-    .sort((a, b) => new Date(a.utcDate).getTime() - new Date(b.utcDate).getTime());
+    .sort((a, b) => {
+      const aLive = isLiveOrInProgress(a, now);
+      const bLive = isLiveOrInProgress(b, now);
+      if (aLive !== bLive) return aLive ? -1 : 1;
+      return kickoffTime(a) - kickoffTime(b);
+    });
   const finished = matches.filter((m) => m.status === 'FINISHED');
   const matchesInNext24Hours = upcoming.filter((match) => {
-    if (match.status === 'LIVE') {
+    if (isLiveOrInProgress(match, now)) {
       return true;
     }
 
-    const kickoff = new Date(match.utcDate);
-    return kickoff >= now && kickoff <= next24Hours;
+    const kickoff = kickoffTime(match);
+    return kickoff >= now.getTime() && kickoff <= next24Hours.getTime();
   });
   const nextMatches =
     matchesInNext24Hours.length >= 3
@@ -281,13 +309,20 @@ export default function HomeScreen() {
               {nextMatches.map((match) => {
                 const myPred = predMap[match._id] ?? null;
                 const canPredict = !isPredictionLocked(match) && !hasTbdTeam(match);
+                const liveOrInProgress = isLiveOrInProgress(match, now);
 
                 return (
                   <MatchCard
                     key={match._id}
-                    match={match}
+                    match={cardMatchForHome(match, now)}
                     prediction={myPred}
-                    onPress={canPredict ? () => setSelectedMatch(match) : undefined}
+                    onPress={
+                      liveOrInProgress
+                        ? () => navigation.navigate('MatchDetail', { matchId: match._id })
+                        : canPredict
+                          ? () => setSelectedMatch(match)
+                          : undefined
+                    }
                   />
                 );
               })}
