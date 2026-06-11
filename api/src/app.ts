@@ -1,9 +1,9 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
 import mongoose from 'mongoose';
 import { errorHandler } from './middleware/errorHandler';
+import { publicApiRateLimiter } from './middleware/publicRateLimit';
 import authRoutes from './routes/auth';
 import matchRoutes from './routes/matches';
 import predictionRoutes from './routes/predictions';
@@ -33,14 +33,7 @@ app.use((req, _res, next) => {
     next
   );
 });
-app.use(
-  rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 200,
-    standardHeaders: true,
-    legacyHeaders: false,
-  })
-);
+app.use(publicApiRateLimiter);
 
 app.get('/health', (_req, res) => {
   const dbState = mongoose.connection.readyState;
