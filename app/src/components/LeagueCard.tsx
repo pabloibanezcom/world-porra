@@ -25,25 +25,27 @@ export default function LeagueCard({ league, userId, compact = false, onPress }:
 
   return (
     <TouchableOpacity
-      style={styles.card}
+      style={[styles.card, compact && styles.cardCompact]}
       onPress={onPress}
       disabled={!onPress}
       activeOpacity={0.85}
     >
       {/* Top row */}
-      <View style={[styles.topRow, compact && { marginBottom: 0 }]}>
+      <View style={[styles.topRow, compact && styles.topRowCompact]}>
         <View style={styles.nameBlock}>
           <Text style={styles.name} numberOfLines={1}>{league.name}</Text>
-          <Text style={styles.sub}>
-            {myPoints !== null
-              ? t('leagues.playersWithPoints', { count: league.members.length, points: myPoints })
-              : t('leagues.players', { count: league.members.length })}
-          </Text>
+          {!compact && (
+            <Text style={styles.sub}>
+              {myPoints !== null
+                ? t('leagues.playersWithPoints', { count: league.members.length, points: myPoints })
+                : t('leagues.players', { count: league.members.length })}
+            </Text>
+          )}
         </View>
         {rank !== null && (
-          <View style={[styles.rankBadge, { backgroundColor: accentDim }]}>
-            <Text style={[styles.rankNum, { color: accent }]}>#{rank}</Text>
-            <Text style={[styles.rankLabel, { color: accent }]}>{t('common.rank')}</Text>
+          <View style={[styles.rankBadge, compact && styles.rankBadgeCompact, { backgroundColor: accentDim }]}>
+            <Text style={[styles.rankNum, compact && styles.rankNumCompact, { color: accent }]}>#{rank}</Text>
+            {!compact && <Text style={[styles.rankLabel, { color: accent }]}>{t('common.rank')}</Text>}
           </View>
         )}
       </View>
@@ -63,12 +65,19 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingHorizontal: 18,
   },
+  cardCompact: {
+    paddingVertical: 12,
+  },
 
   topRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     marginBottom: 14,
+  },
+  topRowCompact: {
+    alignItems: 'center',
+    marginBottom: 0,
   },
   nameBlock: { flex: 1, marginRight: 12 },
   name: {
@@ -90,11 +99,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     minWidth: 52,
   },
+  rankBadgeCompact: {
+    borderRadius: 9,
+    paddingVertical: 4,
+    minWidth: 0,
+  },
   rankNum: {
     fontSize: 20,
     fontFamily: fonts.displayBold,
     fontWeight: '700',
     lineHeight: 22,
+  },
+  rankNumCompact: {
+    fontSize: 15,
+    lineHeight: 18,
   },
   rankLabel: {
     fontSize: 9,
