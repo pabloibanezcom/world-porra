@@ -8,6 +8,8 @@ jobs:
   api:
     name: API tests and build
     runs-on: ubuntu-latest
+    env:
+      JWT_SECRET: github-actions-test-secret
 
     steps:
       - name: Check out repository
