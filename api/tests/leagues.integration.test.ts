@@ -4,6 +4,8 @@ import { Types } from 'mongoose';
 import { League } from '../src/models/League';
 import { Match } from '../src/models/Match';
 import { Prediction } from '../src/models/Prediction';
+import { GroupPrediction } from '../src/models/GroupPrediction';
+import { TournamentPrediction } from '../src/models/TournamentPrediction';
 import { PushSubscription } from '../src/models/PushSubscription';
 import { UserDevice } from '../src/models/UserDevice';
 
@@ -803,13 +805,41 @@ describe('league member prediction visibility', () => {
       { userId: member.user.id, matchId: live._id, homeGoals: 1, awayGoals: 1, predictedWinner: 'DRAW' },
       { userId: member.user.id, matchId: upcoming._id, homeGoals: 1, awayGoals: 1, predictedWinner: 'DRAW' },
     ]);
+    await GroupPrediction.create({
+      userId: member.user.id,
+      group: 'A',
+      orderedTeamCodes: ['ARG', 'ESP', 'URU', 'POR'],
+      points: null,
+    });
+    await TournamentPrediction.create({
+      userId: member.user.id,
+      championCode: 'ARG',
+      runnerUpCode: 'ESP',
+      semi1Code: 'URU',
+      semi2Code: 'POR',
+      topScorer: { name: 'Test Striker', team: 'Argentina', code: 'ARG', pos: 'FW', age: 27, shirtNumber: 9 },
+    });
+    const lockPredictions = await requestJson('/config/poll', {
+      method: 'PATCH',
+      token: master.token,
+      body: {
+        groupPredictionsDeadline: new Date(Date.now() - 60 * 1000).toISOString(),
+        tournamentPredictionsDeadline: new Date(Date.now() - 60 * 1000).toISOString(),
+      },
+    });
+    expect(lockPredictions.status).toBe(200);
 
     const forbidden = await requestJson(`/leagues/${league._id}/members/${member.user.id}/predictions`, {
       token: outsider.token,
     });
     expect(forbidden.status).toBe(403);
 
-    const memberResponse = await requestJson<{ finishedMatches: Array<{ status: string; prediction: { points: number | null } }>; upcomingMatches: Array<{ hasPick: boolean }> }>(
+    const memberResponse = await requestJson<{
+      finishedMatches: Array<{ status: string; prediction: { points: number | null } }>;
+      upcomingMatches: Array<{ hasPick: boolean }>;
+      groupPredictions: Array<{ group: string; orderedTeams: Array<{ code: string; name: string }> }>;
+      tournamentPrediction: { champion: { code: string; name: string }; topScorer: { name: string; code: string } } | null;
+    }>(
       `/leagues/${league._id}/members/${member.user.id}/predictions`,
       { token: member.token }
     );
@@ -817,6 +847,15 @@ describe('league member prediction visibility', () => {
     expect(memberResponse.body.finishedMatches.map((match) => match.status).sort()).toEqual(['FINISHED', 'LIVE']);
     expect(memberResponse.body.finishedMatches.find((match) => match.status === 'FINISHED')?.prediction.points).toBe(10);
     expect(memberResponse.body.upcomingMatches).toHaveLength(0);
+    expect(memberResponse.body.groupPredictions).toHaveLength(1);
+    expect(memberResponse.body.groupPredictions[0].group).toBe('A');
+    expect(memberResponse.body.groupPredictions[0].orderedTeams.map((team) => team.code)).toEqual(['ARG', 'ESP', 'URU', 'POR']);
+    expect(memberResponse.body.groupPredictions[0].orderedTeams.slice(0, 2)).toMatchObject([
+      { code: 'ARG', name: 'Argentina' },
+      { code: 'ESP', name: 'Spain' },
+    ]);
+    expect(memberResponse.body.tournamentPrediction?.champion).toMatchObject({ code: 'ARG', name: 'Argentina' });
+    expect(memberResponse.body.tournamentPrediction?.topScorer).toMatchObject({ name: 'Test Striker', code: 'ARG' });
 
     const response = await requestJson<{ finishedMatches: Array<{ status: string; prediction: { points: number } }>; upcomingMatches: Array<{ hasPick: boolean }> }>(
       `/leagues/${league._id}/members/${member.user.id}/predictions`,

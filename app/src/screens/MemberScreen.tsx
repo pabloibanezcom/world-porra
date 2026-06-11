@@ -14,11 +14,13 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { fetchMemberPredictions, MemberMatchPrediction, MemberUpcomingMatch } from '../api/leagues';
 import { deleteAdminUser, fetchAdminUserDetail } from '../api/admin';
-import { AdminUserDetail } from '../types';
+import { AdminUserDetail, GroupPrediction, TournamentPicks } from '../types';
 import { colors, fonts } from '../theme';
 import Avatar from '../components/ui/Avatar';
 import Flag from '../components/ui/Flag';
 import NotifyModal from '../components/NotifyModal';
+import GroupPredictionCard from '../components/GroupPredictionCard';
+import TournamentPicksSection from '../components/TournamentPicksSection';
 import { notifyLeagueMembers } from '../api/leagues';
 import { useI18n } from '../i18n';
 import { useAuthStore } from '../store/authStore';
@@ -103,6 +105,8 @@ export default function MemberScreen() {
 
   const [finishedMatches, setFinishedMatches] = useState<MemberMatchPrediction[]>([]);
   const [upcomingMatches, setUpcomingMatches] = useState<MemberUpcomingMatch[]>([]);
+  const [groupPredictions, setGroupPredictions] = useState<GroupPrediction[]>([]);
+  const [tournamentPrediction, setTournamentPrediction] = useState<TournamentPicks | null>(null);
   const [leagueLoading, setLeagueLoading] = useState(hasLeagueContext);
   const [adminDetail, setAdminDetail] = useState<AdminUserDetail | null>(null);
   const [adminLoading, setAdminLoading] = useState(!!currentUser?.isMaster && !!targetUserId);
@@ -121,6 +125,8 @@ export default function MemberScreen() {
       const data = await fetchMemberPredictions(params.leagueId, params.memberId);
       setFinishedMatches(data.finishedMatches);
       setUpcomingMatches(data.upcomingMatches);
+      setGroupPredictions(data.groupPredictions ?? []);
+      setTournamentPrediction(data.tournamentPrediction ?? null);
     } finally {
       setLeagueLoading(false);
     }
@@ -331,6 +337,30 @@ export default function MemberScreen() {
                     <FinishedMatchCard key={m._id} match={m} />
                   ))}
                 </View>
+              </View>
+            )}
+
+            {hasLeagueContext && groupPredictions.length > 0 && (
+              <View>
+                <SectionLabel>{t('member.groupPicks')}</SectionLabel>
+                <View style={styles.groupPredictionCards}>
+                  {groupPredictions.map((prediction) => (
+                    <GroupPredictionCard
+                      key={prediction._id}
+                      group={{ id: prediction.group, teams: prediction.orderedTeams }}
+                      order={prediction.orderedTeams}
+                      progress={prediction.progress}
+                      onDragStateChange={() => {}}
+                    />
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {hasLeagueContext && tournamentPrediction && (
+              <View>
+                <SectionLabel>{t('member.finalPicks')}</SectionLabel>
+                <TournamentPicksSection picks={tournamentPrediction} teams={[]} />
               </View>
             )}
 
@@ -616,6 +646,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   cardsColumn: { gap: 8 },
+  groupPredictionCards: { gap: 10 },
 
   infoCard: { backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
   infoRow: {

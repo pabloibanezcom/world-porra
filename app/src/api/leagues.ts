@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import { League, LeaguePaymentSettings, Match, MatchResult } from '../types';
+import { GroupPrediction, League, LeaguePaymentSettings, Match, MatchResult, TournamentPicks } from '../types';
 import { markLeaguesChanged } from '../store/dataRefreshStore';
 
 export interface MemberMatchPrediction {
@@ -27,6 +27,8 @@ export interface MemberUpcomingMatch {
 export interface MemberPredictionsResponse {
   finishedMatches: MemberMatchPrediction[];
   upcomingMatches: MemberUpcomingMatch[];
+  groupPredictions: GroupPrediction[];
+  tournamentPrediction: TournamentPicks | null;
 }
 
 export interface MissingPickReminderPreview {

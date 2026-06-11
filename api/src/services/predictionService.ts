@@ -211,7 +211,7 @@ async function getGroupPredictionProgress(orderedTeamCodes: string[], language: 
   };
 }
 
-async function serializeGroupPrediction<T extends { _id: unknown; userId: unknown; orderedTeamCodes?: string[]; orderedTeams?: Array<{ code: string }> }>(
+export async function serializeGroupPrediction<T extends { _id: unknown; userId: unknown; orderedTeamCodes?: string[]; orderedTeams?: Array<{ code: string }> }>(
   prediction: T,
   language: ApiLanguage = 'en',
 ) {
@@ -286,7 +286,7 @@ async function validateTournamentPredictionCatalog(data: TournamentPredictionInp
   return null;
 }
 
-async function serializeTournamentPrediction<T extends Record<string, any>>(prediction: T | null, language: ApiLanguage) {
+export async function serializeTournamentPrediction<T extends Record<string, any>>(prediction: T | null, language: ApiLanguage) {
   if (!prediction) return null;
 
   const codes = TEAM_PICK_FIELDS

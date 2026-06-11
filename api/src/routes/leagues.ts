@@ -4,6 +4,8 @@ import crypto from 'crypto';
 import { League, LEAGUE_MAX_MEMBERS } from '../models/League';
 import { Match } from '../models/Match';
 import { Prediction } from '../models/Prediction';
+import { GroupPrediction } from '../models/GroupPrediction';
+import { TournamentPrediction } from '../models/TournamentPrediction';
 import { LeagueReminderLog, LeagueReminderType } from '../models/LeagueReminderLog';
 import { PushSubscription } from '../models/PushSubscription';
 import { UserDevice } from '../models/UserDevice';
@@ -12,7 +14,8 @@ import { User } from '../models/User';
 import { env } from '../config/env';
 import { logger } from '../config/logger';
 import { getRequestLanguage, hydrateMatches } from '../services/countryTeamService';
-import { isLeagueCreationLocked, isTournamentStarted } from '../services/pollConfigService';
+import { isGroupPredictionsLocked, isLeagueCreationLocked, isTournamentPredictionsLocked, isTournamentStarted } from '../services/pollConfigService';
+import { serializeGroupPrediction, serializeTournamentPrediction } from '../services/predictionService';
 import { currentDate } from '../utils/time';
 
 const router = Router();
@@ -885,9 +888,20 @@ router.get('/:id/members/:userId/predictions', authMiddleware, async (req: AuthR
     const finishedIds = finishedMatches.map((m) => m._id);
     const upcomingIds = upcomingMatches.map((m) => m._id);
 
-    const [finishedPredictions, upcomingPredictions] = await Promise.all([
+    const [finishedPredictions, upcomingPredictions, groupPredictionsLocked, tournamentPredictionsLocked] = await Promise.all([
       Prediction.find({ userId: targetUserId, matchId: { $in: finishedIds } }).lean(),
       Prediction.find({ userId: targetUserId, matchId: { $in: upcomingIds } }).select('matchId').lean(),
+      isGroupPredictionsLocked(),
+      isTournamentPredictionsLocked(),
+    ]);
+
+    const [groupPredictions, tournamentPrediction] = await Promise.all([
+      groupPredictionsLocked
+        ? GroupPrediction.find({ userId: targetUserId }).sort({ group: 1 }).lean()
+        : Promise.resolve([]),
+      tournamentPredictionsLocked
+        ? TournamentPrediction.findOne({ userId: targetUserId }).lean()
+        : Promise.resolve(null),
     ]);
 
     const pickedSet = new Set(upcomingPredictions.map((p) => p.matchId.toString()));
@@ -918,6 +932,8 @@ router.get('/:id/members/:userId/predictions', authMiddleware, async (req: AuthR
         group: m.group,
         hasPick: pickedSet.has(m._id.toString()),
       })),
+      groupPredictions: await Promise.all(groupPredictions.map((prediction) => serializeGroupPrediction(prediction, language))),
+      tournamentPrediction: await serializeTournamentPrediction(tournamentPrediction, language),
     });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });

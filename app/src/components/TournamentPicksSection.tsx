@@ -143,7 +143,7 @@ function SlotCard({
             <Text style={styles.slotTeamName}>{pick.name}</Text>
           </View>
         ) : (
-          <Text style={styles.slotPlaceholder}>{t('tournament.tapToSelect')}</Text>
+          <Text style={styles.slotPlaceholder}>{onPress ? t('tournament.tapToSelect') : t('common.missing')}</Text>
         )}
       </View>
       {pick && <CheckIcon />}
@@ -193,7 +193,7 @@ function AwardCard({
             </View>
           </View>
         ) : (
-          <Text style={styles.slotPlaceholder}>{t('tournament.tapToSelect')}</Text>
+          <Text style={styles.slotPlaceholder}>{onPress ? t('tournament.tapToSelect') : t('common.missing')}</Text>
         )}
       </View>
       {pick && <CheckIcon />}
@@ -512,7 +512,7 @@ export default function TournamentPicksSection({
             label={t('tournament.bestPlayer')}
             iconName="star-outline"
             teams={teams}
-            disabled={allPlayers.length === 0}
+            disabled={!!onPickChange && allPlayers.length === 0}
             onPress={() => openPlayer('bestPlayer', t('tournament.bestPlayer'), allPlayers)}
           />
           <AwardCard
@@ -520,7 +520,7 @@ export default function TournamentPicksSection({
             label={t('tournament.topScorer')}
             iconName="football-outline"
             teams={teams}
-            disabled={allPlayers.length === 0}
+            disabled={!!onPickChange && allPlayers.length === 0}
             onPress={() => openPlayer('topScorer', t('tournament.topScorer'), allPlayers)}
           />
           <AwardCard
@@ -530,7 +530,7 @@ export default function TournamentPicksSection({
             accentColor={colors.warning}
             accentBg="rgba(236,126,0,0.14)"
             teams={teams}
-            disabled={bestYoungPlayers.length === 0}
+            disabled={!!onPickChange && bestYoungPlayers.length === 0}
             onPress={() => openPlayer('bestYoung', t('tournament.bestYoung'), bestYoungPlayers)}
           />
         </View>
