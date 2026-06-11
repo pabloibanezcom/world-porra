@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { env } from '../config/env';
 import { logger } from '../config/logger';
 import { syncOdds } from '../services/oddsService';
-import { processFinishedMatches, syncAllFixtures } from '../services/syncService';
+import { processFinishedMatches, syncMatchResults } from '../services/syncService';
 
 const router = Router();
 
@@ -56,15 +56,9 @@ router.get('/sync-results', async (req: Request, res: Response): Promise<void> =
     return;
   }
 
-  if (!env.FOOTBALL_DATA_API_KEY) {
-    logger.warn('Results cron rejected: football data API key is not configured');
-    res.status(503).json({ error: 'FOOTBALL_DATA_API_KEY is not configured on the server' });
-    return;
-  }
-
   try {
     logger.info('Results cron started');
-    const fixtureResult = await syncAllFixtures();
+    const fixtureResult = await syncMatchResults({ daysBack: 1, daysForward: 1 });
     const scoringResult = await processFinishedMatches();
     logger.info({ ...fixtureResult, ...scoringResult }, 'Results cron complete');
     res.json({

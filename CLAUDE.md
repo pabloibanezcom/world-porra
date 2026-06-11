@@ -11,7 +11,7 @@ Mobile app for predicting FIFA World Cup 2026 match results. Users compete in pr
 - **API**: Express, Mongoose, JWT, Zod, TypeScript
 - **Database**: MongoDB Atlas
 - **Auth**: Google OAuth via `expo-auth-session` + `google-auth-library`
-- **Match data**: football-data.org API
+- **Match data**: FotMob (live/finished scores via results sync); football-data.org (initial fixture seeding only)
 - **Testing**: Vitest (API)
 
 ## Structure
