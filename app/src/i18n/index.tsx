@@ -110,6 +110,7 @@ const translations: Record<Language, TranslationMap> = {
     'home.goodEvening': 'Good evening',
     'home.fan': 'Fan',
     'home.liveMatches': 'Live Matches',
+    'home.livePotentialPoints': ({ points }) => `+${points} pts if scores hold`,
     'home.nextMatches': 'Next Matches',
     'home.leagues': 'Leagues',
     'home.recentResults': 'Recent Results',
@@ -392,6 +393,7 @@ const translations: Record<Language, TranslationMap> = {
     'matchCard.noPrediction': 'No pick',
     'matchCard.scorePending': 'Score pending',
     'matchCard.advances': ({ code }) => `${code} advances →`,
+    'matchCard.potentialPoints': ({ points }) => `+${points} pts now`,
 
     'resultSheet.yourPick': 'Your Pick',
     'resultSheet.noPick': 'You didn\'t make a pick for this match',
@@ -633,6 +635,7 @@ const translations: Record<Language, TranslationMap> = {
     'home.goodEvening': 'Buenas noches',
     'home.fan': 'Fan',
     'home.liveMatches': 'Partidos en vivo',
+    'home.livePotentialPoints': ({ points }) => `+${points} pts si acaba así`,
     'home.nextMatches': 'Próximos partidos',
     'home.leagues': 'Ligas',
     'home.recentResults': 'Resultados recientes',
@@ -915,6 +918,7 @@ const translations: Record<Language, TranslationMap> = {
     'matchCard.noPrediction': 'Sin pronóstico',
     'matchCard.scorePending': 'Marcador pendiente',
     'matchCard.advances': ({ code }) => `${code} pasa →`,
+    'matchCard.potentialPoints': ({ points }) => `+${points} pts ahora`,
 
     'resultSheet.yourPick': 'Tu pronóstico',
     'resultSheet.noPick': 'No hiciste un pronóstico para este partido',

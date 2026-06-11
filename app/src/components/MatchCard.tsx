@@ -6,6 +6,7 @@ import Badge from './ui/Badge';
 import { colors, fonts } from '../theme';
 import { useI18n } from '../i18n';
 import { useScrollTriggerContext } from '../contexts/ScrollTrigger';
+import LiveBadge from './LiveBadge';
 
 export function oddsToPercents(home: number | null, draw: number | null, away: number | null) {
   if (!home || !draw || !away) return null;
@@ -166,6 +167,7 @@ interface Props {
   result?: Result | null;
   locked?: boolean;
   lockLabel?: string | null;
+  potentialPoints?: number | null;
   onPress?: () => void;
 }
 
@@ -207,7 +209,7 @@ function getCardState(match: Match, prediction?: Prediction | null): MatchCardSt
   return prediction ? 'predicted' : 'empty';
 }
 
-export default function MatchCard({ match, prediction, result, locked, lockLabel, onPress }: Props) {
+export default function MatchCard({ match, prediction, result, locked, lockLabel, potentialPoints, onPress }: Props) {
   const { t, locale } = useI18n();
   const ctx = useScrollTriggerContext();
 
@@ -293,11 +295,7 @@ export default function MatchCard({ match, prediction, result, locked, lockLabel
       action = <Text style={styles.predictedBadge}>✓ {t('matchCard.predicted')}</Text>;
     }
   } else if (state === 'live') {
-    action = (
-      <View style={styles.livePill}>
-        <Text style={styles.liveText}>{t('common.live')}</Text>
-      </View>
-    );
+    action = <LiveBadge />;
   } else if (result) {
     action = <Badge result={result} />;
   } else if (state === 'finished' && !prediction) {
@@ -368,9 +366,16 @@ export default function MatchCard({ match, prediction, result, locked, lockLabel
                   <Text style={styles.scorePending}>{t('matchCard.scorePending')}</Text>
                 )}
                 {prediction ? (
-                  <Text style={styles.pickText}>
-                    {t('common.pick')}: {prediction.homeGoals}–{prediction.awayGoals}
-                  </Text>
+                  <>
+                    <Text style={styles.pickText}>
+                      {t('common.pick')}: {prediction.homeGoals}–{prediction.awayGoals}
+                    </Text>
+                    {state === 'live' && potentialPoints != null && (
+                      <Text style={styles.potentialPointsText}>
+                        {t('matchCard.potentialPoints', { points: potentialPoints })}
+                      </Text>
+                    )}
+                  </>
                 ) : state === 'live' ? (
                   <Text style={styles.pickText}>{t('common.inProgress')}</Text>
                 ) : state === 'finished' ? (
@@ -504,18 +509,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
   lockInfoTextLocked: { color: colors.warning },
-  livePill: {
-    backgroundColor: 'rgba(226,59,74,0.14)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  liveText: {
-    color: colors.danger,
-    fontSize: 11,
-    fontWeight: '700',
-    fontFamily: fonts.bodyMedium,
-  },
   finalText: {
     color: colors.muted,
     fontSize: 11,
@@ -570,6 +563,13 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 2,
     fontFamily: fonts.body,
+  },
+  potentialPointsText: {
+    color: colors.danger,
+    fontSize: 10,
+    marginTop: 1,
+    fontFamily: fonts.bodyMedium,
+    fontWeight: '800',
   },
   vsText: {
     color: colors.dim,

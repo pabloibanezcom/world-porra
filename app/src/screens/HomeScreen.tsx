@@ -28,6 +28,7 @@ import { submitPrediction } from '../api/predictions';
 import { useI18n } from '../i18n';
 import { isPredictionLocked } from '../utils/prediction';
 import { getMatchRefreshDelay, POST_KICKOFF_REFRESH_WINDOW_MS } from '../utils/matchRefresh';
+import { calculateLivePotentialPoints } from '../utils/livePoints';
 
 function SectionLabel({ children }: { children: string }) {
   return (
@@ -161,6 +162,11 @@ export default function HomeScreen() {
 
   const totalPoints = predictions.reduce((sum, prediction) => sum + (prediction.points ?? 0), 0);
   const pointsSummary = loadFailed ? `- ${t('common.points')}` : `${totalPoints} ${t('common.points')}`;
+  const livePotentialPoints = liveMatches.reduce((sum, match) => {
+    const potentialPoints = calculateLivePotentialPoints(cardMatchForHome(match, now), predMap[match._id] ?? null);
+    return potentialPoints == null ? sum : sum + potentialPoints;
+  }, 0);
+  const showLivePotentialPoints = liveMatches.some((match) => !!cardMatchForHome(match, now).result);
   const homeLeagues = leagues.slice(0, 2);
 
   const handleSave = async (matchId: string, score: [number, number], qualifier?: 'HOME' | 'AWAY' | null) => {
@@ -199,7 +205,14 @@ export default function HomeScreen() {
             <Text style={styles.greeting}>{greeting},</Text>
             <View style={styles.headerTitleRow}>
               <Text style={styles.userName}>{firstName}</Text>
-              <Text style={styles.pointsSummary}>{pointsSummary}</Text>
+              <View style={styles.pointsBlock}>
+                <Text style={styles.pointsSummary}>{pointsSummary}</Text>
+                {showLivePotentialPoints && (
+                  <Text style={styles.livePotentialPoints}>
+                    {t('home.livePotentialPoints', { points: livePotentialPoints })}
+                  </Text>
+                )}
+              </View>
             </View>
           </View>
         </View>
@@ -212,12 +225,14 @@ export default function HomeScreen() {
               {liveMatches.map((match) => {
                 const myPred = predMap[match._id] ?? null;
                 const sheetMatch = cardMatchForHome(match, now);
+                const potentialPoints = calculateLivePotentialPoints(sheetMatch, myPred);
 
                 return (
                   <MatchCard
                     key={match._id}
                     match={sheetMatch}
                     prediction={myPred}
+                    potentialPoints={potentialPoints}
                     onPress={() => setSelectedPredictionsMatch(sheetMatch)}
                   />
                 );
@@ -339,7 +354,16 @@ const styles = StyleSheet.create({
   greeting: { color: colors.muted, fontSize: 13, marginBottom: 4, fontFamily: fonts.body },
   headerTitleRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 },
   userName: { color: colors.text, fontSize: 34, fontFamily: fonts.display, lineHeight: 38 },
+  pointsBlock: { alignItems: 'flex-end', justifyContent: 'flex-end' },
   pointsSummary: { color: colors.accent, fontSize: 24, fontFamily: fonts.display, lineHeight: 28 },
+  livePotentialPoints: {
+    color: colors.danger,
+    fontSize: 12,
+    fontFamily: fonts.bodyMedium,
+    fontWeight: '800',
+    lineHeight: 16,
+    marginTop: 1,
+  },
 
   sectionLabel: {
     fontSize: 11, fontWeight: '600', color: colors.dim,

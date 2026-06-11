@@ -18,6 +18,7 @@ import { useI18n } from '../i18n';
 import Avatar from './ui/Avatar';
 import Flag from './ui/Flag';
 import { getTeamLabel } from './MatchCard';
+import LiveBadge from './LiveBadge';
 
 interface Props {
   match: Match | null;
@@ -168,9 +169,7 @@ export default function MatchPredictionsSheet({ match, leagues, onClose }: Props
           </View>
           <View style={styles.metaRow}>
             <Text style={styles.meta}>{groupLabel} · {dateStr} · {timeStr}</Text>
-            <View style={styles.livePill}>
-              <Text style={styles.liveText}>{t('common.live')}</Text>
-            </View>
+            <LiveBadge compact />
           </View>
         </View>
 
@@ -322,18 +321,6 @@ const styles = StyleSheet.create({
     color: colors.dim,
     fontFamily: fonts.body,
     fontSize: 12,
-  },
-  livePill: {
-    borderRadius: 8,
-    backgroundColor: 'rgba(226,59,74,0.14)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  liveText: {
-    color: colors.danger,
-    fontFamily: fonts.bodyMedium,
-    fontSize: 10,
-    fontWeight: '800',
   },
   sectionHeader: {
     flexDirection: 'row',
