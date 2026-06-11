@@ -23,6 +23,7 @@ import MatchCard, { hasTbdTeam } from '../components/MatchCard';
 import LeagueCard from '../components/LeagueCard';
 import Avatar from '../components/ui/Avatar';
 import LoadingView from '../components/ui/LoadingView';
+import LiveBadge from '../components/LiveBadge';
 import { colors, fonts } from '../theme';
 import { submitPrediction } from '../api/predictions';
 import { useI18n } from '../i18n';
@@ -208,9 +209,12 @@ export default function HomeScreen() {
               <View style={styles.pointsBlock}>
                 <Text style={styles.pointsSummary}>{pointsSummary}</Text>
                 {showLivePotentialPoints && (
-                  <Text style={styles.livePotentialPoints}>
-                    {t('home.livePotentialPoints', { points: livePotentialPoints })}
-                  </Text>
+                  <View style={styles.livePotentialRow}>
+                    <LiveBadge iconOnly />
+                    <Text style={styles.livePotentialPoints}>
+                      {t('home.livePotentialPoints', { points: livePotentialPoints })}
+                    </Text>
+                  </View>
                 )}
               </View>
             </View>
@@ -356,6 +360,12 @@ const styles = StyleSheet.create({
   userName: { color: colors.text, fontSize: 34, fontFamily: fonts.display, lineHeight: 38 },
   pointsBlock: { alignItems: 'flex-end', justifyContent: 'flex-end' },
   pointsSummary: { color: colors.accent, fontSize: 24, fontFamily: fonts.display, lineHeight: 28 },
+  livePotentialRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 1,
+  },
   livePotentialPoints: {
     color: colors.danger,
     fontSize: 12,

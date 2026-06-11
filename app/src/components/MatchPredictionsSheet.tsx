@@ -19,6 +19,7 @@ import Avatar from './ui/Avatar';
 import Flag from './ui/Flag';
 import { getTeamLabel } from './MatchCard';
 import LiveBadge from './LiveBadge';
+import { calculateLivePotentialPoints } from '../utils/livePoints';
 
 interface Props {
   match: Match | null;
@@ -228,6 +229,7 @@ export default function MatchPredictionsSheet({ match, leagues, onClose }: Props
                     const user = predictionUser(item);
                     const isMe = user.id === currentUser?.id;
                     const outcome = outcomeFor(item.homeGoals, item.awayGoals);
+                    const potentialPoints = calculateLivePotentialPoints(match, item);
                     return (
                       <View key={item._id} style={styles.friendRow}>
                         <Avatar name={user.name ?? 'Player'} imageUrl={user.avatarUrl} size={34} color={isMe ? colors.accent : colors.blue} />
@@ -239,7 +241,14 @@ export default function MatchPredictionsSheet({ match, leagues, onClose }: Props
                               : t('match.friendPickWinner', { code: outcome === 'HOME' ? homeCode : awayCode })}
                           </Text>
                         </View>
-                        <Text style={styles.friendScore}>{item.homeGoals} - {item.awayGoals}</Text>
+                        <View style={styles.friendScoreBlock}>
+                          <Text style={styles.friendScore}>{item.homeGoals} - {item.awayGoals}</Text>
+                          {potentialPoints != null && (
+                            <Text style={styles.friendPotentialPoints}>
+                              {t('matchCard.potentialPoints', { points: potentialPoints })}
+                            </Text>
+                          )}
+                        </View>
                       </View>
                     );
                   })}
@@ -438,5 +447,15 @@ const styles = StyleSheet.create({
     fontFamily: fonts.displayBold,
     fontSize: 20,
     fontWeight: '800',
+  },
+  friendScoreBlock: {
+    alignItems: 'flex-end',
+  },
+  friendPotentialPoints: {
+    color: colors.danger,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 10,
+    fontWeight: '800',
+    marginTop: 1,
   },
 });

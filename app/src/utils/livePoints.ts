@@ -1,4 +1,10 @@
-import { Match, MatchStage, MatchWinner, Prediction } from '../types';
+import { Match, MatchStage, MatchWinner, Qualifier } from '../types';
+
+type LivePointsPrediction = {
+  homeGoals: number;
+  awayGoals: number;
+  qualifier?: Qualifier | null;
+};
 
 const KNOCKOUT_STAGES = new Set<MatchStage>([
   'ROUND_OF_32',
@@ -35,7 +41,7 @@ function getOutcome(home: number, away: number): MatchWinner {
   return 'DRAW';
 }
 
-export function calculateLivePotentialPoints(match: Match, prediction?: Prediction | null): number | null {
+export function calculateLivePotentialPoints(match: Match, prediction?: LivePointsPrediction | null): number | null {
   if (!prediction || !match.result) return null;
 
   const predictedHome = prediction.homeGoals;

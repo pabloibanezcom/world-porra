@@ -5,10 +5,11 @@ import { useI18n } from '../i18n';
 
 interface Props {
   compact?: boolean;
+  iconOnly?: boolean;
   style?: ViewStyle;
 }
 
-export default function LiveBadge({ compact, style }: Props) {
+export default function LiveBadge({ compact, iconOnly, style }: Props) {
   const { t } = useI18n();
   const pulse = useRef(new Animated.Value(0)).current;
 
@@ -34,9 +35,9 @@ export default function LiveBadge({ compact, style }: Props) {
   });
 
   return (
-    <Animated.View style={[styles.pill, compact && styles.pillCompact, style]}>
+    <Animated.View style={[styles.pill, compact && styles.pillCompact, iconOnly && styles.pillIconOnly, style]}>
       <Animated.View style={[styles.dot, { opacity: dotOpacity, transform: [{ scale: dotScale }] }]} />
-      <Text style={[styles.text, compact && styles.textCompact]}>{t('common.live')}</Text>
+      {!iconOnly && <Text style={[styles.text, compact && styles.textCompact]}>{t('common.live')}</Text>}
     </Animated.View>
   );
 }
@@ -54,6 +55,11 @@ const styles = StyleSheet.create({
   pillCompact: {
     paddingHorizontal: 8,
     paddingVertical: 3,
+  },
+  pillIconOnly: {
+    backgroundColor: 'transparent',
+    paddingHorizontal: 0,
+    paddingVertical: 0,
   },
   dot: {
     width: 7,

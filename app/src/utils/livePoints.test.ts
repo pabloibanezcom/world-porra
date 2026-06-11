@@ -40,7 +40,6 @@ describe('calculateLivePotentialPoints', () => {
         ...basePrediction,
         homeGoals: 0,
         awayGoals: 1,
-        predictedWinner: 'AWAY',
       })
     ).toBe(0);
   });
