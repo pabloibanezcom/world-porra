@@ -21,6 +21,7 @@ import { useI18n } from '../i18n';
 import { getPredictionLockTime, isPredictionLocked } from '../utils/prediction';
 import { formatLockStatus } from '../utils/deadline';
 import { usePicksData } from '../hooks/usePicksData';
+import { calculateLivePotentialPoints } from '../utils/livePoints';
 
 function getResult(pred: Prediction, match: Match): 'exact' | 'correct' | 'wrong' | null {
   if (!match.result) return null;
@@ -101,11 +102,11 @@ export default function PicksScreen() {
   }, []);
 
   const upcoming = useMemo(
-    () => matches.filter((m) => m.status === 'SCHEDULED' || m.status === 'LIVE'),
+    () => matches.filter((m) => m.status === 'SCHEDULED'),
     [matches],
   );
   const finished = useMemo(
-    () => matches.filter((m) => m.status === 'FINISHED'),
+    () => matches.filter((m) => m.status === 'LIVE' || m.status === 'FINISHED'),
     [matches],
   );
   const shown = useMemo(
@@ -196,9 +197,12 @@ export default function PicksScreen() {
                     const locked = isPredictionLocked(m);
                     const canPredict = !locked && !hasTbdTeam(m);
                     const lockLabel = formatLockStatus(getPredictionLockTime(m), now, t);
+                    const potentialPoints = m.status === 'LIVE'
+                      ? calculateLivePotentialPoints(m, pred)
+                      : null;
                     const onPress = canPredict
                       ? () => setSelectedMatch(m)
-                      : m.status === 'FINISHED'
+                      : (m.status === 'FINISHED' || (m.status === 'LIVE' && m.result))
                       ? () => setSelectedResult(m)
                       : undefined;
 
@@ -210,6 +214,7 @@ export default function PicksScreen() {
                         result={result}
                         locked={locked}
                         lockLabel={lockLabel}
+                        potentialPoints={potentialPoints}
                         onPress={onPress}
                       />
                     );
