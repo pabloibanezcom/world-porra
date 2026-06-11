@@ -20,6 +20,11 @@ import { runWithRequestContext } from './utils/requestContext';
 
 export const app = express();
 
+// Vercel terminates TLS and forwards via its proxy; trust it so req.ip is the
+// real client IP. Without this, every request appears to come from the proxy's
+// IP and all users share one rate-limit bucket.
+app.set('trust proxy', 1);
+
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
