@@ -25,7 +25,7 @@ jobs:
         run: npm ci
 
       - name: Run API tests
-        run: npm test --workspace=api
+        run: npm test --workspace=api -- --maxWorkers=1
 
       - name: Build API
         run: npm run build --workspace=api
