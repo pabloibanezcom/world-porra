@@ -44,6 +44,12 @@ function outcomeFor(homeGoals: number, awayGoals: number): 'HOME' | 'DRAW' | 'AW
   return 'DRAW';
 }
 
+function userIdValue(user: League['members'][number]['userId']): string | null {
+  if (!user) return null;
+  if (typeof user === 'string') return user;
+  return user.id ?? user._id ?? null;
+}
+
 export default function MatchPredictionsSheet({ match, leagues, onClose }: Props) {
   const { t, locale } = useI18n();
   const currentUser = useAuthStore((s) => s.user);
@@ -52,10 +58,23 @@ export default function MatchPredictionsSheet({ match, leagues, onClose }: Props
   const [loading, setLoading] = useState(false);
   const slideAnim = useRef(new Animated.Value(400)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const memberLeagues = useMemo(
+    () =>
+      currentUser?.id
+        ? leagues.filter((league) =>
+            league.members.some((member) => userIdValue(member.userId) === currentUser.id)
+          )
+        : [],
+    [currentUser?.id, leagues],
+  );
 
   useEffect(() => {
     if (!match) return;
-    setSelectedLeagueId((current) => current ?? leagues[0]?._id ?? null);
+    setSelectedLeagueId((current) =>
+      current && memberLeagues.some((league) => league._id === current)
+        ? current
+        : memberLeagues[0]?._id ?? null
+    );
     setPredictions([]);
     setLoading(false);
     slideAnim.setValue(400);
@@ -64,7 +83,7 @@ export default function MatchPredictionsSheet({ match, leagues, onClose }: Props
       Animated.timing(slideAnim, { toValue: 0, duration: 280, useNativeDriver: true }),
       Animated.timing(fadeAnim, { toValue: 1, duration: 220, useNativeDriver: true }),
     ]).start();
-  }, [match?._id, leagues, fadeAnim, slideAnim]);
+  }, [match?._id, memberLeagues, fadeAnim, slideAnim]);
 
   useEffect(() => {
     if (!match || !isStarted(match) || !selectedLeagueId) {
@@ -116,7 +135,7 @@ export default function MatchPredictionsSheet({ match, leagues, onClose }: Props
   const groupLabel = match.group ? t('common.group', { group: match.group }) : match.stage;
   const dateStr = new Date(match.utcDate).toLocaleDateString(locale, { month: 'short', day: 'numeric' });
   const timeStr = new Date(match.utcDate).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
-  const selectedLeague = leagues.find((league) => league._id === selectedLeagueId);
+  const selectedLeague = memberLeagues.find((league) => league._id === selectedLeagueId);
   const matchStarted = isStarted(match);
   const scoreText = match.result
     ? `${match.result.homeGoals} - ${match.result.awayGoals}`
@@ -162,13 +181,13 @@ export default function MatchPredictionsSheet({ match, leagues, onClose }: Props
 
         {!matchStarted ? (
           <Text style={styles.hint}>{t('match.friendPicksLocked')}</Text>
-        ) : leagues.length === 0 ? (
+        ) : memberLeagues.length === 0 ? (
           <Text style={styles.hint}>{t('match.friendPicksNoLeague')}</Text>
         ) : (
           <>
-            {leagues.length > 1 && (
+            {memberLeagues.length > 1 && (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.leagueTabs}>
-                {leagues.map((league) => (
+                {memberLeagues.map((league) => (
                   <TouchableOpacity
                     key={league._id}
                     style={[styles.leagueTab, selectedLeagueId === league._id && styles.leagueTabActive]}
