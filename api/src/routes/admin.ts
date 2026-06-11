@@ -42,6 +42,14 @@ const deleteUserSchema = z.object({
   confirmation: z.string().trim().min(1),
 });
 
+const matchResultSchema = z.object({
+  homeGoals: z.number().int().min(0).max(30),
+  awayGoals: z.number().int().min(0).max(30),
+  // Optional override — required for knockout ties decided on penalties, where
+  // the advancing side can't be derived from the scoreline.
+  winner: z.enum(['HOME', 'AWAY', 'DRAW']).optional(),
+});
+
 const TOURNAMENT_PICK_FIELDS = ['championCode', 'runnerUpCode', 'semi1Code', 'semi2Code', 'bestPlayer', 'topScorer', 'bestYoung'] as const;
 
 interface AdminUserCompletionTotals {
@@ -431,6 +439,64 @@ router.delete('/users/:userId', authMiddleware, async (req: AuthRequest, res: Re
   } catch (error) {
     if (error instanceof z.ZodError) {
       res.status(400).json({ error: 'Invalid delete confirmation', details: error.errors });
+      return;
+    }
+    next(error);
+  }
+});
+
+// Manually set a match result and immediately re-score predictions. Used when
+// the football-data feed lags or returns a finished match with no score. The
+// result is flagged `manualResult` so the periodic sync won't overwrite it.
+router.put('/matches/:matchId/result', authMiddleware, async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    if (!(await requireMasterUser(req, res))) return;
+
+    const matchId = req.params.matchId;
+    if (typeof matchId !== 'string' || !mongoose.Types.ObjectId.isValid(matchId)) {
+      res.status(400).json({ error: 'Invalid match id' });
+      return;
+    }
+
+    const { homeGoals, awayGoals, winner } = matchResultSchema.parse(req.body ?? {});
+
+    const match = await Match.findById(matchId);
+    if (!match) {
+      res.status(404).json({ error: 'Match not found' });
+      return;
+    }
+
+    const derivedWinner = homeGoals > awayGoals ? 'HOME' : awayGoals > homeGoals ? 'AWAY' : 'DRAW';
+    const resolvedWinner = winner ?? derivedWinner;
+
+    match.result = { homeGoals, awayGoals, winner: resolvedWinner };
+    match.status = 'FINISHED';
+    match.manualResult = true;
+    // Reset so processFinishedMatches re-scores (also covers correcting a result).
+    match.scoresProcessed = false;
+    await match.save();
+
+    const scoringResult = await processFinishedMatches();
+
+    logger.info(
+      { adminUserId: req.userId, matchId, externalId: match.externalId, homeGoals, awayGoals, winner: resolvedWinner },
+      'Master user set a manual match result'
+    );
+
+    res.json({
+      message: 'Match result saved',
+      match: {
+        _id: String(match._id),
+        externalId: match.externalId,
+        status: match.status,
+        result: match.result,
+        manualResult: match.manualResult,
+      },
+      scoring: scoringResult,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: 'Invalid match result', details: error.errors });
       return;
     }
     next(error);

@@ -20,7 +20,20 @@ export async function syncAllFixtures(): Promise<{ fixturesSynced: number }> {
     ]);
 
     const { sourceTeams, ...matchUpdate } = mapped;
-    await Match.findOneAndUpdate({ externalId: mapped.externalId }, matchUpdate, { upsert: true });
+
+    // Preserve admin-entered results: football-data frequently reports a match
+    // as FINISHED with a null score, which would otherwise wipe a manual result
+    // and revert the status. For those matches, refresh only descriptive fields.
+    const existing = await Match.findOne({ externalId: mapped.externalId })
+      .select('manualResult')
+      .lean();
+
+    if (existing?.manualResult) {
+      const { status: _status, result: _result, ...descriptiveFields } = matchUpdate;
+      await Match.updateOne({ externalId: mapped.externalId }, descriptiveFields);
+    } else {
+      await Match.findOneAndUpdate({ externalId: mapped.externalId }, matchUpdate, { upsert: true });
+    }
   }
 
   logger.info(`Synced ${externalMatches.length} fixtures`);

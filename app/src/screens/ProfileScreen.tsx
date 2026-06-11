@@ -224,6 +224,15 @@ export default function ProfileScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.settingsRow, styles.settingsRowBorder]}
+                onPress={() => (navigation as any).navigate('AdminMatchResults')}
+              >
+                <Text style={styles.settingsLabel}>{t('profile.matchResults')}</Text>
+                <View style={styles.settingsRight}>
+                  <Text style={styles.chevron}>›</Text>
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.settingsRow, styles.settingsRowBorder]}
                 onPress={() => setNotifyModalVisible(true)}
               >
                 <Text style={styles.settingsLabel}>{t('profile.notifyAll')}</Text>
