@@ -1,12 +1,199 @@
 import { Match } from '../models/Match';
 import { Prediction } from '../models/Prediction';
 import { User } from '../models/User';
+import { CountryTeam } from '../models/CountryTeam';
 import { fetchAllMatches, mapExternalMatch } from './footballApi';
+import { fetchWcMatches, FotmobMatch } from './fotmobApi';
 import { calculatePoints } from './scoring';
 import { logger } from '../config/logger';
-import { MatchStage } from '../models/Match';
+import { MatchStage, MatchWinner } from '../models/Match';
 import { sendToUser } from './pushService';
 import { hydrateMatch, upsertCountryTeamFromSource } from './countryTeamService';
+
+// FotMob team names that differ from the English names we store.
+const FOTMOB_NAME_ALIASES: Record<string, string> = {
+  iran: 'IRN',
+  'ir iran': 'IRN',
+  turkey: 'TUR',
+  turkiye: 'TUR',
+  'korea republic': 'KOR',
+  'south korea': 'KOR',
+  'congo dr': 'COD',
+  'dr congo': 'COD',
+  'bosnia herzegovina': 'BIH',
+  'bosnia and herzegovina': 'BIH',
+  'ivory coast': 'CIV',
+  'cote divoire': 'CIV',
+  curacao: 'CUR',
+  'cape verde': 'CPV',
+  'cabo verde': 'CPV',
+  'czech republic': 'CZE',
+  czechia: 'CZE',
+  usa: 'USA',
+  'united states': 'USA',
+};
+
+function normalizeTeamName(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+/** Build a normalized English-name -> team code resolver from our own teams. */
+async function buildTeamCodeResolver(): Promise<(name: string) => string | null> {
+  const teams = await CountryTeam.find({}).select('code names').lean();
+  const byName = new Map<string, string>();
+  for (const team of teams) {
+    const names = team.names as unknown as Record<string, string> | Map<string, string>;
+    const englishName = names instanceof Map ? names.get('en') : names?.en;
+    if (englishName) byName.set(normalizeTeamName(englishName), team.code);
+  }
+  return (name: string) => {
+    if (!name) return null;
+    const key = normalizeTeamName(name);
+    return FOTMOB_NAME_ALIASES[key] ?? byName.get(key) ?? null;
+  };
+}
+
+function resolveWinner(fm: FotmobMatch): MatchWinner {
+  const home = fm.homeScore ?? 0;
+  const away = fm.awayScore ?? 0;
+  if (home > away) return 'HOME';
+  if (away > home) return 'AWAY';
+  // Knockout tie decided on penalties — FotMob marks the eliminated team.
+  if (fm.eliminatedTeamId != null) {
+    if (fm.eliminatedTeamId === fm.homeId) return 'AWAY';
+    if (fm.eliminatedTeamId === fm.awayId) return 'HOME';
+  }
+  return 'DRAW';
+}
+
+/** Locate the stored match a FotMob fixture corresponds to. */
+async function locateMatch(fm: FotmobMatch, resolveCode: (name: string) => string | null) {
+  if (typeof fm.fotmobId === 'number') {
+    const byId = await Match.findOne({ fotmobMatchId: fm.fotmobId });
+    if (byId) return byId;
+  }
+
+  const homeCode = resolveCode(fm.homeName);
+  const awayCode = resolveCode(fm.awayName);
+
+  if (fm.utcTime) {
+    const atTime = await Match.find({ utcDate: fm.utcTime });
+    if (atTime.length === 1) return atTime[0];
+    if (atTime.length > 1 && homeCode && awayCode) {
+      const match = atTime.find((m) => m.homeTeamCode === homeCode && m.awayTeamCode === awayCode);
+      if (match) return match;
+    }
+  }
+
+  // Fallback by team pairing (handles reschedules; a group pairing is unique).
+  if (homeCode && awayCode) {
+    return Match.findOne({ homeTeamCode: homeCode, awayTeamCode: awayCode });
+  }
+  return null;
+}
+
+export interface SyncMatchResultsOptions {
+  daysBack?: number;
+  daysForward?: number;
+}
+
+/**
+ * Pull World Cup match data from FotMob and update our stored matches: live and
+ * finished scores, knockout bracket teams as they're decided, and reschedules.
+ * Admin-entered results (`manualResult`) are never overwritten. Scoring of
+ * finished matches is handled separately by processFinishedMatches.
+ */
+export async function syncMatchResults(
+  options: SyncMatchResultsOptions = {}
+): Promise<{ matchesUpdated: number; matchesUnmatched: number }> {
+  const { daysBack = 1, daysForward = 1 } = options;
+  logger.info({ daysBack, daysForward }, 'Syncing match results from FotMob...');
+
+  const fmMatches = await fetchWcMatches(daysBack, daysForward);
+  const resolveCode = await buildTeamCodeResolver();
+
+  let matchesUpdated = 0;
+  let matchesUnmatched = 0;
+
+  for (const fm of fmMatches) {
+    const match = await locateMatch(fm, resolveCode);
+    if (!match) {
+      matchesUnmatched += 1;
+      logger.warn(
+        { fotmobId: fm.fotmobId, home: fm.homeName, away: fm.awayName, utc: fm.utcTime },
+        'FotMob match could not be mapped to a stored match'
+      );
+      continue;
+    }
+
+    let changed = false;
+
+    if (match.fotmobMatchId !== fm.fotmobId) {
+      match.fotmobMatchId = fm.fotmobId;
+      changed = true;
+    }
+
+    // Fill knockout bracket teams once FotMob reveals them.
+    const homeCode = resolveCode(fm.homeName);
+    const awayCode = resolveCode(fm.awayName);
+    if (homeCode && match.homeTeamCode === 'TBD') {
+      match.homeTeamCode = homeCode;
+      changed = true;
+    }
+    if (awayCode && match.awayTeamCode === 'TBD') {
+      match.awayTeamCode = awayCode;
+      changed = true;
+    }
+
+    // Keep kickoff time in sync (reschedules).
+    if (fm.utcTime && match.utcDate.getTime() !== fm.utcTime.getTime()) {
+      match.utcDate = fm.utcTime;
+      changed = true;
+    }
+
+    // Never touch status/result of an admin-entered result.
+    if (!match.manualResult) {
+      const hasScore = fm.homeScore != null && fm.awayScore != null;
+      if (fm.cancelled) {
+        if (match.status !== 'POSTPONED') {
+          match.status = 'POSTPONED';
+          changed = true;
+        }
+      } else if (fm.finished && hasScore) {
+        const winner = resolveWinner(fm);
+        if (
+          match.status !== 'FINISHED' ||
+          match.result?.homeGoals !== fm.homeScore ||
+          match.result?.awayGoals !== fm.awayScore ||
+          match.result?.winner !== winner
+        ) {
+          match.status = 'FINISHED';
+          match.result = { homeGoals: fm.homeScore!, awayGoals: fm.awayScore!, winner };
+          match.scoresProcessed = false;
+          changed = true;
+        }
+      } else if (fm.started && hasScore) {
+        const winner = resolveWinner(fm);
+        match.status = 'LIVE';
+        match.result = { homeGoals: fm.homeScore!, awayGoals: fm.awayScore!, winner };
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      await match.save();
+      matchesUpdated += 1;
+    }
+  }
+
+  logger.info({ matchesUpdated, matchesUnmatched, fetched: fmMatches.length }, 'FotMob match sync complete');
+  return { matchesUpdated, matchesUnmatched };
+}
 
 export async function syncAllFixtures(): Promise<{ fixturesSynced: number }> {
   logger.info('Syncing all fixtures...');

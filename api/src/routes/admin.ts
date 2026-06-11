@@ -16,7 +16,7 @@ import { PushSubscription } from '../models/PushSubscription';
 import { TournamentPrediction } from '../models/TournamentPrediction';
 import { User } from '../models/User';
 import { UserDevice } from '../models/UserDevice';
-import { processFinishedMatches, syncAllFixtures } from '../services/syncService';
+import { processFinishedMatches, syncMatchResults } from '../services/syncService';
 import { syncOdds } from '../services/oddsService';
 import { seedTournamentScenarios } from '../jobs/seedScenario';
 import { SCENARIOS, getDbName, getScenarioDbName, scenarioBySlug } from '../jobs/tournamentScenarios';
@@ -512,11 +512,6 @@ router.post('/sync', syncAuthMiddleware, async (req: Request, res: Response, nex
       return;
     }
 
-    if (syncFixtures && !env.FOOTBALL_DATA_API_KEY) {
-      res.status(503).json({ error: 'FOOTBALL_DATA_API_KEY is not configured on the server' });
-      return;
-    }
-
     if (doSyncOdds && !env.ODDS_API_KEY) {
       res.status(503).json({ error: 'ODDS_API_KEY is not configured on the server' });
       return;
@@ -524,7 +519,9 @@ router.post('/sync', syncAuthMiddleware, async (req: Request, res: Response, nex
 
     logger.info({ syncFixtures, processResults, syncOdds: doSyncOdds, forceOdds }, 'Running manual sync');
 
-    const fixtureResult = syncFixtures ? await syncAllFixtures() : { fixturesSynced: 0 };
+    const fixtureResult = syncFixtures
+      ? await syncMatchResults({ daysBack: 1, daysForward: 40 })
+      : { matchesUpdated: 0, matchesUnmatched: 0 };
     const scoringResult = processResults
       ? await processFinishedMatches()
       : { matchesProcessed: 0, predictionsScored: 0, leaguesUpdated: 0 };

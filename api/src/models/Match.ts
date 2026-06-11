@@ -38,8 +38,10 @@ export interface IMatch extends Document {
   odds: IMatchOdds | null;
   scoresProcessed: boolean;
   // When true, the result was entered by an admin and must not be overwritten
-  // by the football-data sync (which may report a finished match with no score).
+  // by the results sync (which may report a finished match with no score).
   manualResult: boolean;
+  // FotMob's match id, cached once a match is mapped so later syncs are direct.
+  fotmobMatchId: number | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -97,12 +99,14 @@ const matchSchema = new Schema<IMatch>(
     },
     scoresProcessed: { type: Boolean, default: false },
     manualResult: { type: Boolean, default: false },
+    fotmobMatchId: { type: Number, default: null },
   },
   { timestamps: true }
 );
 
 matchSchema.index({ utcDate: 1 });
 matchSchema.index({ status: 1 });
+matchSchema.index({ fotmobMatchId: 1 }, { sparse: true });
 matchSchema.index({ homeTeamCode: 1 });
 matchSchema.index({ awayTeamCode: 1 });
 

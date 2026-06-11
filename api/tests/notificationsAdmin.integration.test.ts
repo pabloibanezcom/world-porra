@@ -14,7 +14,7 @@ const emailMocks = vi.hoisted(() => ({
 }));
 
 const syncMocks = vi.hoisted(() => ({
-  syncAllFixtures: vi.fn().mockResolvedValue({ fixturesSynced: 3 }),
+  syncMatchResults: vi.fn().mockResolvedValue({ matchesUpdated: 3, matchesUnmatched: 0 }),
   processFinishedMatches: vi.fn().mockResolvedValue({
     matchesProcessed: 2,
     predictionsScored: 5,
@@ -243,23 +243,23 @@ describe('admin sync route', () => {
       ok: true,
       syncFixtures: false,
       processResults: true,
-      fixturesSynced: 0,
+      matchesUpdated: 0,
       matchesProcessed: 2,
       predictionsScored: 5,
       leaguesUpdated: 2,
     });
-    expect(syncMocks.syncAllFixtures).not.toHaveBeenCalled();
+    expect(syncMocks.syncMatchResults).not.toHaveBeenCalled();
     expect(syncMocks.processFinishedMatches).toHaveBeenCalledOnce();
   });
 
-  it('rejects fixture sync when the football data API key is not configured', async () => {
-    const response = await requestJson('/admin/sync', {
+  it('runs the FotMob match sync when fixtures are requested (no API key required)', async () => {
+    const response = await requestJson<{ ok: boolean; matchesUpdated: number }>('/admin/sync', {
       headers: { 'x-sync-api-key': 'test-sync-key' },
       body: { syncFixtures: true, processResults: false },
     });
 
-    expect(response.status).toBe(503);
-    expect(response.body).toEqual({ error: 'FOOTBALL_DATA_API_KEY is not configured on the server' });
-    expect(syncMocks.syncAllFixtures).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({ ok: true, syncFixtures: true, matchesUpdated: 3 });
+    expect(syncMocks.syncMatchResults).toHaveBeenCalledOnce();
   });
 });

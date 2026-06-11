@@ -1,5 +1,5 @@
 import cron from 'node-cron';
-import { syncAllFixtures, processFinishedMatches } from '../services/syncService';
+import { syncMatchResults, processFinishedMatches } from '../services/syncService';
 import { syncOdds } from '../services/oddsService';
 import { logger } from '../config/logger';
 import { Match } from '../models/Match';
@@ -7,20 +7,20 @@ import { sendToAll } from '../services/pushService';
 import { hydrateMatch } from '../services/countryTeamService';
 
 export function startSyncJobs(): void {
-  // Every 5 minutes during tournament — sync and score
+  // Every 5 minutes during tournament — sync results and score
   cron.schedule('*/5 * * * *', async () => {
     try {
-      await syncAllFixtures();
+      await syncMatchResults({ daysBack: 1, daysForward: 1 });
       await processFinishedMatches();
     } catch (error) {
       logger.error({ err: error }, 'Sync job failed');
     }
   });
 
-  // Daily at 6 AM UTC — full fixture sync
+  // Daily at 6 AM UTC — refresh the full upcoming schedule and knockout bracket
   cron.schedule('0 6 * * *', async () => {
     try {
-      await syncAllFixtures();
+      await syncMatchResults({ daysBack: 1, daysForward: 40 });
     } catch (error) {
       logger.error({ err: error }, 'Daily sync failed');
     }
