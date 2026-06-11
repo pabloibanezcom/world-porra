@@ -12,13 +12,19 @@ const CONFIG: Record<Result, { label: string; bg: string; color: string }> = {
 
 interface BadgeProps {
   result: Result;
+  // Actual points earned for this prediction. When provided, the badge shows
+  // the real total instead of the static placeholder label (points are
+  // odds-based, so an exact pick is rarely exactly +10).
+  points?: number | null;
 }
 
-export default function Badge({ result }: BadgeProps) {
+export default function Badge({ result, points }: BadgeProps) {
   const cfg = CONFIG[result];
+  const label =
+    points != null ? (points > 0 ? `+${points}` : `${points}`) : cfg.label;
   return (
     <View style={[styles.base, { backgroundColor: cfg.bg }]}>
-      <Text style={[styles.text, { color: cfg.color }]}>{cfg.label}</Text>
+      <Text style={[styles.text, { color: cfg.color }]}>{label}</Text>
     </View>
   );
 }

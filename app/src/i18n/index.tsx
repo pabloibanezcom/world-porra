@@ -454,6 +454,8 @@ const translations: Record<Language, TranslationMap> = {
     'member.sendReminder': 'Send reminder',
     'member.remind': ({ name }) => `Remind ${name}`,
     'member.heroNameYou': ({ name }) => `${name} (You)`,
+    'member.memberView': 'Member',
+    'member.adminView': 'Admin',
 
     'tournament.picks': 'Tournament picks',
     'tournament.finalFour': 'Final Four',
@@ -993,6 +995,8 @@ const translations: Record<Language, TranslationMap> = {
     'member.sendReminder': 'Enviar recordatorio',
     'member.remind': ({ name }) => `Recordar a ${name}`,
     'member.heroNameYou': ({ name }) => `${name} (Tú)`,
+    'member.memberView': 'Miembro',
+    'member.adminView': 'Admin',
 
     'tournament.picks': 'Pronósticos del torneo',
     'tournament.finalFour': 'Final Four',

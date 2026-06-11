@@ -59,17 +59,30 @@ npm run android          # Run on Android emulator
 
 ## Game Mechanics
 
-### Points System
-| Outcome | Base Points |
-|---------|-------------|
-| Exact score | 10 |
-| Correct GD + winner | 6 |
-| Correct draw (wrong score) | 5 |
-| Correct winner only | 4 |
-| Wrong | 0 |
+### Points System (odds-based)
 
-### Stage Multipliers
-Group x1, R32 x1.5, R16 x2, QF x2.5, SF x3, Third Place/Final x4
+Scoring is odds-based, not a fixed table — see `api/src/services/scoring.ts`.
+
+**Group stage**
+- Wrong outcome (winner/draw) → `0`
+- Correct outcome → `round(chosenOdds × 2)` (fallback `2` if no odds), where `chosenOdds` is the odds of the predicted outcome (home/draw/away)
+- Exact score adds a `+5` bonus
+- Total capped at `20`
+
+**Knockout stage** = `advancingPts + exactBonus`
+- `advancingPts` = `round(advancingOdds × roundMultiplier)` if the predicted qualifier matches the actual winner, else `0`
+- `exactBonus` = fixed per-round bonus if the exact score is correct, else `0`
+
+| Stage | Round multiplier | Exact bonus |
+|-------|------------------|-------------|
+| R32 | 2 | 6 |
+| R16 | 3 | 8 |
+| QF | 4 | 10 |
+| SF | 5 | 12 |
+| Third Place | 4 | 10 |
+| Final | 6 | 15 |
+
+> Note: because outcome points scale with odds, an exact prediction is rarely worth exactly "+10" — match-result badges show the actual points earned.
 
 ### Leagues
 - Private leagues with 8-character invite codes

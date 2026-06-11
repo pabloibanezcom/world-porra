@@ -113,6 +113,7 @@ export default function MemberScreen() {
   const [notifyVisible, setNotifyVisible] = useState(false);
   const [deletingUser, setDeletingUser] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [view, setView] = useState<'member' | 'admin'>('member');
 
   const loadLeagueDetail = useCallback(async () => {
     if (!params.leagueId || !params.memberId) {
@@ -168,7 +169,14 @@ export default function MemberScreen() {
   const backLabel = hasLeagueContext ? params.leagueName : params.backLabel ?? t('adminUsers.title');
   const deleteConfirmationMatches = !!adminDetail && deleteConfirmation.trim() === adminDetail.user.email;
   const isSelectedCurrentUser = !!adminDetail && adminDetail.user.id === currentUser?.id;
-  const showGlobalRecentPicks = !!adminDetail && !hasLeagueContext;
+  // When a master opens a league member, both the league-scoped predictions and
+  // the global admin detail load. Split them behind a tab toggle instead of
+  // showing everything mixed together.
+  const showTabs = hasLeagueContext && !!adminDetail;
+  const activeAdminView = showTabs ? view === 'admin' : (!!adminDetail && !hasLeagueContext);
+  const showMemberSections = hasLeagueContext && !activeAdminView;
+  const showAdminSections = !!adminDetail && activeAdminView;
+  const showGlobalRecentPicks = showAdminSections;
   const pageLoading = (hasLeagueContext && leagueLoading) || (currentUser?.isMaster && adminLoading && !adminDetail);
 
   const onDeleteUser = async () => {
@@ -227,8 +235,27 @@ export default function MemberScreen() {
           </View>
         </View>
 
+        {showTabs && (
+          <View style={styles.tabBar}>
+            <TouchableOpacity
+              style={[styles.tab, !activeAdminView && styles.tabActive]}
+              onPress={() => setView('member')}
+              activeOpacity={0.85}
+            >
+              <Text style={[styles.tabText, !activeAdminView && styles.tabTextActive]}>{t('member.memberView')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tab, activeAdminView && styles.tabActive]}
+              onPress={() => setView('admin')}
+              activeOpacity={0.85}
+            >
+              <Text style={[styles.tabText, activeAdminView && styles.tabTextActive]}>{t('member.adminView')}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         <View style={styles.statsRow}>
-          {hasLeagueContext ? (
+          {!activeAdminView && hasLeagueContext ? (
             canSeePendingPicks ? (
               <>
                 <StatCard label={t('member.picksMade')} value={`${picksMade}/${picksTotal}`} color={colors.text} loading={leagueLoading} />
@@ -265,7 +292,7 @@ export default function MemberScreen() {
           <ActivityIndicator color={colors.accent} style={{ marginTop: 22 }} />
         ) : (
           <>
-            {adminDetail && (
+            {showAdminSections && adminDetail && (
               <>
                 <View>
                   <SectionLabel>{t('adminUsers.account')}</SectionLabel>
@@ -329,7 +356,7 @@ export default function MemberScreen() {
               </>
             )}
 
-            {hasLeagueContext && finishedMatches.length > 0 && (
+            {showMemberSections && finishedMatches.length > 0 && (
               <View>
                 <SectionLabel>{t('member.latestPicks')}</SectionLabel>
                 <View style={styles.cardsColumn}>
@@ -340,7 +367,7 @@ export default function MemberScreen() {
               </View>
             )}
 
-            {hasLeagueContext && groupPredictions.length > 0 && (
+            {showMemberSections && groupPredictions.length > 0 && (
               <View>
                 <SectionLabel>{t('member.groupPicks')}</SectionLabel>
                 <View style={styles.groupPredictionCards}>
@@ -357,14 +384,14 @@ export default function MemberScreen() {
               </View>
             )}
 
-            {hasLeagueContext && tournamentPrediction && (
+            {showMemberSections && tournamentPrediction && (
               <View>
                 <SectionLabel>{t('member.finalPicks')}</SectionLabel>
                 <TournamentPicksSection picks={tournamentPrediction} teams={[]} />
               </View>
             )}
 
-            {hasLeagueContext && canSeePendingPicks && missingUpcomingMatches.length > 0 && (
+            {showMemberSections && canSeePendingPicks && missingUpcomingMatches.length > 0 && (
               <View>
                 <SectionLabel>{t('member.pendingPicks')}</SectionLabel>
                 <View style={styles.cardsColumn}>
@@ -413,7 +440,7 @@ export default function MemberScreen() {
               </View>
             )}
 
-            {adminDetail && (
+            {showAdminSections && adminDetail && (
               <>
                 <View>
                   <SectionLabel>{t('adminUsers.groupPicks')}</SectionLabel>
@@ -622,6 +649,25 @@ const styles = StyleSheet.create({
   heroBadges: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 },
   pill: { borderRadius: 9999, paddingHorizontal: 14, paddingVertical: 5 },
   pillText: { fontFamily: fonts.displayBold, fontSize: 13, fontWeight: '700' },
+
+  tabBar: {
+    flexDirection: 'row',
+    gap: 4,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    padding: 4,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 9,
+    borderRadius: 9,
+    alignItems: 'center',
+  },
+  tabActive: { backgroundColor: colors.accent },
+  tabText: { color: colors.muted, fontFamily: fonts.bodyMedium, fontSize: 13, fontWeight: '600' },
+  tabTextActive: { color: '#fff' },
 
   statsRow: { flexDirection: 'row', gap: 8 },
   statCard: {
