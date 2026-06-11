@@ -133,6 +133,35 @@ function parseRequestsRemaining(value: unknown): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function formatOddsApiTimestamp(date: Date): string {
+  return date.toISOString().replace(/\.\d{3}Z$/, 'Z');
+}
+
+function getOddsApiErrorDetails(error: unknown): {
+  status: number | null;
+  errorCode: unknown;
+  message: unknown;
+  requestsRemaining: number | null;
+} {
+  const response =
+    error && typeof error === 'object'
+      ? (error as {
+          response?: {
+            status?: number;
+            data?: { error_code?: unknown; message?: unknown };
+            headers?: Record<string, unknown>;
+          };
+        }).response
+      : undefined;
+
+  return {
+    status: response?.status ?? null,
+    errorCode: response?.data?.error_code ?? null,
+    message: response?.data?.message ?? (error instanceof Error ? error.message : null),
+    requestsRemaining: parseRequestsRemaining(response?.headers?.['x-requests-remaining']),
+  };
+}
+
 function findDateFallbackMatch<T extends { utcDate: Date }>(matches: T[], eventDate: Date): T | null {
   const candidates = matches.filter((m) => Math.abs(m.utcDate.getTime() - eventDate.getTime()) < MATCH_TIME_TOLERANCE_MS);
   return candidates.length === 1 ? candidates[0] : null;
@@ -170,8 +199,8 @@ export async function syncOdds(options: SyncOddsOptions = {}): Promise<{ matches
   }
 
   const timestamps = matches.map((match) => match.utcDate.getTime());
-  const earliest = new Date(Math.min(...timestamps) - MATCH_TIME_TOLERANCE_MS).toISOString();
-  const latest = new Date(Math.max(...timestamps) + MATCH_TIME_TOLERANCE_MS).toISOString();
+  const earliest = formatOddsApiTimestamp(new Date(Math.min(...timestamps) - MATCH_TIME_TOLERANCE_MS));
+  const latest = formatOddsApiTimestamp(new Date(Math.max(...timestamps) + MATCH_TIME_TOLERANCE_MS));
 
   // Fetch all odds in a single API call
   let events: OddsApiEvent[] = [];
@@ -192,8 +221,9 @@ export async function syncOdds(options: SyncOddsOptions = {}): Promise<{ matches
     requestsRemaining = parseRequestsRemaining(response.headers['x-requests-remaining']);
     logger.info({ count: events.length, requestsRemaining }, 'Fetched odds from API');
   } catch (err) {
-    logger.error({ err }, 'Failed to fetch odds from The Odds API');
-    return { matchesUpdated: 0, requestsRemaining: null };
+    const errorDetails = getOddsApiErrorDetails(err);
+    logger.error(errorDetails, 'Failed to fetch odds from The Odds API');
+    return { matchesUpdated: 0, requestsRemaining: errorDetails.requestsRemaining };
   }
 
   // Index our matches by homeCode+awayCode for quick lookup

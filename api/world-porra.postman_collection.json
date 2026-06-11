@@ -12,7 +12,7 @@
     },
     {
       "key": "hostedBaseUrl",
-      "value": "https://world-porra-api.vercel.app",
+      "value": "https://api.worldporra.com",
       "type": "string"
     },
     {
@@ -1779,6 +1779,28 @@
               "path": [
                 "cron",
                 "daily-odds"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Sync Results Cron",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-sync-api-key",
+                "value": "{{syncApiKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cron/sync-results",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cron",
+                "sync-results"
               ]
             }
           }

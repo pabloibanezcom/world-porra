@@ -81,11 +81,44 @@ describe('syncOdds', () => {
 
     await expect(syncOdds({ force: true })).resolves.toEqual({ matchesUpdated: 1, requestsRemaining: 42 });
 
+    expect(axios.get).toHaveBeenCalledWith(expect.any(String), {
+      params: expect.objectContaining({
+        commenceTimeFrom: '2026-06-11T17:00:00Z',
+        commenceTimeTo: '2026-06-11T21:00:00Z',
+      }),
+    });
+
     const match = await Match.findOne({ externalId: 101 }).lean();
     expect(match?.odds).toMatchObject({
       home: 4.5,
       draw: 3.4,
       away: 1.7,
     });
+  });
+
+  it('returns quota details without throwing when the provider rejects the odds request', async () => {
+    await Match.create({
+      externalId: 102,
+      stage: 'GROUP',
+      group: 'A',
+      matchday: 1,
+      homeTeamCode: 'ARG',
+      awayTeamCode: 'ESP',
+      utcDate: new Date('2026-06-11T19:00:00.000Z'),
+      status: 'SCHEDULED',
+    });
+
+    vi.mocked(axios.get).mockRejectedValueOnce({
+      response: {
+        status: 422,
+        data: {
+          error_code: 'INVALID_COMMENCE_TIME_FROM',
+          message: 'Invalid commenceTimeFrom parameter.',
+        },
+        headers: { 'x-requests-remaining': '500' },
+      },
+    });
+
+    await expect(syncOdds({ force: true })).resolves.toEqual({ matchesUpdated: 0, requestsRemaining: 500 });
   });
 });
