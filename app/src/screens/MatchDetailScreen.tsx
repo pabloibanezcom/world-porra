@@ -10,10 +10,9 @@ import { hasTbdTeam } from '../components/MatchCard';
 import { useI18n } from '../i18n';
 import { getPredictionLockTime, isPredictionLocked } from '../utils/prediction';
 import { formatLockStatus } from '../utils/deadline';
+import { getMatchRefreshDelay } from '../utils/matchRefresh';
 
 type RouteParams = { MatchDetail: { matchId: string } };
-
-const LIVE_SCORE_REFRESH_MS = 60 * 1000;
 
 export default function MatchDetailScreen() {
   const { language, t } = useI18n();
@@ -32,14 +31,15 @@ export default function MatchDetailScreen() {
   }, [route.params.matchId, language]);
 
   useEffect(() => {
-    if (match?.status !== 'LIVE') return;
+    const refreshDelay = match ? getMatchRefreshDelay([match]) : null;
+    if (refreshDelay == null) return;
 
-    const interval = setInterval(() => {
+    const timeout = setTimeout(() => {
       loadMatch();
-    }, LIVE_SCORE_REFRESH_MS);
+    }, refreshDelay);
 
-    return () => clearInterval(interval);
-  }, [match?.status, route.params.matchId, language]);
+    return () => clearTimeout(timeout);
+  }, [match, route.params.matchId, language]);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 60000);

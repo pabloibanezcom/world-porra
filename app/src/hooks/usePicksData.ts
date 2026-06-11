@@ -23,8 +23,8 @@ import {
 } from '../types';
 import { useI18n } from '../i18n';
 import { getApiErrorMessage } from '../utils/apiError';
+import { getMatchRefreshDelay } from '../utils/matchRefresh';
 
-const LIVE_SCORE_REFRESH_MS = 60 * 1000;
 const FINAL_FOUR_KEYS = ['champion', 'runnerUp', 'semi1', 'semi2'] as const;
 
 export interface GroupStanding {
@@ -169,13 +169,14 @@ export function usePicksData() {
   );
 
   useEffect(() => {
-    if (!matches.some((match) => match.status === 'LIVE')) return;
+    const refreshDelay = getMatchRefreshDelay(matches);
+    if (refreshDelay == null) return;
 
-    const interval = setInterval(() => {
+    const timeout = setTimeout(() => {
       load();
-    }, LIVE_SCORE_REFRESH_MS);
+    }, refreshDelay);
 
-    return () => clearInterval(interval);
+    return () => clearTimeout(timeout);
   }, [load, matches]);
 
   useEffect(() => {

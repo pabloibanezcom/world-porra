@@ -8,8 +8,7 @@ import MatchCard from '../components/MatchCard';
 import LoadingView from '../components/ui/LoadingView';
 import { colors, spacing, fontSize, borderRadius } from '../theme';
 import { useI18n } from '../i18n';
-
-const LIVE_SCORE_REFRESH_MS = 60 * 1000;
+import { getMatchRefreshDelay } from '../utils/matchRefresh';
 
 const STAGES: { label: string; value: MatchStage }[] = [
   { label: 'Groups', value: 'GROUP' },
@@ -46,13 +45,14 @@ export default function MatchListScreen() {
   }, [activeStage, language]);
 
   useEffect(() => {
-    if (!matches.some((match) => match.status === 'LIVE')) return;
+    const refreshDelay = getMatchRefreshDelay(matches);
+    if (refreshDelay == null) return;
 
-    const interval = setInterval(() => {
+    const timeout = setTimeout(() => {
       loadMatches();
-    }, LIVE_SCORE_REFRESH_MS);
+    }, refreshDelay);
 
-    return () => clearInterval(interval);
+    return () => clearTimeout(timeout);
   }, [matches, activeStage, language]);
 
   const onRefresh = async () => {

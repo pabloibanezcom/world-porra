@@ -27,8 +27,7 @@ import { colors, fonts } from '../theme';
 import { submitPrediction } from '../api/predictions';
 import { useI18n } from '../i18n';
 import { isPredictionLocked } from '../utils/prediction';
-
-const LIVE_SCORE_REFRESH_MS = 60 * 1000;
+import { getMatchRefreshDelay } from '../utils/matchRefresh';
 
 function SectionLabel({ children }: { children: string }) {
   return (
@@ -136,13 +135,14 @@ export default function HomeScreen() {
   }, [leaguesVersion, predictionsVersion, load]);
 
   useEffect(() => {
-    if (!matches.some((match) => match.status === 'LIVE')) return;
+    const refreshDelay = getMatchRefreshDelay(matches);
+    if (refreshDelay == null) return;
 
-    const interval = setInterval(() => {
+    const timeout = setTimeout(() => {
       load();
-    }, LIVE_SCORE_REFRESH_MS);
+    }, refreshDelay);
 
-    return () => clearInterval(interval);
+    return () => clearTimeout(timeout);
   }, [load, matches]);
 
   const now = new Date(pollConfig?.serverTime ?? Date.now());
