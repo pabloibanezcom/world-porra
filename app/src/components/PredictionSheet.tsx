@@ -50,10 +50,6 @@ interface PredictionSheetProps {
   onClose: () => void;
 }
 
-function rarityMultiplier(prob: number): number {
-  return parseFloat(Math.max(1, Math.min(3, 50 / prob)).toFixed(1));
-}
-
 function ScoreControl({
   value,
   onChange,
@@ -168,9 +164,12 @@ export default function PredictionSheet({ match, existing, onSave, onClose }: Pr
   const outcomeProb = groupPct
     ? (predOutcome === 'h' ? groupPct.h : predOutcome === 'a' ? groupPct.a : groupPct.d)
     : 50;
-  const exactProbGroup = Math.max(outcomeProb / 8, 2);
-  const exactPtsGroup = parseFloat((3 * rarityMultiplier(exactProbGroup)).toFixed(1));
-  const outcomePtsGroup = parseFloat((1 * rarityMultiplier(outcomeProb)).toFixed(1));
+  // Mirror server scoring (api/src/services/scoring.ts): outcome = round(chosenOdds × 2),
+  // exact adds +5, total capped at 20. Keep integers so the preview matches earned points.
+  const chosenOdds =
+    predOutcome === 'h' ? match.odds?.home : predOutcome === 'a' ? match.odds?.away : match.odds?.draw;
+  const outcomePtsGroup = chosenOdds && chosenOdds > 0 ? Math.round(chosenOdds * 2) : 2;
+  const exactPtsGroup = Math.min(outcomePtsGroup + 5, 20);
 
   const groupOutcomeLabel =
     predOutcome === 'h'
