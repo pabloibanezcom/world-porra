@@ -19,6 +19,7 @@ import { fetchPollConfig, PollConfig } from '../api/config';
 import { GroupPrediction, Match, Prediction, League, TOURNAMENT_SLOT_KEYS, TournamentPicks } from '../types';
 import PredictionSheet from '../components/PredictionSheet';
 import ResultSheet from '../components/ResultSheet';
+import MatchPredictionsSheet from '../components/MatchPredictionsSheet';
 import MatchCard, { hasTbdTeam } from '../components/MatchCard';
 import LeagueCard from '../components/LeagueCard';
 import Avatar from '../components/ui/Avatar';
@@ -105,6 +106,7 @@ export default function HomeScreen() {
   const [pollConfig, setPollConfig] = useState<PollConfig | null>(null);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [selectedResult, setSelectedResult] = useState<Match | null>(null);
+  const [selectedPredictionsMatch, setSelectedPredictionsMatch] = useState<Match | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -318,7 +320,7 @@ export default function HomeScreen() {
                     prediction={myPred}
                     onPress={
                       liveOrInProgress
-                        ? () => navigation.navigate('MatchDetail', { matchId: match._id })
+                        ? () => setSelectedPredictionsMatch(cardMatchForHome(match, now))
                         : canPredict
                           ? () => setSelectedMatch(match)
                           : undefined
@@ -399,6 +401,11 @@ export default function HomeScreen() {
         match={selectedResult}
         prediction={selectedResult ? predMap[selectedResult._id] : null}
         onClose={() => setSelectedResult(null)}
+      />
+      <MatchPredictionsSheet
+        match={selectedPredictionsMatch}
+        leagues={leagues}
+        onClose={() => setSelectedPredictionsMatch(null)}
       />
     </SafeAreaView>
   );
