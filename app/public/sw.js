@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'world-porra-v2';
+const CACHE_VERSION = 'world-porra-v3';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const FONT_CACHE = `${CACHE_VERSION}-fonts`;
 
@@ -78,11 +78,16 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Navigation requests (HTML) — serve app shell, fall back to network
+  // Navigation requests (HTML) — refresh the app shell first, fall back offline.
   if (request.mode === 'navigate') {
     event.respondWith(
-      caches.match('/index.html').then((cached) =>
-        cached || fetch(request)
+      caches.open(STATIC_CACHE).then((cache) =>
+        fetch(request)
+          .then((response) => {
+            if (response.ok) cache.put('/index.html', response.clone());
+            return response;
+          })
+          .catch(() => cache.match('/index.html'))
       )
     );
     return;
