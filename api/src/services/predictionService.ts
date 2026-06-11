@@ -438,10 +438,17 @@ export async function getMatchPredictionsForViewer(userId: string, matchId: stri
 
   if (leagueId) {
     const league = await League.findById(leagueId);
-    if (league) {
-      const memberIds = league.members.map((member) => member.userId);
-      filter.userId = { $in: memberIds };
+    if (!league) {
+      throw new PredictionServiceError(404, 'League not found');
     }
+
+    const memberIds = league.members.map((member) => member.userId);
+    const viewerIsMember = memberIds.some((memberId) => memberId.toString() === userId);
+    if (!viewerIsMember) {
+      throw new PredictionServiceError(403, 'You are not a member of this league.');
+    }
+
+    filter.userId = { $in: memberIds };
   }
 
   return Prediction.find(filter).populate('userId', 'name avatarUrl').lean();

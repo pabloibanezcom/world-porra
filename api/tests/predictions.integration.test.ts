@@ -2,6 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { clearDatabase, requestJson, seedTestCountryTeams, startIntegrationServer, stopIntegrationServer } from './helpers/integration';
 import { Match } from '../src/models/Match';
 import { Prediction } from '../src/models/Prediction';
+import { League } from '../src/models/League';
 
 beforeAll(async () => {
   await startIntegrationServer();
@@ -174,10 +175,20 @@ describe('match predictions', () => {
   it('only reveals other users predictions after kickoff', async () => {
     const playerA = await registerPlayer('player-a@worldporra.test');
     const playerB = await registerPlayer('player-b@worldporra.test');
+    const playerC = await registerPlayer('player-c@worldporra.test');
     const upcoming = await createMatch();
     const started = await createMatch({
       externalId: 456,
       utcDate: new Date(Date.now() - 60 * 1000),
+    });
+    const league = await League.create({
+      name: 'Friends',
+      inviteCode: 'FRIENDS1',
+      ownerId: playerA.user.id,
+      members: [
+        { userId: playerA.user.id, isAdmin: true },
+        { userId: playerB.user.id },
+      ],
     });
 
     await Prediction.create([
@@ -185,6 +196,7 @@ describe('match predictions', () => {
       { userId: playerB.user.id, matchId: upcoming._id, homeGoals: 0, awayGoals: 1, predictedWinner: 'AWAY' },
       { userId: playerA.user.id, matchId: started._id, homeGoals: 2, awayGoals: 2, predictedWinner: 'DRAW' },
       { userId: playerB.user.id, matchId: started._id, homeGoals: 3, awayGoals: 2, predictedWinner: 'HOME' },
+      { userId: playerC.user.id, matchId: started._id, homeGoals: 0, awayGoals: 1, predictedWinner: 'AWAY' },
     ]);
 
     const beforeKickoff = await requestJson<{ predictions: unknown[] }>(`/predictions/match/${upcoming._id}`, {
@@ -197,7 +209,21 @@ describe('match predictions', () => {
       token: playerA.token,
     });
     expect(afterKickoff.status).toBe(200);
-    expect(afterKickoff.body.predictions).toHaveLength(2);
+    expect(afterKickoff.body.predictions).toHaveLength(3);
+
+    const leaguePredictions = await requestJson<{ predictions: unknown[] }>(
+      `/predictions/match/${started._id}?leagueId=${league._id}`,
+      { token: playerA.token }
+    );
+    expect(leaguePredictions.status).toBe(200);
+    expect(leaguePredictions.body.predictions).toHaveLength(2);
+
+    const outsider = await requestJson<{ error: string }>(
+      `/predictions/match/${started._id}?leagueId=${league._id}`,
+      { token: playerC.token }
+    );
+    expect(outsider.status).toBe(403);
+    expect(outsider.body).toEqual({ error: 'You are not a member of this league.' });
   });
 });
 

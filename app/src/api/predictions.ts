@@ -1,6 +1,10 @@
 import { apiClient } from './client';
-import { GroupPrediction, Prediction, TeamInfo, TournamentPicks } from '../types';
+import { GroupPrediction, Prediction, TeamInfo, TournamentPicks, User } from '../types';
 import { markPredictionsChanged } from '../store/dataRefreshStore';
+
+export type MatchPredictionVisibility = Omit<Prediction, 'userId'> & {
+  userId: string | Pick<User, 'id' | '_id' | 'name' | 'avatarUrl'>;
+};
 
 function normalizePrediction(prediction: Prediction & { matchId: unknown }): Prediction {
   let normalizedMatchId = '';
@@ -39,6 +43,14 @@ export async function fetchMyPredictions(stage?: string): Promise<Prediction[]> 
   return data.predictions.map((prediction) =>
     normalizePrediction(prediction as Prediction & { matchId: unknown })
   );
+}
+
+export async function fetchMatchPredictions(matchId: string, leagueId?: string): Promise<MatchPredictionVisibility[]> {
+  const { data } = await apiClient.get<{ predictions: MatchPredictionVisibility[] }>(
+    `/predictions/match/${encodeURIComponent(matchId)}`,
+    { params: leagueId ? { leagueId } : undefined },
+  );
+  return data.predictions;
 }
 
 export async function fetchMyGroupPredictions(): Promise<GroupPrediction[]> {

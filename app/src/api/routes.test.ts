@@ -4,6 +4,7 @@ import { createLeague, deleteLeague, fetchLeague, fetchMemberPredictions, fetchM
 import { fetchMatch, fetchMatches } from './matches';
 import { fetchPollConfig } from './config';
 import { deleteAdminUser, notifyAdminUsers } from './admin';
+import { fetchMatchPredictions } from './predictions';
 import { apiClient } from './client';
 
 vi.mock('./client', () => ({
@@ -96,6 +97,17 @@ describe('API route helpers', () => {
 
     await expect(fetchPollConfig()).resolves.toBe(config);
     expect(mockedApiClient.get).toHaveBeenCalledWith('/config/poll');
+  });
+
+  it('fetches visible match predictions for a league', async () => {
+    const predictions = [{ _id: 'prediction-1', homeGoals: 1, awayGoals: 0 }];
+    mockedApiClient.get.mockResolvedValueOnce({ data: { predictions } });
+
+    await expect(fetchMatchPredictions('match-1', 'league-1')).resolves.toBe(predictions);
+
+    expect(mockedApiClient.get).toHaveBeenCalledWith('/predictions/match/match-1', {
+      params: { leagueId: 'league-1' },
+    });
   });
 
   it('calls admin user deletion with typed confirmation', async () => {
