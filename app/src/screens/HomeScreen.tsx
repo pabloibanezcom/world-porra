@@ -173,24 +173,14 @@ export default function HomeScreen() {
   const now = new Date(pollConfig?.serverTime ?? Date.now());
   const next24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
-  const upcoming = [...matches]
-    .filter((m) => {
-      if (isLiveOrInProgress(m, now)) return true;
-      if (m.status !== 'SCHEDULED') return false;
-      return kickoffTime(m) >= now.getTime();
-    })
-    .sort((a, b) => {
-      const aLive = isLiveOrInProgress(a, now);
-      const bLive = isLiveOrInProgress(b, now);
-      if (aLive !== bLive) return aLive ? -1 : 1;
-      return kickoffTime(a) - kickoffTime(b);
-    });
+  const liveMatches = matches
+    .filter((match) => isLiveOrInProgress(match, now))
+    .sort((a, b) => kickoffTime(a) - kickoffTime(b));
+  const upcoming = matches
+    .filter((match) => match.status === 'SCHEDULED' && kickoffTime(match) >= now.getTime())
+    .sort((a, b) => kickoffTime(a) - kickoffTime(b));
   const finished = matches.filter((m) => m.status === 'FINISHED');
   const matchesInNext24Hours = upcoming.filter((match) => {
-    if (isLiveOrInProgress(match, now)) {
-      return true;
-    }
-
     const kickoff = kickoffTime(match);
     return kickoff >= now.getTime() && kickoff <= next24Hours.getTime();
   });
@@ -303,6 +293,28 @@ export default function HomeScreen() {
           </Pressable>
         )}
 
+        {/* Live matches */}
+        {liveMatches.length > 0 && (
+          <View>
+            <SectionLabel>{t('home.liveMatches')}</SectionLabel>
+            <View style={styles.nextMatchesList}>
+              {liveMatches.map((match) => {
+                const myPred = predMap[match._id] ?? null;
+                const sheetMatch = cardMatchForHome(match, now);
+
+                return (
+                  <MatchCard
+                    key={match._id}
+                    match={sheetMatch}
+                    prediction={myPred}
+                    onPress={() => setSelectedPredictionsMatch(sheetMatch)}
+                  />
+                );
+              })}
+            </View>
+          </View>
+        )}
+
         {/* Next matches */}
         {nextMatches.length > 0 && (
           <View>
@@ -311,19 +323,16 @@ export default function HomeScreen() {
               {nextMatches.map((match) => {
                 const myPred = predMap[match._id] ?? null;
                 const canPredict = !isPredictionLocked(match) && !hasTbdTeam(match);
-                const liveOrInProgress = isLiveOrInProgress(match, now);
 
                 return (
                   <MatchCard
                     key={match._id}
-                    match={cardMatchForHome(match, now)}
+                    match={match}
                     prediction={myPred}
                     onPress={
-                      liveOrInProgress
-                        ? () => setSelectedPredictionsMatch(cardMatchForHome(match, now))
-                        : canPredict
-                          ? () => setSelectedMatch(match)
-                          : undefined
+                      canPredict
+                        ? () => setSelectedMatch(match)
+                        : undefined
                     }
                   />
                 );
