@@ -43,6 +43,7 @@ type ESPNScoreboard = {
 };
 
 const ESPN_SCOREBOARD_URL = 'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard';
+const POST_KICKOFF_LIVE_SCORE_WINDOW_MS = 2.5 * 60 * 60 * 1000;
 
 const client = axios.create({
   baseURL: ESPN_SCOREBOARD_URL,
@@ -101,6 +102,21 @@ function makeMockLiveScore(match: MatchForLiveScore): LiveScore {
     awayGoals,
     winner: deriveWinner(homeGoals, awayGoals),
   };
+}
+
+function kickoffTime(match: MatchForLiveScore): number | null {
+  const time = new Date(match.utcDate).getTime();
+  return Number.isFinite(time) ? time : null;
+}
+
+function isLiveScoreCandidate(match: MatchForLiveScore, now = Date.now()): boolean {
+  if (match.status === 'LIVE') return true;
+  if (match.status !== 'SCHEDULED') return false;
+
+  const kickoff = kickoffTime(match);
+  if (kickoff == null) return false;
+
+  return kickoff <= now && now <= kickoff + POST_KICKOFF_LIVE_SCORE_WINDOW_MS;
 }
 
 function mapESPNScoreboard(data: ESPNScoreboard): Map<string, LiveScore> {
@@ -164,12 +180,12 @@ async function fetchScoresForDate(date: string): Promise<Map<string, LiveScore>>
 }
 
 export async function applyLiveScores<T extends MatchForLiveScore>(matches: T[]): Promise<T[]> {
-  const liveMatches = matches.filter((match) => match.status === 'LIVE');
-  if (liveMatches.length === 0) {
+  const scoreCandidates = matches.filter((match) => isLiveScoreCandidate(match));
+  if (scoreCandidates.length === 0) {
     return matches;
   }
 
-  const dates = Array.from(new Set(liveMatches.map((match) => formatESPNDate(match.utcDate))));
+  const dates = Array.from(new Set(scoreCandidates.map((match) => formatESPNDate(match.utcDate))));
   const dateScores = new Map<string, Map<string, LiveScore>>();
 
   await Promise.all(
@@ -179,7 +195,7 @@ export async function applyLiveScores<T extends MatchForLiveScore>(matches: T[])
   );
 
   return matches.map((match) => {
-    if (match.status !== 'LIVE') return match;
+    if (!isLiveScoreCandidate(match)) return match;
 
     const date = formatESPNDate(match.utcDate);
     const score = dateScores.get(date)?.get(scoreKey(match.homeTeamCode, match.awayTeamCode));
@@ -187,7 +203,8 @@ export async function applyLiveScores<T extends MatchForLiveScore>(matches: T[])
 
     return {
       ...match,
+      status: 'LIVE',
       result: score ?? makeMockLiveScore(match),
-    };
+    } as T;
   });
 }
