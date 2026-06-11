@@ -333,6 +333,29 @@ describe('group predictions', () => {
     expect(response.body.prediction.orderedTeams.map((team) => team.code)).toEqual(['BRA', 'ARG', 'FRA', 'ESP']);
   });
 
+  it('normalizes legacy Curaçao code in group predictions', async () => {
+    const { token } = await registerPlayer();
+    await Promise.all([
+      createMatch({ externalId: 211, group: 'E', homeTeamCode: 'GER', awayTeamCode: 'CUW' }),
+      createMatch({ externalId: 212, group: 'E', homeTeamCode: 'CIV', awayTeamCode: 'ECU' }),
+    ]);
+
+    const response = await requestJson<{ prediction: { group: string; orderedTeamCodes: string[]; orderedTeams: Array<{ code: string }> } }>(
+      '/predictions/groups',
+      {
+        token,
+        body: { group: 'E', orderedTeamCodes: ['GER', 'ECU', 'CIV', 'CUR'] },
+      }
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body.prediction).toMatchObject({
+      group: 'E',
+      orderedTeamCodes: ['GER', 'ECU', 'CIV', 'CUW'],
+    });
+    expect(response.body.prediction.orderedTeams.map((team) => team.code)).toEqual(['GER', 'ECU', 'CIV', 'CUW']);
+  });
+
   it('rejects duplicate, incomplete, unknown, unconfirmed, and locked group predictions', async () => {
     const { token } = await registerPlayer();
     await Promise.all([

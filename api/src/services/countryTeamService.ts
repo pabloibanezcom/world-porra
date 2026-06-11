@@ -28,7 +28,8 @@ type TeamCatalogEntry = Pick<ICountryTeam, 'code' | 'crest' | 'color'> & {
 };
 
 function normalizeCode(code: string | null | undefined): string {
-  return code?.trim().toUpperCase() || 'TBD';
+  const normalized = code?.trim().toUpperCase() || 'TBD';
+  return normalized === 'CUR' ? 'CUW' : normalized;
 }
 
 export function getRequestLanguage(req: Request): ApiLanguage {

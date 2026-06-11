@@ -67,7 +67,8 @@ function deriveWinner(home: number, away: number): MatchWinner {
 }
 
 function normalizeCode(code: string): string {
-  return code.trim().toUpperCase();
+  const normalized = code.trim().toUpperCase();
+  return normalized === 'CUR' ? 'CUW' : normalized;
 }
 
 function isTeamCodeTbd(code: string): boolean {
