@@ -8,8 +8,8 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-  await clearDatabase();
   vi.restoreAllMocks();
+  await clearDatabase();
 });
 
 afterAll(async () => {
