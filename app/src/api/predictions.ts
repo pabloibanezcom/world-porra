@@ -36,6 +36,16 @@ export async function submitPrediction(
   return prediction;
 }
 
+export async function setPredictionJoker(matchId: string, active: boolean): Promise<Prediction> {
+  const { data } = await apiClient.post<{ prediction: Prediction }>('/predictions/joker', {
+    matchId,
+    active,
+  });
+  const prediction = normalizePrediction(data.prediction as Prediction & { matchId: unknown });
+  markPredictionsChanged();
+  return prediction;
+}
+
 export async function fetchMyPredictions(stage?: string): Promise<Prediction[]> {
   const { data } = await apiClient.get<{ predictions: Prediction[] }>('/predictions/mine', {
     params: stage ? { stage } : undefined,

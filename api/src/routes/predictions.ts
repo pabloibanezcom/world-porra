@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
+import { jokerInputSchema } from '../shared';
 import { getRequestLanguage } from '../services/countryTeamService';
 import {
   getMatchPredictionsForViewer,
@@ -13,6 +14,7 @@ import {
   saveGroupPrediction,
   saveMatchPrediction,
   saveTournamentPrediction,
+  setMatchJoker,
   tournamentPredictionSchema,
 } from '../services/predictionService';
 
@@ -56,6 +58,17 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
     res.json({ prediction });
   } catch (error) {
     if (handleRouteError(error, res, { invalidMessage: 'Invalid prediction data' })) return;
+    throw error;
+  }
+});
+
+router.post('/joker', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { matchId, active } = jokerInputSchema.parse(req.body);
+    const prediction = await setMatchJoker(req.userId!, matchId, active);
+    res.json({ prediction });
+  } catch (error) {
+    if (handleRouteError(error, res, { invalidMessage: 'Invalid joker data' })) return;
     throw error;
   }
 });

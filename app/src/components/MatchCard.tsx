@@ -261,6 +261,7 @@ export default function MatchCard({ match, prediction, result, locked, lockLabel
   }, [visible]);
 
   const state = getCardState(match, prediction);
+  const isJoker = !!prediction?.joker;
   const knockout = isKnockoutStage(match.stage);
   const homeCode = getTeamLabel(match.homeTeam.name, match.homeTeam.code);
   const awayCode = getTeamLabel(match.awayTeam.name, match.awayTeam.code);
@@ -322,16 +323,23 @@ export default function MatchCard({ match, prediction, result, locked, lockLabel
       style={{ opacity: cardOpacity, transform: [{ translateY: cardSlide }] }}
     >
       <TouchableOpacity
-        style={[styles.card, cardStyle]}
+        style={[styles.card, cardStyle, isJoker && styles.cardJoker]}
         onPress={onPress}
         disabled={!onPress}
         activeOpacity={0.85}
       >
         <View style={styles.header}>
-          <Text style={styles.meta}>
-            {match.group ? t('common.group', { group: match.group }) : match.stage} · {formatDate(match.utcDate, locale)}
-            {' · '}{formatTime(match.utcDate, locale)}
-          </Text>
+          <View style={styles.metaRow}>
+            <Text style={styles.meta}>
+              {match.group ? t('common.group', { group: match.group }) : match.stage} · {formatDate(match.utcDate, locale)}
+              {' · '}{formatTime(match.utcDate, locale)}
+            </Text>
+            {isJoker && (
+              <View style={styles.jokerBadge}>
+                <Text style={styles.jokerBadgeText}>{t('matchCard.joker')}</Text>
+              </View>
+            )}
+          </View>
           {action}
         </View>
 
@@ -453,16 +461,42 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     borderColor: 'rgba(73,79,223,0.28)',
   },
+  cardJoker: {
+    borderColor: colors.warning,
+    borderWidth: 1.5,
+    backgroundColor: 'rgba(236,126,0,0.07)',
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
   },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexShrink: 1,
+  },
   meta: {
     color: colors.dim,
     fontSize: 10,
     fontFamily: fonts.body,
+  },
+  jokerBadge: {
+    backgroundColor: 'rgba(236,126,0,0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(236,126,0,0.4)',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+  },
+  jokerBadgeText: {
+    color: colors.warning,
+    fontSize: 9,
+    fontWeight: '800',
+    fontFamily: fonts.bodyMedium,
+    letterSpacing: 0.4,
   },
   predictBtn: {
     backgroundColor: colors.accent,

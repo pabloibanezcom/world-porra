@@ -47,6 +47,9 @@ interface PredictionSheetProps {
   match: Match | null;
   existing?: { score: [number, number]; qualifier?: 'HOME' | 'AWAY' | null };
   onSave: (matchId: string, score: [number, number], qualifier?: 'HOME' | 'AWAY' | null) => Promise<void>;
+  jokerActive?: boolean;
+  jokerLockedByOther?: boolean;
+  onToggleJoker?: (matchId: string, active: boolean) => Promise<void>;
   onClose: () => void;
 }
 
@@ -79,11 +82,20 @@ function ScoreControl({
   );
 }
 
-export default function PredictionSheet({ match, existing, onSave, onClose }: PredictionSheetProps) {
+export default function PredictionSheet({
+  match,
+  existing,
+  onSave,
+  jokerActive = false,
+  jokerLockedByOther = false,
+  onToggleJoker,
+  onClose,
+}: PredictionSheetProps) {
   const { t, locale } = useI18n();
   const [score, setScore] = useState<[number, number]>(existing?.score || [0, 0]);
   const [qualifier, setQualifier] = useState<'HOME' | 'AWAY' | null>(existing?.qualifier ?? null);
   const [saving, setSaving] = useState(false);
+  const [jokerBusy, setJokerBusy] = useState(false);
   const slideAnim = React.useRef(new Animated.Value(400)).current;
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
 
@@ -100,6 +112,7 @@ export default function PredictionSheet({ match, existing, onSave, onClose }: Pr
   useEffect(() => {
     if (match) {
       setSaving(false);
+      setJokerBusy(false);
       const initScore = existing?.score || [0, 0];
       setScore(initScore);
       if (knockout) {
@@ -137,6 +150,29 @@ export default function PredictionSheet({ match, existing, onSave, onClose }: Pr
     }
   };
 
+  const toggleJoker = async () => {
+    if (!match || !onToggleJoker || jokerBusy || saving) return;
+    if (!jokerActive && jokerLockedByOther) return;
+    setJokerBusy(true);
+    try {
+      if (!jokerActive) {
+        // A joker needs a saved prediction — persist the current pick first if needed.
+        if (!existing) {
+          if (hasTbdTeam(match)) return;
+          if (knockout && !qualifier) return;
+          await onSave(match._id, score, knockout ? qualifier : null);
+        }
+        await onToggleJoker(match._id, true);
+      } else {
+        await onToggleJoker(match._id, false);
+      }
+    } catch {
+      // Error toast is surfaced by the caller.
+    } finally {
+      setJokerBusy(false);
+    }
+  };
+
   if (!match) return null;
 
   const groupLabel = match.group ? t('common.group', { group: match.group }) : match.stage;
@@ -154,6 +190,8 @@ export default function PredictionSheet({ match, existing, onSave, onClose }: Pr
 
   const isDraw = score[0] === score[1];
   const canSave = !knockout || !!qualifier;
+  const showJoker = !!onToggleJoker;
+  const jokerMult = jokerActive ? 2 : 1;
 
   // ── Group stage points preview ──
   const groupPct = !knockout && match.odds
@@ -322,7 +360,7 @@ export default function PredictionSheet({ match, existing, onSave, onClose }: Pr
         {knockout ? (
           <View style={styles.pointsPreview}>
             <View style={[styles.pointsCard, styles.pointsCardExact]}>
-              <Text style={[styles.pointsValue, { color: colors.accent }]}>+{advancingPts}</Text>
+              <Text style={[styles.pointsValue, { color: colors.accent }]}>+{advancingPts * jokerMult}</Text>
               <Text style={[styles.pointsLabel, { color: colors.accent }]}>
                 {qualifier
                   ? t('predictionSheet.ptsIfAdvances', { code: qualifier === 'HOME' ? homeCode : awayCode })
@@ -331,7 +369,7 @@ export default function PredictionSheet({ match, existing, onSave, onClose }: Pr
               <Text style={styles.pointsHint}>{qualifierLabel}</Text>
             </View>
             <View style={[styles.pointsCard, styles.pointsCardOutcome]}>
-              <Text style={[styles.pointsValue, { color: colors.blue }]}>+{exactBonusKnockout}</Text>
+              <Text style={[styles.pointsValue, { color: colors.blue }]}>+{exactBonusKnockout * jokerMult}</Text>
               <Text style={[styles.pointsLabel, { color: colors.blue }]}>
                 {t('predictionSheet.ptsIfExactKnockout')}
               </Text>
@@ -343,7 +381,7 @@ export default function PredictionSheet({ match, existing, onSave, onClose }: Pr
         ) : groupPct ? (
           <View style={styles.pointsPreview}>
             <View style={[styles.pointsCard, styles.pointsCardExact]}>
-              <Text style={[styles.pointsValue, { color: colors.accent }]}>+{exactPtsGroup}</Text>
+              <Text style={[styles.pointsValue, { color: colors.accent }]}>+{exactPtsGroup * jokerMult}</Text>
               <Text style={[styles.pointsLabel, { color: colors.accent }]}>
                 {t('predictionSheet.ptsIfExact')}
               </Text>
@@ -352,7 +390,7 @@ export default function PredictionSheet({ match, existing, onSave, onClose }: Pr
               </Text>
             </View>
             <View style={[styles.pointsCard, styles.pointsCardOutcome]}>
-              <Text style={[styles.pointsValue, { color: colors.blue }]}>+{outcomePtsGroup}</Text>
+              <Text style={[styles.pointsValue, { color: colors.blue }]}>+{outcomePtsGroup * jokerMult}</Text>
               <Text style={[styles.pointsLabel, { color: colors.blue }]}>
                 {t('predictionSheet.ptsIfOutcome', { outcome: groupOutcomeLabel })}
               </Text>
@@ -374,6 +412,40 @@ export default function PredictionSheet({ match, existing, onSave, onClose }: Pr
             <Text style={styles.saveBtnText}>{t('predictionSheet.save')}</Text>
           )}
         </TouchableOpacity>
+
+        {showJoker && (
+          <>
+            <TouchableOpacity
+              style={[
+                styles.jokerBtn,
+                jokerActive && styles.jokerBtnActive,
+                !jokerActive && jokerLockedByOther && styles.jokerBtnDisabled,
+              ]}
+              onPress={toggleJoker}
+              disabled={(!jokerActive && jokerLockedByOther) || jokerBusy || saving}
+              activeOpacity={0.8}
+            >
+              {jokerBusy ? (
+                <ActivityIndicator size="small" color={colors.warning} />
+              ) : (
+                <Text style={[styles.jokerBtnText, jokerActive && styles.jokerBtnTextActive]}>
+                  {jokerActive
+                    ? t('predictionSheet.removeJoker')
+                    : jokerLockedByOther
+                    ? t('predictionSheet.jokerUsed')
+                    : t('predictionSheet.useJoker')}
+                </Text>
+              )}
+            </TouchableOpacity>
+            <Text style={styles.jokerHint}>
+              {jokerActive
+                ? t('predictionSheet.jokerActiveHint')
+                : jokerLockedByOther
+                ? t('predictionSheet.jokerLockedHint')
+                : t('predictionSheet.jokerHint')}
+            </Text>
+          </>
+        )}
       </Animated.View>
     </Modal>
   );
@@ -613,5 +685,39 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     fontFamily: fonts.display,
+  },
+  jokerBtn: {
+    width: '100%',
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: 'rgba(236,126,0,0.5)',
+    backgroundColor: 'rgba(236,126,0,0.08)',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  jokerBtnActive: {
+    borderColor: colors.warning,
+    backgroundColor: 'rgba(236,126,0,0.18)',
+  },
+  jokerBtnDisabled: {
+    opacity: 0.4,
+  },
+  jokerBtnText: {
+    color: colors.warning,
+    fontSize: 15,
+    fontWeight: '700',
+    fontFamily: fonts.display,
+    letterSpacing: 0.3,
+  },
+  jokerBtnTextActive: {
+    color: colors.warning,
+  },
+  jokerHint: {
+    color: colors.dim,
+    fontSize: 10,
+    textAlign: 'center',
+    marginTop: 8,
+    fontFamily: fonts.body,
   },
 });

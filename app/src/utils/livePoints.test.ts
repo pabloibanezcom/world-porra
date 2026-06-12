@@ -26,6 +26,7 @@ const basePrediction: Prediction = {
   awayGoals: 0,
   predictedWinner: 'HOME',
   qualifier: null,
+  joker: false,
   points: null,
 };
 

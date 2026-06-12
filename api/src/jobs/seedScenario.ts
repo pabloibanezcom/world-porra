@@ -42,6 +42,7 @@ interface PredictionDoc extends RawDoc {
   homeGoals: number;
   awayGoals: number;
   qualifier?: 'HOME' | 'AWAY' | null;
+  joker?: boolean;
 }
 
 interface DemoUser {
@@ -596,7 +597,7 @@ async function scorePredictions(db: Db): Promise<{ matchesProcessed: number; pre
     const predictions = await db.collection<PredictionDoc>('predictions').find({ matchId: match._id }).toArray();
 
     for (const prediction of predictions) {
-      const points = calculatePoints({
+      const rawPoints = calculatePoints({
         predictedHome: prediction.homeGoals,
         predictedAway: prediction.awayGoals,
         actualHome: match.result!.homeGoals,
@@ -606,6 +607,8 @@ async function scorePredictions(db: Db): Promise<{ matchesProcessed: number; pre
         qualifier: prediction.qualifier,
         actualWinner: match.result!.winner,
       });
+
+      const points = prediction.joker ? rawPoints * 2 : rawPoints;
 
       predictionUpdates.push({
         updateOne: {

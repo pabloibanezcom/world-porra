@@ -20,7 +20,7 @@ import { colors, fonts } from '../theme';
 import { useI18n } from '../i18n';
 import { getPredictionLockTime, isPredictionLocked } from '../utils/prediction';
 import { formatLockStatus } from '../utils/deadline';
-import { usePicksData } from '../hooks/usePicksData';
+import { getJokerCategory, usePicksData } from '../hooks/usePicksData';
 import { calculateLivePotentialPoints } from '../utils/livePoints';
 
 function getResult(pred: Prediction, match: Match): 'exact' | 'correct' | 'wrong' | null {
@@ -80,7 +80,9 @@ export default function PicksScreen() {
     groupStandings,
     handleGroupOrder,
     handleSave,
+    handleToggleJoker,
     handleTournamentPick,
+    jokerMatchByCategory,
     loading,
     matches,
     onRefresh,
@@ -117,6 +119,11 @@ export default function PicksScreen() {
     [finished, tab, upcoming],
   );
   const matchGroups = useMemo(() => groupMatchesByDay(shown, locale), [locale, shown]);
+
+  const selectedJokerCategory = selectedMatch ? getJokerCategory(selectedMatch.stage) : null;
+  const jokerHolderId = selectedJokerCategory ? jokerMatchByCategory[selectedJokerCategory] : null;
+  const selectedJokerActive = !!selectedMatch && jokerHolderId === selectedMatch._id;
+  const selectedJokerLockedByOther = !!jokerHolderId && !selectedJokerActive;
   const groupLockStatus = formatLockStatus(groupPredictionsDeadline, now, t);
   const tournamentLockStatus = formatLockStatus(tournamentPredictionsDeadline, now, t);
   if (loading) {
@@ -246,6 +253,9 @@ export default function PicksScreen() {
             : undefined
         }
         onSave={handleSave}
+        jokerActive={selectedJokerActive}
+        jokerLockedByOther={selectedJokerLockedByOther}
+        onToggleJoker={handleToggleJoker}
         onClose={() => setSelectedMatch(null)}
       />
       <ResultSheet

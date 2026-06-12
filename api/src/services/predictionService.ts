@@ -352,6 +352,61 @@ export async function saveMatchPrediction(userId: string, input: MatchPrediction
   );
 }
 
+// Jokers are tracked per stage category: one for the group stage (matches 1–72)
+// and one for the knockout stage (matches 73–104).
+type JokerCategory = 'GROUP' | 'KNOCKOUT';
+
+function getJokerCategory(stage: string): JokerCategory {
+  return KNOCKOUT_STAGES.has(stage) ? 'KNOCKOUT' : 'GROUP';
+}
+
+export async function setMatchJoker(userId: string, matchId: string, active: boolean) {
+  const match = await Match.findById(matchId);
+  if (!match) {
+    throw new PredictionServiceError(404, 'Match not found');
+  }
+
+  if (match.status !== 'SCHEDULED') {
+    throw new PredictionServiceError(400, 'Predictions are locked for this match.');
+  }
+
+  const lockTime = new Date(match.utcDate.getTime() - LOCK_MINUTES_BEFORE * 60 * 1000);
+  if (currentDate() >= lockTime) {
+    throw new PredictionServiceError(400, 'Predictions are locked 5 minutes before kickoff.');
+  }
+
+  const prediction = await Prediction.findOne({ userId, matchId });
+  if (!prediction) {
+    throw new PredictionServiceError(400, 'Save your prediction before playing a joker.');
+  }
+
+  if (active) {
+    const category = getJokerCategory(match.stage);
+
+    // Find every other match this user has already jokered in the same category.
+    const jokeredPredictions = await Prediction.find({
+      userId,
+      joker: true,
+      matchId: { $ne: prediction.matchId },
+    }).lean();
+
+    if (jokeredPredictions.length > 0) {
+      const otherMatchIds = jokeredPredictions.map((item) => item.matchId);
+      const otherMatches = await Match.find({ _id: { $in: otherMatchIds } }).select('stage').lean();
+      const alreadyUsedInCategory = otherMatches.some((item) => getJokerCategory(item.stage) === category);
+      if (alreadyUsedInCategory) {
+        throw new PredictionServiceError(400, 'You have already played your joker in this stage.');
+      }
+    }
+  }
+
+  prediction.joker = active;
+  prediction.points = null;
+  await prediction.save();
+
+  return serializePrediction(prediction.toObject());
+}
+
 export async function getMyGroupPredictions(userId: string, language: ApiLanguage) {
   const predictions = await GroupPrediction.find({ userId })
     .sort({ group: 1 })

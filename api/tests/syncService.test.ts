@@ -85,6 +85,40 @@ describe('processFinishedMatches', () => {
     expect(updatedUser?.totalPoints).toBe(5);
     expect(processedMatch?.scoresProcessed).toBe(true);
   });
+
+  it('doubles the points of a jokered prediction', async () => {
+    const user = await User.create({
+      email: 'joker@worldporra.test',
+      name: 'Joker',
+    });
+    const match = await Match.create({
+      externalId: 203,
+      stage: 'GROUP',
+      group: 'A',
+      matchday: 1,
+      homeTeamCode: 'ARG',
+      awayTeamCode: 'ESP',
+      utcDate: new Date('2026-06-11T19:00:00.000Z'),
+      status: 'FINISHED',
+      result: { homeGoals: 2, awayGoals: 0, winner: 'HOME' },
+      odds: { home: 2.25, draw: 3.4, away: 4.5, fetchedAt: new Date() },
+      scoresProcessed: false,
+    });
+    const prediction = await Prediction.create({
+      userId: user._id,
+      matchId: match._id,
+      homeGoals: 1,
+      awayGoals: 0,
+      predictedWinner: 'HOME',
+      joker: true,
+    });
+
+    await processFinishedMatches();
+
+    const scoredPrediction = await Prediction.findById(prediction._id).lean();
+    // Same prediction scores 5 without a joker; the joker doubles it to 10.
+    expect(scoredPrediction?.points).toBe(10);
+  });
 });
 
 describe('syncAllFixtures', () => {

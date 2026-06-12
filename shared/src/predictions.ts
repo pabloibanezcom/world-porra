@@ -51,9 +51,15 @@ export const groupPredictionInputSchema = z.object({
   })).min(2).max(6).optional(),
 });
 
+export const jokerInputSchema = z.object({
+  matchId: z.string().min(1),
+  active: z.boolean(),
+});
+
 export type MatchPredictionInput = z.infer<typeof matchPredictionInputSchema>;
 export type GroupPredictionInput = z.infer<typeof groupPredictionInputSchema>;
 export type TournamentPredictionInput = z.infer<typeof tournamentPicksSchema>;
+export type JokerInput = z.infer<typeof jokerInputSchema>;
 
 export interface Prediction {
   _id: string;
@@ -63,6 +69,7 @@ export interface Prediction {
   awayGoals: number;
   predictedWinner: MatchWinner;
   qualifier: Qualifier | null;
+  joker: boolean;
   points: number | null;
 }
 
