@@ -31,8 +31,9 @@ import { getJokerCategory } from '../hooks/usePicksData';
 import { useI18n } from '../i18n';
 import { isPredictionLocked } from '../utils/prediction';
 import { getApiErrorMessage } from '../utils/apiError';
-import { getMatchRefreshDelay, POST_KICKOFF_REFRESH_WINDOW_MS } from '../utils/matchRefresh';
+import { POST_KICKOFF_REFRESH_WINDOW_MS } from '../utils/matchRefresh';
 import { calculateLivePotentialPoints } from '../utils/livePoints';
+import { useLiveMatchRefresh } from '../hooks/useLiveMatchRefresh';
 
 function SectionLabel({ children }: { children: string }) {
   return (
@@ -92,13 +93,13 @@ export default function HomeScreen() {
 
   const predMap = Object.fromEntries(predictions.map((p) => [p.matchId, p]));
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (options: { force?: boolean } = {}) => {
     try {
       const [m, p, leagues, config] = await Promise.all([
         fetchMatches({}),
         fetchMyPredictions(),
         fetchMyLeagues(),
-        fetchPollConfig(),
+        fetchPollConfig({ force: options.force }),
       ]);
       setMatches(m);
       setPredictions(p);
@@ -114,12 +115,8 @@ export default function HomeScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await load();
+    await load({ force: true });
     setRefreshing(false);
-  }, [load]);
-
-  useEffect(() => {
-    load();
   }, [load]);
 
   useFocusEffect(
@@ -133,16 +130,7 @@ export default function HomeScreen() {
     load();
   }, [leaguesVersion, predictionsVersion, load]);
 
-  useEffect(() => {
-    const refreshDelay = getMatchRefreshDelay(matches);
-    if (refreshDelay == null) return;
-
-    const timeout = setTimeout(() => {
-      load();
-    }, refreshDelay);
-
-    return () => clearTimeout(timeout);
-  }, [load, matches]);
+  useLiveMatchRefresh(matches, load);
 
   const now = new Date(pollConfig?.serverTime ?? Date.now());
   const next24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);

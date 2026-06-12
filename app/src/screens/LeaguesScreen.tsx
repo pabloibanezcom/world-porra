@@ -31,11 +31,11 @@ export default function LeaguesScreen() {
   });
   const canCreateLeagues = !!user?.id && !ownsLeague && !pollConfig?.leagueCreationLocked;
 
-  const loadLeagues = async () => {
+  const loadLeagues = async (options: { force?: boolean } = {}) => {
     try {
       const [data, config] = await Promise.all([
         fetchMyLeagues(),
-        fetchPollConfig(),
+        fetchPollConfig({ force: options.force }),
       ]);
       setLeagues(data);
       setPollConfig(config);
@@ -54,7 +54,7 @@ export default function LeaguesScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadLeagues();
+    await loadLeagues({ force: true });
     setRefreshing(false);
   };
 

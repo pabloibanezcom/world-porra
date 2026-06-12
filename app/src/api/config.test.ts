@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, Mock, vi } from 'vitest';
-import { fetchPollConfig, fetchTournamentCatalog } from './config';
+import { clearConfigApiCache, fetchPollConfig, fetchTournamentCatalog } from './config';
 import { apiClient } from './client';
 
 vi.mock('./client', () => ({
@@ -13,6 +13,7 @@ const mockedGet = apiClient.get as Mock;
 describe('config API helpers', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    clearConfigApiCache();
   });
 
   it('fetches poll configuration', async () => {

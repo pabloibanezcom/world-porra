@@ -26,9 +26,38 @@ export interface ApiHealth {
   timestamp: string;
 }
 
-export async function fetchPollConfig(): Promise<PollConfig> {
-  const { data } = await apiClient.get<{ config: PollConfig }>('/config/poll');
-  return data.config;
+const POLL_CONFIG_CACHE_MS = 60 * 1000;
+let pollConfigCache: { value: PollConfig; expiresAt: number } | null = null;
+let pollConfigRequest: Promise<PollConfig> | null = null;
+
+export function clearConfigApiCache() {
+  pollConfigCache = null;
+  pollConfigRequest = null;
+}
+
+export async function fetchPollConfig(options: { force?: boolean } = {}): Promise<PollConfig> {
+  const now = Date.now();
+  if (!options.force && pollConfigCache && pollConfigCache.expiresAt > now) {
+    return pollConfigCache.value;
+  }
+
+  if (!options.force && pollConfigRequest) {
+    return pollConfigRequest;
+  }
+
+  pollConfigRequest = apiClient.get<{ config: PollConfig }>('/config/poll')
+    .then(({ data }) => {
+      pollConfigCache = {
+        value: data.config,
+        expiresAt: Date.now() + POLL_CONFIG_CACHE_MS,
+      };
+      return data.config;
+    })
+    .finally(() => {
+      pollConfigRequest = null;
+    });
+
+  return pollConfigRequest;
 }
 
 export async function fetchApiHealth(): Promise<ApiHealth> {

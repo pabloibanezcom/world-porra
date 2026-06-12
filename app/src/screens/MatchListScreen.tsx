@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
 import { ScrollTriggerProvider } from '../contexts/ScrollTrigger';
 import { useNavigation } from '@react-navigation/native';
@@ -8,7 +8,7 @@ import MatchCard from '../components/MatchCard';
 import LoadingView from '../components/ui/LoadingView';
 import { colors, spacing, fontSize, borderRadius } from '../theme';
 import { useI18n } from '../i18n';
-import { getMatchRefreshDelay } from '../utils/matchRefresh';
+import { useLiveMatchRefresh } from '../hooks/useLiveMatchRefresh';
 
 const STAGES: { label: string; value: MatchStage }[] = [
   { label: 'Groups', value: 'GROUP' },
@@ -28,7 +28,7 @@ export default function MatchListScreen() {
   const navigation = useNavigation<any>();
   const triggerRef = useRef<() => void>(() => {});
 
-  const loadMatches = async () => {
+  const loadMatches = useCallback(async () => {
     try {
       const data = await fetchMatches({ stage: activeStage });
       setMatches(data);
@@ -37,23 +37,14 @@ export default function MatchListScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeStage]);
 
   useEffect(() => {
     setLoading(true);
     loadMatches();
-  }, [activeStage, language]);
+  }, [language, loadMatches]);
 
-  useEffect(() => {
-    const refreshDelay = getMatchRefreshDelay(matches);
-    if (refreshDelay == null) return;
-
-    const timeout = setTimeout(() => {
-      loadMatches();
-    }, refreshDelay);
-
-    return () => clearTimeout(timeout);
-  }, [matches, activeStage, language]);
+  useLiveMatchRefresh(matches, loadMatches);
 
   const onRefresh = async () => {
     setRefreshing(true);
