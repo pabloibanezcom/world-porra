@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, ScrollView } from 'react-native';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import { fetchMatch } from '../api/matches';
@@ -11,7 +11,7 @@ import { hasTbdTeam } from '../components/MatchCard';
 import { useI18n } from '../i18n';
 import { getPredictionLockTime, isPredictionLocked } from '../utils/prediction';
 import { formatLockStatus } from '../utils/deadline';
-import { getMatchRefreshDelay } from '../utils/matchRefresh';
+import { useLiveMatchRefresh } from '../hooks/useLiveMatchRefresh';
 import Avatar from '../components/ui/Avatar';
 import { useAuthStore } from '../store/authStore';
 
@@ -52,10 +52,24 @@ export default function MatchDetailScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [now, setNow] = useState(() => new Date());
 
+  const loadMatch = useCallback(async () => {
+    try {
+      const data = await fetchMatch(route.params.matchId);
+      setMatch(data.match);
+      setPrediction(data.prediction);
+      if (data.prediction) {
+        setHomeGoals(data.prediction.homeGoals);
+        setAwayGoals(data.prediction.awayGoals);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [route.params.matchId]);
+
   useEffect(() => {
     setLoading(true);
     loadMatch();
-  }, [route.params.matchId, language]);
+  }, [language, loadMatch]);
 
   useEffect(() => {
     fetchMyLeagues()
@@ -69,16 +83,8 @@ export default function MatchDetailScreen() {
       });
   }, []);
 
-  useEffect(() => {
-    const refreshDelay = match ? getMatchRefreshDelay([match]) : null;
-    if (refreshDelay == null) return;
-
-    const timeout = setTimeout(() => {
-      loadMatch();
-    }, refreshDelay);
-
-    return () => clearTimeout(timeout);
-  }, [match, route.params.matchId, language]);
+  const refreshableMatches = useMemo(() => (match ? [match] : []), [match]);
+  useLiveMatchRefresh(refreshableMatches, loadMatch);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 60000);
@@ -108,20 +114,6 @@ export default function MatchDetailScreen() {
       alive = false;
     };
   }, [match?._id, match?.status, selectedLeagueId, language]);
-
-  const loadMatch = async () => {
-    try {
-      const data = await fetchMatch(route.params.matchId);
-      setMatch(data.match);
-      setPrediction(data.prediction);
-      if (data.prediction) {
-        setHomeGoals(data.prediction.homeGoals);
-        setAwayGoals(data.prediction.awayGoals);
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSubmit = async () => {
     if (!match) return;

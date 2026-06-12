@@ -24,7 +24,7 @@ import {
 } from '../types';
 import { useI18n } from '../i18n';
 import { getApiErrorMessage } from '../utils/apiError';
-import { getMatchRefreshDelay } from '../utils/matchRefresh';
+import { useLiveMatchRefresh } from './useLiveMatchRefresh';
 
 const FINAL_FOUR_KEYS = ['champion', 'runnerUp', 'semi1', 'semi2'] as const;
 
@@ -143,13 +143,13 @@ export function usePicksData() {
     });
   }, [t]);
 
-  const load = useCallback(async (options: { notifyOnError?: boolean } = {}) => {
+  const load = useCallback(async (options: { force?: boolean; notifyOnError?: boolean } = {}) => {
     try {
       const [nextMatches, nextPredictions, nextGroupPredictions, config] = await Promise.all([
         fetchMatches({}),
         fetchMyPredictions(),
         fetchMyGroupPredictions(),
-        fetchPollConfig(),
+        fetchPollConfig({ force: options.force }),
       ]);
       setMatches(nextMatches);
       setPredictions(nextPredictions);
@@ -178,12 +178,8 @@ export function usePicksData() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await load({ notifyOnError: true });
+    await load({ force: true, notifyOnError: true });
     setRefreshing(false);
-  }, [load]);
-
-  useEffect(() => {
-    load();
   }, [load]);
 
   useFocusEffect(
@@ -192,16 +188,7 @@ export function usePicksData() {
     }, [load])
   );
 
-  useEffect(() => {
-    const refreshDelay = getMatchRefreshDelay(matches);
-    if (refreshDelay == null) return;
-
-    const timeout = setTimeout(() => {
-      load();
-    }, refreshDelay);
-
-    return () => clearTimeout(timeout);
-  }, [load, matches]);
+  useLiveMatchRefresh(matches, load);
 
   useEffect(() => {
     fetchTournamentPrediction()

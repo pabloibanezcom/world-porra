@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, Mock, vi } from 'vitest';
 import { getMe, loginDev, loginWithGoogle, loginWithPassword, requestPasswordReset, resetPassword, updateMe } from './auth';
 import { createLeague, deleteLeague, fetchLeague, fetchMemberPredictions, fetchMyLeagues, joinLeague, leaveLeague, notifyLeagueMembers } from './leagues';
 import { fetchMatch, fetchMatches } from './matches';
-import { fetchPollConfig } from './config';
+import { clearConfigApiCache, fetchPollConfig } from './config';
 import { deleteAdminUser, notifyAdminUsers } from './admin';
 import { fetchMatchPredictions } from './predictions';
 import { apiClient } from './client';
@@ -26,6 +26,7 @@ const mockedApiClient = {
 describe('API route helpers', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    clearConfigApiCache();
   });
 
   it('calls auth endpoints and returns their payloads', async () => {
