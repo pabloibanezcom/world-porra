@@ -8,6 +8,7 @@ import {
   fetchMyPredictions,
   fetchTournamentPrediction,
   saveTournamentPrediction,
+  setPredictionJoker,
   submitGroupPrediction,
   submitPrediction,
 } from '../api/predictions';
@@ -26,6 +27,16 @@ import { getApiErrorMessage } from '../utils/apiError';
 import { getMatchRefreshDelay } from '../utils/matchRefresh';
 
 const FINAL_FOUR_KEYS = ['champion', 'runnerUp', 'semi1', 'semi2'] as const;
+
+const KNOCKOUT_STAGES = new Set([
+  'ROUND_OF_32', 'ROUND_OF_16', 'QUARTER_FINAL', 'SEMI_FINAL', 'THIRD_PLACE', 'FINAL',
+]);
+
+export type JokerCategory = 'GROUP' | 'KNOCKOUT';
+
+export function getJokerCategory(stage: string): JokerCategory {
+  return KNOCKOUT_STAGES.has(stage) ? 'KNOCKOUT' : 'GROUP';
+}
 
 export interface GroupStanding {
   id: string;
@@ -111,6 +122,19 @@ export function usePicksData() {
   );
   const groupStandings = useMemo(() => getGroupsFromMatches(matches), [matches]);
 
+  // Which match (if any) currently holds the joker in each stage category.
+  const jokerMatchByCategory = useMemo(() => {
+    const stageById = new Map(matches.map((match) => [match._id, match.stage]));
+    const result: Record<JokerCategory, string | null> = { GROUP: null, KNOCKOUT: null };
+    predictions.forEach((prediction) => {
+      if (!prediction.joker) return;
+      const stage = stageById.get(prediction.matchId);
+      if (!stage) return;
+      result[getJokerCategory(stage)] = prediction.matchId;
+    });
+    return result;
+  }, [matches, predictions]);
+
   const showErrorToast = useCallback((fallback: string, error?: unknown) => {
     Toast.show({
       type: 'error',
@@ -194,6 +218,16 @@ export function usePicksData() {
     }
   }, [showErrorToast, t]);
 
+  const handleToggleJoker = useCallback(async (matchId: string, active: boolean): Promise<void> => {
+    try {
+      const prediction = await setPredictionJoker(matchId, active);
+      setPredictions((prev) => [...prev.filter((item) => item.matchId !== matchId), prediction]);
+    } catch (error) {
+      showErrorToast(t('match.failedSave'), error);
+      throw error;
+    }
+  }, [showErrorToast, t]);
+
   const handleGroupOrder = useCallback(async (groupId: string, orderedTeams: TeamInfo[]) => {
     if (pollConfig?.groupPredictionsLocked) return;
 
@@ -249,7 +283,9 @@ export function usePicksData() {
     groupStandings,
     handleGroupOrder,
     handleSave,
+    handleToggleJoker,
     handleTournamentPick,
+    jokerMatchByCategory,
     loading,
     matches,
     onRefresh,

@@ -8,6 +8,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../store/authStore';
 import { useDataRefreshStore } from '../store/dataRefreshStore';
@@ -25,9 +26,11 @@ import Avatar from '../components/ui/Avatar';
 import LoadingView from '../components/ui/LoadingView';
 import LiveBadge from '../components/LiveBadge';
 import { colors, fonts } from '../theme';
-import { submitPrediction } from '../api/predictions';
+import { setPredictionJoker, submitPrediction } from '../api/predictions';
+import { getJokerCategory } from '../hooks/usePicksData';
 import { useI18n } from '../i18n';
 import { isPredictionLocked } from '../utils/prediction';
+import { getApiErrorMessage } from '../utils/apiError';
 import { getMatchRefreshDelay, POST_KICKOFF_REFRESH_WINDOW_MS } from '../utils/matchRefresh';
 import { calculateLivePotentialPoints } from '../utils/livePoints';
 
@@ -177,6 +180,34 @@ export default function HomeScreen() {
       return [...filtered, pred];
     });
   };
+
+  const handleToggleJoker = async (matchId: string, active: boolean) => {
+    try {
+      const pred = await setPredictionJoker(matchId, active);
+      setPredictions((prev) => [...prev.filter((p) => p.matchId !== matchId), pred]);
+    } catch (error) {
+      Toast.show({
+        type: 'error',
+        text1: t('common.error'),
+        text2: getApiErrorMessage(error, t('match.failedSave')),
+      });
+      throw error;
+    }
+  };
+
+  // Which match (if any) currently holds the joker in each stage category.
+  const stageById = new Map(matches.map((match) => [match._id, match.stage]));
+  const jokerMatchByCategory: Record<'GROUP' | 'KNOCKOUT', string | null> = { GROUP: null, KNOCKOUT: null };
+  predictions.forEach((prediction) => {
+    if (!prediction.joker) return;
+    const stage = stageById.get(prediction.matchId);
+    if (!stage) return;
+    jokerMatchByCategory[getJokerCategory(stage)] = prediction.matchId;
+  });
+  const selectedJokerCategory = selectedMatch ? getJokerCategory(selectedMatch.stage) : null;
+  const jokerHolderId = selectedJokerCategory ? jokerMatchByCategory[selectedJokerCategory] : null;
+  const selectedJokerActive = !!selectedMatch && jokerHolderId === selectedMatch._id;
+  const selectedJokerLockedByOther = !!jokerHolderId && !selectedJokerActive;
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? t('home.goodMorning') : hour < 18 ? t('home.goodAfternoon') : t('home.goodEvening');
@@ -334,6 +365,9 @@ export default function HomeScreen() {
             }
           : undefined}
         onSave={handleSave}
+        jokerActive={selectedJokerActive}
+        jokerLockedByOther={selectedJokerLockedByOther}
+        onToggleJoker={handleToggleJoker}
         onClose={() => setSelectedMatch(null)}
       />
       <ResultSheet

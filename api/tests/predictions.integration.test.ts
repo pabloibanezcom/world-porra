@@ -309,6 +309,93 @@ describe('knockout predictions', () => {
   });
 });
 
+describe('jokers', () => {
+  it('plays and removes a joker on a predicted match', async () => {
+    const { token } = await registerPlayer();
+    const match = await createMatch({ externalId: 601 });
+    await requestJson('/predictions', {
+      token,
+      body: { matchId: String(match._id), homeGoals: 2, awayGoals: 1 },
+    });
+
+    const play = await requestJson<{ prediction: { joker: boolean } }>('/predictions/joker', {
+      token,
+      body: { matchId: String(match._id), active: true },
+    });
+    expect(play.status).toBe(200);
+    expect(play.body.prediction.joker).toBe(true);
+
+    const remove = await requestJson<{ prediction: { joker: boolean } }>('/predictions/joker', {
+      token,
+      body: { matchId: String(match._id), active: false },
+    });
+    expect(remove.status).toBe(200);
+    expect(remove.body.prediction.joker).toBe(false);
+  });
+
+  it('requires a saved prediction before playing a joker', async () => {
+    const { token } = await registerPlayer();
+    const match = await createMatch({ externalId: 602 });
+
+    const response = await requestJson('/predictions/joker', {
+      token,
+      body: { matchId: String(match._id), active: true },
+    });
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({ error: 'Save your prediction before playing a joker.' });
+  });
+
+  it('allows only one joker per stage but frees it once removed', async () => {
+    const { token } = await registerPlayer();
+    const groupA = await createMatch({ externalId: 603, group: 'A' });
+    const groupB = await createMatch({ externalId: 604, group: 'B' });
+    const knockout = await createMatch({ externalId: 605, stage: 'ROUND_OF_16', group: null });
+
+    for (const match of [groupA, groupB]) {
+      await requestJson('/predictions', {
+        token,
+        body: { matchId: String(match._id), homeGoals: 1, awayGoals: 0 },
+      });
+    }
+    await requestJson('/predictions', {
+      token,
+      body: { matchId: String(knockout._id), homeGoals: 2, awayGoals: 0, qualifier: 'HOME' },
+    });
+
+    const first = await requestJson('/predictions/joker', {
+      token,
+      body: { matchId: String(groupA._id), active: true },
+    });
+    expect(first.status).toBe(200);
+
+    // Second group joker is rejected — one per stage.
+    const second = await requestJson('/predictions/joker', {
+      token,
+      body: { matchId: String(groupB._id), active: true },
+    });
+    expect(second.status).toBe(400);
+    expect(second.body).toEqual({ error: 'You have already played your joker in this stage.' });
+
+    // A knockout joker is independent and allowed.
+    const knockoutJoker = await requestJson('/predictions/joker', {
+      token,
+      body: { matchId: String(knockout._id), active: true },
+    });
+    expect(knockoutJoker.status).toBe(200);
+
+    // Removing the group joker frees it for the other group match.
+    await requestJson('/predictions/joker', {
+      token,
+      body: { matchId: String(groupA._id), active: false },
+    });
+    const retry = await requestJson('/predictions/joker', {
+      token,
+      body: { matchId: String(groupB._id), active: true },
+    });
+    expect(retry.status).toBe(200);
+  });
+});
+
 describe('group predictions', () => {
   it('creates a normalized group prediction for all confirmed group teams', async () => {
     const { token } = await registerPlayer();

@@ -243,7 +243,7 @@ export async function processFinishedMatches(): Promise<{
     const predictions = await Prediction.find({ matchId: match._id });
 
     for (const prediction of predictions) {
-      const points = calculatePoints({
+      const rawPoints = calculatePoints({
         predictedHome: prediction.homeGoals,
         predictedAway: prediction.awayGoals,
         actualHome: match.result.homeGoals,
@@ -254,6 +254,8 @@ export async function processFinishedMatches(): Promise<{
         actualWinner: match.result.winner,
       });
 
+      // Joker doubles the total points earned on the selected match.
+      const points = prediction.joker ? rawPoints * 2 : rawPoints;
       prediction.points = points;
       await prediction.save();
 
