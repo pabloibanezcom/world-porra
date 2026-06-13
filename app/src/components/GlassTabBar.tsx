@@ -34,7 +34,7 @@ export default function GlassTabBar({ state, descriptors, navigation }: BottomTa
   return (
     <View
       pointerEvents="box-none"
-      style={[styles.wrapper, { bottom: insets.bottom + 10 }]}
+      style={[styles.wrapper, { bottom: insets.bottom + 24 }]}
     >
       <View
         style={styles.bar}

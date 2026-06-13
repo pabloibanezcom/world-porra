@@ -177,6 +177,11 @@ export default function MatchPredictionsSheet({ match, leagues, prediction, onCl
           </View>
         </View>
 
+        <ScrollView
+          style={styles.body}
+          contentContainerStyle={styles.bodyContent}
+          showsVerticalScrollIndicator={false}
+        >
         {isFinished && (
           <View style={styles.breakdownBlock}>
             <PointsBreakdown match={match} prediction={prediction} />
@@ -195,7 +200,7 @@ export default function MatchPredictionsSheet({ match, leagues, prediction, onCl
         ) : (
           <>
             {memberLeagues.length > 1 && (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.leagueTabs}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.leagueTabsScroll} contentContainerStyle={styles.leagueTabs}>
                 {memberLeagues.map((league) => (
                   <TouchableOpacity
                     key={league._id}
@@ -233,7 +238,7 @@ export default function MatchPredictionsSheet({ match, leagues, prediction, onCl
                   </View>
                 </View>
 
-                <ScrollView style={styles.friendRows} contentContainerStyle={styles.friendRowsContent}>
+                <View style={styles.friendRows}>
                   {sortedPredictions.map((item) => {
                     const user = predictionUser(item);
                     const isMe = user.id === currentUser?.id;
@@ -268,11 +273,12 @@ export default function MatchPredictionsSheet({ match, leagues, prediction, onCl
                       </View>
                     );
                   })}
-                </ScrollView>
+                </View>
               </>
             )}
           </>
         )}
+        </ScrollView>
       </Animated.View>
     </Modal>
   );
@@ -296,6 +302,12 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
     padding: 22,
     paddingBottom: 36,
+  },
+  body: {
+    flexGrow: 0,
+  },
+  bodyContent: {
+    paddingBottom: 4,
   },
   handle: {
     width: 34,
@@ -374,6 +386,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+  leagueTabsScroll: {
+    flexGrow: 0,
+    flexShrink: 0,
+  },
   leagueTabs: {
     gap: 8,
     paddingBottom: 12,
@@ -429,10 +445,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   friendRows: {
-    maxHeight: 300,
-  },
-  friendRowsContent: {
-    paddingBottom: 4,
+    marginTop: 2,
   },
   friendRow: {
     flexDirection: 'row',
