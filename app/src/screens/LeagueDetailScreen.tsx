@@ -458,7 +458,9 @@ export default function LeagueDetailScreen() {
           onToggleAdmin={handleToggleAdmin}
           onDeleteLeague={() => {
             setSettingsSheetVisible(false);
-            handleDeleteLeague();
+            // Defer until the settings sheet's Modal has dismissed; on iOS an
+            // Alert fired while a Modal is unmounting is silently dropped.
+            setTimeout(handleDeleteLeague, 350);
           }}
           onLeaveLeague={() => {
             setSettingsSheetVisible(false);
