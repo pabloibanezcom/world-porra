@@ -16,7 +16,7 @@ import LoadingView from '../components/ui/LoadingView';
 import TournamentPicksSection from '../components/TournamentPicksSection';
 import PicksTabs, { PicksTab } from '../components/PicksTabs';
 import GroupPredictionCard from '../components/GroupPredictionCard';
-import { colors, fonts } from '../theme';
+import { colors, fonts, TAB_BAR_CLEARANCE } from '../theme';
 import { useI18n } from '../i18n';
 import { getPredictionLockTime, isPredictionLocked } from '../utils/prediction';
 import { formatLockStatus } from '../utils/deadline';
@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
     padding: 18,
     paddingBottom: 14,
   },
-  scroll: { padding: 18, paddingBottom: 16, paddingTop: 14, gap: 16 },
+  scroll: { padding: 18, paddingBottom: TAB_BAR_CLEARANCE, paddingTop: 14, gap: 16 },
 
   titleRow: { marginTop: 4 },
   title: { color: colors.text, fontSize: 30, fontFamily: fonts.display },

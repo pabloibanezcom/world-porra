@@ -10,7 +10,7 @@ import { useAuthStore } from '../store/authStore';
 import LeagueCard from '../components/LeagueCard';
 import LoadingView from '../components/ui/LoadingView';
 import JoinLeagueSheet from '../components/JoinLeagueSheet';
-import { colors, fonts } from '../theme';
+import { colors, fonts, TAB_BAR_CLEARANCE } from '../theme';
 import { useI18n } from '../i18n';
 
 export default function LeaguesScreen() {
@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
   },
   joinButtonText: { color: colors.text, fontWeight: '600', fontSize: 13, fontFamily: fonts.bodyMedium },
 
-  list: { padding: 18, paddingTop: 4, gap: 10 },
+  list: { padding: 18, paddingTop: 4, paddingBottom: TAB_BAR_CLEARANCE, gap: 10 },
   leagueRow: { flexDirection: 'row', alignItems: 'stretch', gap: 10 },
   leagueCardWrap: { flex: 1, minWidth: 0 },
   reorderControls: { gap: 8, justifyContent: 'center' },

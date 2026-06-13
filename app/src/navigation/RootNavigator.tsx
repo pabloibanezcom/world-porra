@@ -1,11 +1,11 @@
 import React, { useEffect, useRef } from 'react';
 import { ActivityIndicator, Alert, Linking, Platform, View } from 'react-native';
-import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
+import { DefaultTheme, NavigationContainer, Theme, useNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/authStore';
-import { colors, fonts } from '../theme';
+import { colors } from '../theme';
 import { fetchLeagueInvitePreview, joinLeague } from '../api/leagues';
 import { usePendingInviteStore } from '../store/pendingInviteStore';
 import { usePendingLeagueCreationInviteStore } from '../store/pendingLeagueCreationInviteStore';
@@ -30,14 +30,21 @@ import ContactMasterScreen from '../screens/ContactMasterScreen';
 import AdminContactMessagesScreen from '../screens/AdminContactMessagesScreen';
 import AdminMatchResultsScreen from '../screens/AdminMatchResultsScreen';
 import { useI18n } from '../i18n';
+import GlassTabBar from '../components/GlassTabBar';
 
 const Stack = createNativeStackNavigator();
 const LeaguesStack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
+// Dark theme so the navigator's scene background never flashes white during transitions.
+const navTheme: Theme = {
+  ...DefaultTheme,
+  colors: { ...DefaultTheme.colors, background: colors.bg },
+};
+
 function LeaguesStackNavigator() {
   return (
-    <LeaguesStack.Navigator screenOptions={{ headerShown: false }}>
+    <LeaguesStack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
       <LeaguesStack.Screen name="LeagueList" component={LeaguesScreen} />
       <LeaguesStack.Screen name="LeagueDetail" component={LeagueDetailScreen} />
     </LeaguesStack.Navigator>
@@ -49,20 +56,13 @@ function MainTabs() {
 
   return (
     <Tab.Navigator
+      tabBar={(props) => <GlassTabBar {...props} />}
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarStyle: {
-          backgroundColor: colors.bg,
-          borderTopColor: colors.border,
-          borderTopWidth: 1,
-          height: 78,
-          paddingTop: 10,
-          paddingBottom: 16,
-        },
         tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: colors.dim,
-        tabBarLabelStyle: { fontSize: 10, fontWeight: '600' as const, fontFamily: fonts.bodyMedium },
-        animation: 'none',
+        animation: 'shift',
+        sceneStyle: { backgroundColor: colors.bg },
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap = 'home';
           if (route.name === 'Home') iconName = focused ? 'home' : 'home-outline';
@@ -216,8 +216,8 @@ export default function RootNavigator() {
   }
 
   return (
-    <NavigationContainer ref={navigationRef}>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <NavigationContainer ref={navigationRef} theme={navTheme}>
+      <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
         {user ? (
           <>
             <Stack.Screen name="Main" component={MainTabs} />

@@ -4,6 +4,7 @@ import { useFonts } from 'expo-font';
 import Toast from 'react-native-toast-message';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import RootNavigator from './src/navigation/RootNavigator';
+import { colors } from './src/theme';
 import { I18nProvider } from './src/i18n';
 import VercelAnalytics from './src/components/VercelAnalytics';
 
@@ -24,7 +25,7 @@ export default function App() {
   useFonts(fontAssets);
 
   return (
-    <SafeAreaProvider>
+    <SafeAreaProvider style={{ flex: 1, backgroundColor: colors.bg }}>
       <I18nProvider>
         <StatusBar style="light" />
         <RootNavigator />

@@ -25,7 +25,7 @@ import LeagueCard from '../components/LeagueCard';
 import Avatar from '../components/ui/Avatar';
 import LoadingView from '../components/ui/LoadingView';
 import LiveBadge from '../components/LiveBadge';
-import { colors, fonts } from '../theme';
+import { colors, fonts, TAB_BAR_CLEARANCE } from '../theme';
 import { setPredictionJoker, submitPrediction } from '../api/predictions';
 import { getJokerCategory } from '../hooks/usePicksData';
 import { useI18n } from '../i18n';
@@ -374,7 +374,7 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
-  scroll: { padding: 18, paddingBottom: 16, gap: 18 },
+  scroll: { padding: 18, paddingBottom: TAB_BAR_CLEARANCE, gap: 18 },
 
   header: { marginTop: 4 },
   greeting: { color: colors.muted, fontSize: 13, marginBottom: 4, fontFamily: fonts.body },
