@@ -34,13 +34,11 @@ export default function LeagueCard({ league, userId, compact = false, onPress }:
       <View style={[styles.topRow, compact && styles.topRowCompact]}>
         <View style={styles.nameBlock}>
           <Text style={styles.name} numberOfLines={1}>{league.name}</Text>
-          {!compact && (
-            <Text style={styles.sub}>
-              {myPoints !== null
-                ? t('leagues.playersWithPoints', { count: league.members.length, points: myPoints })
-                : t('leagues.players', { count: league.members.length })}
-            </Text>
-          )}
+          <Text style={styles.sub}>
+            {myPoints !== null
+              ? t('leagues.playersWithPoints', { count: league.members.length, points: myPoints })
+              : t('leagues.players', { count: league.members.length })}
+          </Text>
         </View>
         {rank !== null && (
           <View style={[styles.rankBadge, compact && styles.rankBadgeCompact, { backgroundColor: accentDim }]}>
