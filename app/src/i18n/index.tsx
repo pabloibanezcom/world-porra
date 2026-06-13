@@ -399,6 +399,7 @@ const translations: Record<Language, TranslationMap> = {
     'match.friendPickWinner': ({ code }) => `Picked ${code}`,
 
     'matchCard.predict': 'Predict ->',
+    'matchCard.timeLeft': ({ time }) => `${time} left`,
     'matchCard.teamsTbd': 'Teams TBD',
     'matchCard.predicted': 'Predicted',
     'matchCard.pickQualifier': '⚠ Pick who advances',
@@ -945,6 +946,7 @@ const translations: Record<Language, TranslationMap> = {
     'match.friendPickWinner': ({ code }) => `Pronosticó ${code}`,
 
     'matchCard.predict': 'Pronosticar ->',
+    'matchCard.timeLeft': ({ time }) => `quedan ${time}`,
     'matchCard.teamsTbd': 'Equipos P/D',
     'matchCard.predicted': 'Pronosticado',
     'matchCard.pickQualifier': '⚠ Elige quién pasa',
