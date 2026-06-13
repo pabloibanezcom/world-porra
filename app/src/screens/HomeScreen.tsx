@@ -144,10 +144,14 @@ export default function HomeScreen() {
     const kickoff = kickoffTime(match);
     return kickoff >= now.getTime() && kickoff <= next24Hours.getTime();
   });
-  const nextMatches =
-    matchesInNext24Hours.length >= 3
-      ? matchesInNext24Hours
-      : upcoming.slice(0, 3);
+  // Urgent: kicking off within 24h, predictable, and not yet predicted.
+  const urgentUnpredicted = matchesInNext24Hours.filter(
+    (match) => !predMap[match._id] && !isPredictionLocked(match) && !hasTbdTeam(match)
+  );
+  const urgentIds = new Set(urgentUnpredicted.map((match) => match._id));
+  const nextMatches = (
+    matchesInNext24Hours.length >= 3 ? matchesInNext24Hours : upcoming.slice(0, 3)
+  ).filter((match) => !urgentIds.has(match._id));
   const recentFinished = [...finished].reverse().slice(0, 2);
 
   const totalPoints = predictions.reduce((sum, prediction) => sum + (prediction.points ?? 0), 0);
@@ -281,6 +285,26 @@ export default function HomeScreen() {
                   }
                 />
               ))}
+            </View>
+          </View>
+        )}
+
+        {/* Urgent: unpredicted matches kicking off soon */}
+        {urgentUnpredicted.length > 0 && (
+          <View>
+            <SectionLabel>{t('home.predictNow')}</SectionLabel>
+            <View style={styles.nextMatchesList}>
+              {urgentUnpredicted.map((match) => {
+                const myPred = predMap[match._id] ?? null;
+                return (
+                  <MatchCard
+                    key={match._id}
+                    match={match}
+                    prediction={myPred}
+                    onPress={() => setSelectedMatch(match)}
+                  />
+                );
+              })}
             </View>
           </View>
         )}
