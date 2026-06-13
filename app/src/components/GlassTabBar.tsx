@@ -153,12 +153,17 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 2,
     gap: 3,
     zIndex: 1,
   },
   label: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '600',
     fontFamily: fonts.bodyMedium,
+    // Stretch to the slot width + center so a long label (e.g. "Predicciones")
+    // stays within the active pill instead of spilling past it.
+    alignSelf: 'stretch',
+    textAlign: 'center',
   },
 });
