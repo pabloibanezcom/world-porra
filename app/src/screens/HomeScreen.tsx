@@ -18,7 +18,6 @@ import { fetchMyLeagues } from '../api/leagues';
 import { fetchPollConfig, PollConfig } from '../api/config';
 import { Match, Prediction, League } from '../types';
 import PredictionSheet from '../components/PredictionSheet';
-import ResultSheet from '../components/ResultSheet';
 import MatchPredictionsSheet from '../components/MatchPredictionsSheet';
 import MatchCard, { hasTbdTeam } from '../components/MatchCard';
 import LeagueCard from '../components/LeagueCard';
@@ -85,7 +84,6 @@ export default function HomeScreen() {
   const [leagues, setLeagues] = useState<League[]>([]);
   const [pollConfig, setPollConfig] = useState<PollConfig | null>(null);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
-  const [selectedResult, setSelectedResult] = useState<Match | null>(null);
   const [selectedPredictionsMatch, setSelectedPredictionsMatch] = useState<Match | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -301,7 +299,7 @@ export default function HomeScreen() {
                     match={m}
                     prediction={pred}
                     result={result}
-                    onPress={() => setSelectedResult(m)}
+                    onPress={() => setSelectedPredictionsMatch(m)}
                   />
                 );
               })}
@@ -358,14 +356,10 @@ export default function HomeScreen() {
         onToggleJoker={handleToggleJoker}
         onClose={() => setSelectedMatch(null)}
       />
-      <ResultSheet
-        match={selectedResult}
-        prediction={selectedResult ? predMap[selectedResult._id] : null}
-        onClose={() => setSelectedResult(null)}
-      />
       <MatchPredictionsSheet
         match={selectedPredictionsMatch}
         leagues={leagues}
+        prediction={selectedPredictionsMatch ? predMap[selectedPredictionsMatch._id] : null}
         onClose={() => setSelectedPredictionsMatch(null)}
       />
     </SafeAreaView>

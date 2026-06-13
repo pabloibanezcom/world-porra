@@ -11,7 +11,7 @@ import {
   View,
 } from 'react-native';
 import { fetchMatchPredictions, MatchPredictionVisibility } from '../api/predictions';
-import { League, Match, User } from '../types';
+import { League, Match, Prediction, User } from '../types';
 import { colors, fonts } from '../theme';
 import { useAuthStore } from '../store/authStore';
 import { useI18n } from '../i18n';
@@ -19,11 +19,13 @@ import Avatar from './ui/Avatar';
 import Flag from './ui/Flag';
 import { getTeamLabel } from './MatchCard';
 import LiveBadge from './LiveBadge';
+import PointsBreakdown from './PointsBreakdown';
 import { calculateLivePotentialPoints } from '../utils/livePoints';
 
 interface Props {
   match: Match | null;
   leagues: League[];
+  prediction?: Prediction | null;
   onClose: () => void;
 }
 
@@ -52,7 +54,7 @@ function userIdValue(user: League['members'][number]['userId']): string | null {
   return user.id ?? user._id ?? null;
 }
 
-export default function MatchPredictionsSheet({ match, leagues, onClose }: Props) {
+export default function MatchPredictionsSheet({ match, leagues, prediction, onClose }: Props) {
   const { t, locale } = useI18n();
   const currentUser = useAuthStore((s) => s.user);
   const [selectedLeagueId, setSelectedLeagueId] = useState<string | null>(null);
@@ -139,6 +141,7 @@ export default function MatchPredictionsSheet({ match, leagues, onClose }: Props
   const timeStr = new Date(match.utcDate).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
   const selectedLeague = memberLeagues.find((league) => league._id === selectedLeagueId);
   const matchStarted = isStarted(match);
+  const isFinished = match.status === 'FINISHED';
   const scoreText = match.result
     ? `${match.result.homeGoals} - ${match.result.awayGoals}`
     : t('matchCard.scorePending');
@@ -170,9 +173,15 @@ export default function MatchPredictionsSheet({ match, leagues, onClose }: Props
           </View>
           <View style={styles.metaRow}>
             <Text style={styles.meta}>{groupLabel} · {dateStr} · {timeStr}</Text>
-            <LiveBadge compact />
+            {match.status === 'LIVE' && <LiveBadge compact />}
           </View>
         </View>
+
+        {isFinished && (
+          <View style={styles.breakdownBlock}>
+            <PointsBreakdown match={match} prediction={prediction} />
+          </View>
+        )}
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>{t('match.friendPicks')}</Text>
@@ -230,6 +239,7 @@ export default function MatchPredictionsSheet({ match, leagues, onClose }: Props
                     const isMe = user.id === currentUser?.id;
                     const outcome = outcomeFor(item.homeGoals, item.awayGoals);
                     const potentialPoints = calculateLivePotentialPoints(match, item);
+                    const earnedPoints = item.points ?? 0;
                     return (
                       <View key={item._id} style={styles.friendRow}>
                         <Avatar name={user.name ?? 'Player'} imageUrl={user.avatarUrl} size={34} color={isMe ? colors.accent : colors.blue} />
@@ -243,10 +253,16 @@ export default function MatchPredictionsSheet({ match, leagues, onClose }: Props
                         </View>
                         <View style={styles.friendScoreBlock}>
                           <Text style={styles.friendScore}>{item.homeGoals} - {item.awayGoals}</Text>
-                          {potentialPoints != null && (
-                            <Text style={styles.friendPotentialPoints}>
-                              {t('matchCard.potentialPoints', { points: potentialPoints })}
+                          {isFinished ? (
+                            <Text style={[styles.friendEarnedPoints, earnedPoints > 0 ? styles.friendEarnedPositive : styles.friendEarnedZero]}>
+                              {earnedPoints > 0 ? '+' : ''}{earnedPoints} {t('common.pointsShort')}
                             </Text>
+                          ) : (
+                            potentialPoints != null && (
+                              <Text style={styles.friendPotentialPoints}>
+                                {t('matchCard.potentialPoints', { points: potentialPoints })}
+                              </Text>
+                            )
                           )}
                         </View>
                       </View>
@@ -457,5 +473,20 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '800',
     marginTop: 1,
+  },
+  friendEarnedPoints: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 11,
+    fontWeight: '800',
+    marginTop: 1,
+  },
+  friendEarnedPositive: {
+    color: colors.accent,
+  },
+  friendEarnedZero: {
+    color: colors.muted,
+  },
+  breakdownBlock: {
+    marginBottom: 18,
   },
 });
