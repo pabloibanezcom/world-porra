@@ -7,6 +7,9 @@ import { colors, fonts } from '../theme';
 import { useI18n } from '../i18n';
 import { useScrollTriggerContext } from '../contexts/ScrollTrigger';
 import LiveBadge from './LiveBadge';
+import PredictBadge from './PredictBadge';
+import { getPredictionLockTime } from '../utils/prediction';
+import { formatDurationShort } from '../utils/deadline';
 
 export function oddsToPercents(home: number | null, draw: number | null, away: number | null) {
   if (!home || !draw || !away) return null;
@@ -266,9 +269,15 @@ export default function MatchCard({ match, prediction, result, locked, lockLabel
   const homeCode = getTeamLabel(match.homeTeam.name, match.homeTeam.code);
   const awayCode = getTeamLabel(match.awayTeam.name, match.awayTeam.code);
 
+  const msToLock = getPredictionLockTime(match).getTime() - Date.now();
+  const urgent = state === 'empty' && !locked && msToLock > 0 && msToLock < 24 * 60 * 60 * 1000;
+  const countdownLabel = urgent ? t('matchCard.timeLeft', { time: formatDurationShort(msToLock) }) : undefined;
+
   const cardStyle =
     state === 'empty'
-      ? styles.cardEmpty
+      ? urgent
+        ? styles.cardEmptyUrgent
+        : styles.cardEmpty
       : state === 'live'
       ? styles.cardLive
       : state === 'finished' && result === 'exact'
@@ -282,9 +291,7 @@ export default function MatchCard({ match, prediction, result, locked, lockLabel
     action = locked ? (
       <Text style={styles.lockedBadge}>{t('deadline.locked')}</Text>
     ) : (
-      <View style={styles.predictBtn}>
-        <Text style={styles.predictBtnText}>{t('matchCard.predict')}</Text>
-      </View>
+      <PredictBadge urgent={urgent} countdownLabel={countdownLabel} />
     );
   } else if (state === 'tbd') {
     action = <Text style={styles.tbdBadge}>{t('matchCard.teamsTbd')}</Text>;
@@ -293,7 +300,11 @@ export default function MatchCard({ match, prediction, result, locked, lockLabel
     if (knockout && !prediction?.qualifier) {
       action = <Text style={styles.qualifierWarning}>{t('matchCard.pickQualifier')}</Text>;
     } else {
-      action = <Text style={styles.predictedBadge}>✓ {t('matchCard.predicted')}</Text>;
+      action = (
+        <View style={styles.predictedChip}>
+          <Text style={styles.predictedChipText}>✓ {t('matchCard.predicted')}</Text>
+        </View>
+      );
     }
   } else if (state === 'live') {
     action = <LiveBadge />;
@@ -446,8 +457,12 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   cardEmpty: {
-    backgroundColor: 'rgba(0,168,126,0.08)',
-    borderColor: 'rgba(0,168,126,0.28)',
+    backgroundColor: 'rgba(73,79,223,0.07)',
+    borderColor: 'rgba(73,79,223,0.22)',
+  },
+  cardEmptyUrgent: {
+    backgroundColor: 'rgba(236,126,0,0.09)',
+    borderColor: 'rgba(236,126,0,0.30)',
   },
   cardLive: {
     backgroundColor: 'rgba(236,126,0,0.10)',
@@ -498,21 +513,16 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyMedium,
     letterSpacing: 0.4,
   },
-  predictBtn: {
-    backgroundColor: colors.accent,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
+  predictedChip: {
+    backgroundColor: colors.accentDim,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
     borderRadius: 8,
   },
-  predictBtnText: {
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  predictedBadge: {
+  predictedChipText: {
     color: colors.accent,
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '700',
     fontFamily: fonts.bodyMedium,
   },
   qualifierWarning: {
