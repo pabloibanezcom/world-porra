@@ -8,9 +8,9 @@ import {
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Match, Prediction } from '../types';
+import { League, Match, Prediction } from '../types';
 import PredictionSheet from '../components/PredictionSheet';
-import ResultSheet from '../components/ResultSheet';
+import MatchPredictionsSheet from '../components/MatchPredictionsSheet';
 import MatchCard, { hasTbdTeam } from '../components/MatchCard';
 import LoadingView from '../components/ui/LoadingView';
 import TournamentPicksSection from '../components/TournamentPicksSection';
@@ -22,6 +22,7 @@ import { getPredictionLockTime, isPredictionLocked } from '../utils/prediction';
 import { formatLockStatus } from '../utils/deadline';
 import { getJokerCategory, usePicksData } from '../hooks/usePicksData';
 import { calculateLivePotentialPoints } from '../utils/livePoints';
+import { fetchMyLeagues } from '../api/leagues';
 
 function getResult(pred: Prediction, match: Match): 'exact' | 'correct' | 'wrong' | null {
   if (!match.result) return null;
@@ -70,7 +71,8 @@ export default function PicksScreen() {
   const triggerRef = useRef<() => void>(() => {});
   const [tab, setTab] = useState<PicksTab>('upcoming');
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
-  const [selectedResult, setSelectedResult] = useState<Match | null>(null);
+  const [selectedPredictionsMatch, setSelectedPredictionsMatch] = useState<Match | null>(null);
+  const [leagues, setLeagues] = useState<League[]>([]);
   const [isDraggingGroupTeam, setIsDraggingGroupTeam] = useState(false);
   const [now, setNow] = useState(() => new Date());
   const {
@@ -101,6 +103,12 @@ export default function PicksScreen() {
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 60000);
     return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    fetchMyLeagues()
+      .then(setLeagues)
+      .catch(() => setLeagues([]));
   }, []);
 
   const upcoming = useMemo(
@@ -210,7 +218,7 @@ export default function PicksScreen() {
                     const onPress = canPredict
                       ? () => setSelectedMatch(m)
                       : (m.status === 'FINISHED' || (m.status === 'LIVE' && m.result))
-                      ? () => setSelectedResult(m)
+                      ? () => setSelectedPredictionsMatch(m)
                       : undefined;
 
                     return (
@@ -258,10 +266,11 @@ export default function PicksScreen() {
         onToggleJoker={handleToggleJoker}
         onClose={() => setSelectedMatch(null)}
       />
-      <ResultSheet
-        match={selectedResult}
-        prediction={selectedResult ? predMap[selectedResult._id] : null}
-        onClose={() => setSelectedResult(null)}
+      <MatchPredictionsSheet
+        match={selectedPredictionsMatch}
+        leagues={leagues}
+        prediction={selectedPredictionsMatch ? predMap[selectedPredictionsMatch._id] : null}
+        onClose={() => setSelectedPredictionsMatch(null)}
       />
     </SafeAreaView>
   );
