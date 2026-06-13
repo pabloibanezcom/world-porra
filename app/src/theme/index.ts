@@ -60,3 +60,6 @@ export const borderRadius = {
   lg: 20,
   full: 12,
 };
+
+// Bottom padding scroll content needs so it clears the floating glass tab bar.
+export const TAB_BAR_CLEARANCE = 110;

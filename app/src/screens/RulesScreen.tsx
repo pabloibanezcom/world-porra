@@ -10,7 +10,7 @@ import {
   UIManager,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, fonts } from '../theme';
+import { colors, fonts, TAB_BAR_CLEARANCE } from '../theme';
 import { useI18n } from '../i18n';
 import Flag from '../components/ui/Flag';
 import { Ionicons } from '@expo/vector-icons';
@@ -349,7 +349,7 @@ export default function RulesScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   scroll: { flex: 1 },
-  content: { padding: 18, paddingBottom: 40, gap: 16 },
+  content: { padding: 18, paddingBottom: TAB_BAR_CLEARANCE, gap: 16 },
 
   // Header
   header: { marginTop: 4, marginBottom: 4 },

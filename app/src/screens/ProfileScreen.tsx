@@ -19,7 +19,7 @@ import { fetchMyLeagues } from '../api/leagues';
 import { fetchMyPredictions } from '../api/predictions';
 import { League, Prediction } from '../types';
 import Avatar from '../components/ui/Avatar';
-import { colors, fonts } from '../theme';
+import { colors, fonts, TAB_BAR_CLEARANCE } from '../theme';
 import { sortMembersByPoints } from '../utils/league';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import NotifyModal from '../components/NotifyModal';
@@ -390,7 +390,7 @@ function DiagnosticsRow({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
-  scroll: { padding: 18, paddingBottom: 16, gap: 18 },
+  scroll: { padding: 18, paddingBottom: TAB_BAR_CLEARANCE, gap: 18 },
 
   avatarSection: { alignItems: 'center', gap: 12, paddingTop: 14 },
   avatarImg: { width: 76, height: 76, borderRadius: 38 },

@@ -32,7 +32,7 @@ import {
   updateLeaguePaymentSettings,
 } from '../api/leagues';
 import { League, LeagueMember, LeaguePaymentSettings } from '../types';
-import { colors, fonts } from '../theme';
+import { colors, fonts, TAB_BAR_CLEARANCE } from '../theme';
 import Avatar from '../components/ui/Avatar';
 import BottomSheet from '../components/ui/BottomSheet';
 import LeagueRaceStrip from '../components/LeagueRaceStrip';
@@ -949,7 +949,7 @@ function ModalSplitInput({
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.bg },
-  scroll: { padding: 18, paddingBottom: 20, gap: 18 },
+  scroll: { padding: 18, paddingBottom: TAB_BAR_CLEARANCE, gap: 18 },
 
   titleRow: { marginTop: 4, flexDirection: 'row', alignItems: 'flex-start' },
   titleMain: { flex: 1 },
