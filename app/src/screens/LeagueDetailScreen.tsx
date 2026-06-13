@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import NotifyModal from '../components/NotifyModal';
 import InviteSheet from '../components/InviteSheet';
 import LeaveConfirmModal from '../components/LeaveConfirmModal';
+import DeleteLeagueConfirmModal from '../components/DeleteLeagueConfirmModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CommonActions, RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import {
@@ -79,6 +80,7 @@ export default function LeagueDetailScreen() {
   const [notifyModalVisible, setNotifyModalVisible] = useState(false);
   const [inviteSheetVisible, setInviteSheetVisible] = useState(false);
   const [leaveModalVisible, setLeaveModalVisible] = useState(false);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [settingsSheetVisible, setSettingsSheetVisible] = useState(false);
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
   const [paymentSaving, setPaymentSaving] = useState(false);
@@ -148,32 +150,20 @@ export default function LeagueDetailScreen() {
   const paidCount = league.members.filter((member) => member.hasPaid).length;
   const totalPot = paymentSettings.entryFee * league.members.length;
 
-  const handleDeleteLeague = () => {
-    Alert.alert(
-      t('league.deleteTitle'),
-      t('league.deleteConfirm', { name: league.name }),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('league.deleteAction'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteLeague(league._id);
-              setLeague(null);
-              navigation.dispatch(
-                CommonActions.reset({
-                  index: 0,
-                  routes: [{ name: 'LeagueList' }],
-                })
-              );
-            } catch (err: any) {
-              Alert.alert(t('common.error'), getApiErrorMessage(err, t('league.deleteFailed')));
-            }
-          },
-        },
-      ]
-    );
+  const handleDeleteConfirm = async () => {
+    try {
+      await deleteLeague(league._id);
+      setDeleteModalVisible(false);
+      setLeague(null);
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: 'LeagueList' }],
+        })
+      );
+    } catch (err: any) {
+      Alert.alert(t('common.error'), getApiErrorMessage(err, t('league.deleteFailed')));
+    }
   };
 
   const handleLeaveConfirm = async () => {
@@ -432,6 +422,12 @@ export default function LeagueDetailScreen() {
         onClose={() => setLeaveModalVisible(false)}
         onConfirm={handleLeaveConfirm}
       />
+      <DeleteLeagueConfirmModal
+        visible={deleteModalVisible}
+        leagueName={league.name}
+        onClose={() => setDeleteModalVisible(false)}
+        onConfirm={handleDeleteConfirm}
+      />
       {settingsSheetVisible && (
         <LeagueSettingsSheet
           league={league}
@@ -458,9 +454,7 @@ export default function LeagueDetailScreen() {
           onToggleAdmin={handleToggleAdmin}
           onDeleteLeague={() => {
             setSettingsSheetVisible(false);
-            // Defer until the settings sheet's Modal has dismissed; on iOS an
-            // Alert fired while a Modal is unmounting is silently dropped.
-            setTimeout(handleDeleteLeague, 350);
+            setDeleteModalVisible(true);
           }}
           onLeaveLeague={() => {
             setSettingsSheetVisible(false);
