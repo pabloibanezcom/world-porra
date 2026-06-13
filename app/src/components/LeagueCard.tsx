@@ -34,15 +34,22 @@ export default function LeagueCard({ league, userId, compact = false, onPress }:
       <View style={[styles.topRow, compact && styles.topRowCompact]}>
         <View style={styles.nameBlock}>
           <Text style={styles.name} numberOfLines={1}>{league.name}</Text>
-          <Text style={styles.sub}>
-            {myPoints !== null
-              ? t('leagues.playersWithPoints', { count: league.members.length, points: myPoints })
-              : t('leagues.players', { count: league.members.length })}
-          </Text>
+          {!compact && (
+            <Text style={styles.sub}>
+              {myPoints !== null
+                ? t('leagues.playersWithPoints', { count: league.members.length, points: myPoints })
+                : t('leagues.players', { count: league.members.length })}
+            </Text>
+          )}
         </View>
         {rank !== null && (
           <View style={[styles.rankBadge, compact && styles.rankBadgeCompact, { backgroundColor: accentDim }]}>
-            <Text style={[styles.rankNum, compact && styles.rankNumCompact, { color: accent }]}>#{rank}</Text>
+            <Text style={[styles.rankNum, compact && styles.rankNumCompact, { color: accent }]}>
+              #{rank}
+              <Text style={[styles.rankTotal, compact && styles.rankTotalCompact, { color: accent }]}>
+                {' / '}{league.members.length}
+              </Text>
+            </Text>
             {!compact && <Text style={[styles.rankLabel, { color: accent }]}>{t('common.rank')}</Text>}
           </View>
         )}
@@ -95,7 +102,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     alignItems: 'center',
-    minWidth: 52,
+    minWidth: 64,
   },
   rankBadgeCompact: {
     borderRadius: 9,
@@ -111,6 +118,15 @@ const styles = StyleSheet.create({
   rankNumCompact: {
     fontSize: 15,
     lineHeight: 18,
+  },
+  rankTotal: {
+    fontSize: 14,
+    fontFamily: fonts.displayBold,
+    fontWeight: '700',
+    opacity: 0.55,
+  },
+  rankTotalCompact: {
+    fontSize: 12,
   },
   rankLabel: {
     fontSize: 9,
