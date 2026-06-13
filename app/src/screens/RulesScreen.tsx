@@ -1,23 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  LayoutAnimation,
-  Platform,
-  UIManager,
+  Animated,
+  Easing,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, fonts, TAB_BAR_CLEARANCE } from '../theme';
 import { useI18n } from '../i18n';
 import Flag from '../components/ui/Flag';
 import { Ionicons } from '@expo/vector-icons';
-
-if (Platform.OS === 'android') {
-  UIManager.setLayoutAnimationEnabledExperimental?.(true);
-}
 
 // ── Shared sub-components ──────────────────────────────────────
 
@@ -49,11 +44,15 @@ function TableRow({
   );
 }
 
-function ChevronIcon({ open }: { open: boolean }) {
+function ChevronIcon({ progress }: { progress: Animated.Value }) {
+  const rotate = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '90deg'],
+  });
   return (
-    <View style={[styles.chevron, open && styles.chevronOpen]}>
+    <Animated.View style={[styles.chevron, { transform: [{ rotate }] }]}>
       <Text style={styles.chevronText}>›</Text>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -76,6 +75,24 @@ function SectionCard({
 }: SectionCardProps) {
   const open = openId === id;
   const resolvedIconColor = iconColor ?? accentColor;
+
+  const progress = useRef(new Animated.Value(open ? 1 : 0)).current;
+  const [contentHeight, setContentHeight] = useState(0);
+
+  useEffect(() => {
+    Animated.timing(progress, {
+      toValue: open ? 1 : 0,
+      duration: 260,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+  }, [open, progress]);
+
+  const animatedHeight = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, contentHeight],
+  });
+
   return (
     <View style={[styles.sectionCard, open && { borderColor: accentColor + '44' }]}>
       <TouchableOpacity
@@ -90,13 +107,29 @@ function SectionCard({
           <Text style={styles.sectionTitle}>{title}</Text>
           <Text style={styles.sectionSubtitle}>{subtitle}</Text>
         </View>
-        <ChevronIcon open={open} />
+        <ChevronIcon progress={progress} />
       </TouchableOpacity>
-      {open && (
+
+      {/* Animated reveal: height + fade driven by progress */}
+      <Animated.View style={{ height: animatedHeight, opacity: progress, overflow: 'hidden' }}>
         <View style={styles.sectionBody}>
           {children}
         </View>
-      )}
+      </Animated.View>
+
+      {/* Off-screen measurer: captures the natural content height */}
+      <View
+        style={styles.measure}
+        pointerEvents="none"
+        onLayout={e => {
+          const h = e.nativeEvent.layout.height;
+          if (h > 0 && h !== contentHeight) setContentHeight(h);
+        }}
+      >
+        <View style={styles.sectionBody}>
+          {children}
+        </View>
+      </View>
     </View>
   );
 }
@@ -108,7 +141,6 @@ export default function RulesScreen() {
   const [openId, setOpenId] = useState<string | null>(null);
 
   const toggle = (id: string) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setOpenId(prev => prev === id ? null : id);
   };
 
@@ -438,7 +470,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexShrink: 0,
   },
-  chevronOpen: { transform: [{ rotate: '90deg' }] },
   chevronText: { color: colors.dim, fontSize: 18, fontWeight: '300', lineHeight: 20 },
   sectionBody: {
     padding: 16,
@@ -446,6 +477,15 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.border,
     paddingBottom: 18,
+  },
+  // Off-screen copy used only to measure natural content height
+  measure: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    opacity: 0,
+    zIndex: -1,
   },
 
   // Bullet list (General Rules)
