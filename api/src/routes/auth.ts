@@ -9,7 +9,7 @@ import { env } from '../config/env';
 import { logger } from '../config/logger';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { hashPassword, verifyPassword } from '../utils/password';
-import { getAppBaseUrl, sendPasswordResetEmail } from '../services/emailService';
+import { getAppBaseUrl, isEmailConfigured, sendPasswordResetEmail } from '../services/emailService';
 
 const router = Router();
 const googleClient = new OAuth2Client(env.GOOGLE_CLIENT_ID);
@@ -225,6 +225,13 @@ router.post('/password/forgot', async (req, res: Response): Promise<void> => {
   try {
     const { email } = passwordResetRequestSchema.parse(req.body);
     const normalizedEmail = normalizeEmail(email);
+
+    if (!isEmailConfigured()) {
+      logger.error('Password reset email requested but email delivery is not configured');
+      res.status(503).json({ error: 'Password reset emails are temporarily unavailable' });
+      return;
+    }
+
     const user = await User.findOne({ email: normalizedEmail }).select('+passwordResetTokenHash');
 
     if (user) {
@@ -242,6 +249,11 @@ router.post('/password/forgot', async (req, res: Response): Promise<void> => {
         });
       } catch (error) {
         logger.error({ err: error, userId: String(user._id) }, 'Password reset email send failed');
+        user.passwordResetTokenHash = null;
+        user.passwordResetExpiresAt = null;
+        await user.save();
+        res.status(503).json({ error: 'Password reset emails are temporarily unavailable' });
+        return;
       }
     }
 

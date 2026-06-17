@@ -2,6 +2,26 @@ import crypto from 'crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { clearDatabase, requestJson, startIntegrationServer, stopIntegrationServer } from './helpers/integration';
 import { User } from '../src/models/User';
+import { env } from '../src/config/env';
+
+function mockResendSend(providerMessageId = 'email-reset-1') {
+  env.RESEND_API_KEY = 'test-resend-key';
+  env.EMAIL_FROM = 'World Porra <notifications@worldporra.test>';
+  const realFetch = globalThis.fetch;
+
+  return vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+
+    if (url === 'https://api.resend.com/emails') {
+      return new Response(JSON.stringify({ id: providerMessageId }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
+
+    return realFetch(input, init);
+  });
+}
 
 beforeAll(async () => {
   await startIntegrationServer();
@@ -9,6 +29,9 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   vi.restoreAllMocks();
+  env.RESEND_API_KEY = '';
+  env.EMAIL_FROM = '';
+  env.EMAIL_REPLY_TO = '';
   await clearDatabase();
 });
 
@@ -93,6 +116,7 @@ describe('auth routes', () => {
       body: { email: 'player@worldporra.test', name: 'Player', password: 'old-password' },
     });
 
+    const resendFetch = mockResendSend();
     const resetToken = Buffer.alloc(32, 7).toString('hex');
     vi.spyOn(crypto, 'randomBytes').mockReturnValue(Buffer.alloc(32, 7));
 
@@ -101,6 +125,13 @@ describe('auth routes', () => {
     });
     expect(forgot.status).toBe(200);
     expect(forgot.body).toEqual({ ok: true });
+    expect(resendFetch).toHaveBeenCalledWith(
+      'https://api.resend.com/emails',
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.stringContaining('Reset your World Porra password'),
+      })
+    );
 
     const storedWithReset = await User.findOne({ email: 'player@worldporra.test' })
       .select('+passwordResetTokenHash')
@@ -133,13 +164,35 @@ describe('auth routes', () => {
     expect(reused.body).toEqual({ error: 'Invalid or expired password reset token' });
   });
 
+  it('does not create a reset token when password reset email is not configured', async () => {
+    await requestJson('/auth/register', {
+      body: { email: 'player@worldporra.test', name: 'Player', password: 'old-password' },
+    });
+
+    const response = await requestJson('/auth/password/forgot', {
+      body: { email: 'player@worldporra.test' },
+    });
+
+    expect(response.status).toBe(503);
+    expect(response.body).toEqual({ error: 'Password reset emails are temporarily unavailable' });
+
+    const storedUser = await User.findOne({ email: 'player@worldporra.test' })
+      .select('+passwordResetTokenHash')
+      .lean();
+    expect(storedUser?.passwordResetTokenHash).toBeNull();
+    expect(storedUser?.passwordResetExpiresAt).toBeNull();
+  });
+
   it('does not reveal whether a password reset email exists', async () => {
+    const resendFetch = mockResendSend();
+
     const response = await requestJson('/auth/password/forgot', {
       body: { email: 'missing@worldporra.test' },
     });
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ ok: true });
+    expect(resendFetch).not.toHaveBeenCalledWith('https://api.resend.com/emails', expect.anything());
   });
 
   it('protects authenticated routes from missing and invalid tokens', async () => {
