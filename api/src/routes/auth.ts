@@ -56,6 +56,10 @@ function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
+function hashLogValue(value: string): string {
+  return crypto.createHash('sha256').update(value).digest('hex').slice(0, 12);
+}
+
 function isMasterEmail(email: string): boolean {
   return !!env.MASTER_USER_EMAIL && normalizeEmail(env.MASTER_USER_EMAIL) === normalizeEmail(email);
 }
@@ -225,36 +229,55 @@ router.post('/password/forgot', async (req, res: Response): Promise<void> => {
   try {
     const { email } = passwordResetRequestSchema.parse(req.body);
     const normalizedEmail = normalizeEmail(email);
+    const emailHash = hashLogValue(normalizedEmail);
 
     if (!isEmailConfigured()) {
-      logger.error('Password reset email requested but email delivery is not configured');
+      logger.error({ emailHash }, 'Password reset email requested but email delivery is not configured');
       res.status(503).json({ error: 'Password reset emails are temporarily unavailable' });
       return;
     }
 
     const user = await User.findOne({ email: normalizedEmail }).select('+passwordResetTokenHash');
 
-    if (user) {
-      const resetToken = generatePasswordResetToken();
-      user.passwordResetTokenHash = hashPasswordResetToken(resetToken);
-      user.passwordResetExpiresAt = new Date(Date.now() + PASSWORD_RESET_EXPIRES_MINUTES * 60 * 1000);
-      await user.save();
+    if (!user) {
+      logger.info({ emailHash }, 'Password reset requested for unknown email');
+      res.json({ ok: true });
+      return;
+    }
 
-      try {
-        await sendPasswordResetEmail({
-          to: user.email,
-          name: user.name,
-          resetUrl: buildPasswordResetUrl(resetToken),
-          expiresInMinutes: PASSWORD_RESET_EXPIRES_MINUTES,
-        });
-      } catch (error) {
-        logger.error({ err: error, userId: String(user._id) }, 'Password reset email send failed');
+    const resetToken = generatePasswordResetToken();
+    user.passwordResetTokenHash = hashPasswordResetToken(resetToken);
+    user.passwordResetExpiresAt = new Date(Date.now() + PASSWORD_RESET_EXPIRES_MINUTES * 60 * 1000);
+    await user.save();
+
+    try {
+      const emailResult = await sendPasswordResetEmail({
+        to: user.email,
+        name: user.name,
+        resetUrl: buildPasswordResetUrl(resetToken),
+        expiresInMinutes: PASSWORD_RESET_EXPIRES_MINUTES,
+      });
+
+      if (emailResult.skipped) {
         user.passwordResetTokenHash = null;
         user.passwordResetExpiresAt = null;
         await user.save();
+        logger.error({ userId: String(user._id), emailHash }, 'Password reset email send skipped');
         res.status(503).json({ error: 'Password reset emails are temporarily unavailable' });
         return;
       }
+
+      logger.info(
+        { userId: String(user._id), emailHash, providerMessageId: emailResult.providerMessageId ?? undefined },
+        'Password reset email sent'
+      );
+    } catch (error) {
+      logger.error({ err: error, userId: String(user._id), emailHash }, 'Password reset email send failed');
+      user.passwordResetTokenHash = null;
+      user.passwordResetExpiresAt = null;
+      await user.save();
+      res.status(503).json({ error: 'Password reset emails are temporarily unavailable' });
+      return;
     }
 
     res.json({ ok: true });
