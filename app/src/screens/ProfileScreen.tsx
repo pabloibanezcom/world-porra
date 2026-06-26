@@ -16,8 +16,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../store/authStore';
 import { fetchMyLeagues } from '../api/leagues';
-import { fetchMyPredictions } from '../api/predictions';
-import { League, Prediction } from '../types';
+import { fetchMyGroupPredictions, fetchMyPredictions } from '../api/predictions';
+import { GroupPrediction, League, Prediction } from '../types';
 import Avatar from '../components/ui/Avatar';
 import { colors, fonts, TAB_BAR_CLEARANCE } from '../theme';
 import { sortMembersByPoints } from '../utils/league';
@@ -51,6 +51,7 @@ export default function ProfileScreen() {
   const updateProfileName = useAuthStore((s) => s.updateProfileName);
   const [league, setLeague] = useState<League | null>(null);
   const [predictions, setPredictions] = useState<Prediction[]>([]);
+  const [groupPredictions, setGroupPredictions] = useState<GroupPrediction[]>([]);
   const { isSubscribed, loading: pushLoading, subscribe, unsubscribe, isSupported: pushSupported } = usePushNotifications();
   const [notifyModalVisible, setNotifyModalVisible] = useState(false);
   const [editNameVisible, setEditNameVisible] = useState(false);
@@ -62,10 +63,11 @@ export default function ProfileScreen() {
   const showDiagnostics = __DEV__ || process.env.EXPO_PUBLIC_ENABLE_SCENARIO_SWITCHER === 'true';
 
   useEffect(() => {
-    Promise.all([fetchMyLeagues(), fetchMyPredictions()])
-      .then(([leagues, preds]) => {
+    Promise.all([fetchMyLeagues(), fetchMyPredictions(), fetchMyGroupPredictions()])
+      .then(([leagues, preds, groupPreds]) => {
         if (leagues.length > 0) setLeague(leagues[0]);
         setPredictions(preds);
+        setGroupPredictions(groupPreds);
       })
       .catch(() => {});
   }, []);
@@ -77,7 +79,9 @@ export default function ProfileScreen() {
     fetchApiHealth().then(setApiHealth).catch(() => {});
   }, [showDiagnostics]);
 
-  const totalPoints = predictions.reduce((a, p) => a + (p.points ?? 0), 0);
+  const totalPoints =
+    predictions.reduce((a, p) => a + (p.points ?? 0), 0) +
+    groupPredictions.reduce((a, p) => a + (p.points ?? 0), 0);
   const exactCount = predictions.filter((p) => p.points !== null && p.points >= 10).length;
 
   const myRank = league

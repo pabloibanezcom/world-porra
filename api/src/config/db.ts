@@ -20,7 +20,11 @@ async function _connect(uriOverride?: string): Promise<void> {
     source = 'in-memory MongoDB';
   }
 
-  await mongoose.connect(uri);
+  await mongoose.connect(uri, {
+    maxPoolSize: env.DB_MAX_POOL_SIZE,
+    minPoolSize: 0,
+    serverSelectionTimeoutMS: 10000,
+  });
   activeUri = uri;
   logger.info(`Connected to ${source} (${mongoose.connection.name})`);
 }

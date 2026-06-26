@@ -16,7 +16,8 @@ import { PushSubscription } from '../models/PushSubscription';
 import { TournamentPrediction } from '../models/TournamentPrediction';
 import { User } from '../models/User';
 import { UserDevice } from '../models/UserDevice';
-import { processFinishedMatches, syncMatchResults } from '../services/syncService';
+import { processFinishedMatches, recalculateUserPoints, syncMatchResults } from '../services/syncService';
+import { scoreCompletedGroupPredictions } from '../services/predictionService';
 import { syncOdds } from '../services/oddsService';
 import { seedTournamentScenarios } from '../jobs/seedScenario';
 import { SCENARIOS, getDbName, getScenarioDbName, scenarioBySlug } from '../jobs/tournamentScenarios';
@@ -28,6 +29,10 @@ const syncSchema = z.object({
   processResults: z.boolean().default(true),
   syncOdds: z.boolean().default(false),
   forceOdds: z.boolean().default(false),
+});
+
+const scoreGroupPredictionsSchema = z.object({
+  groups: z.array(z.string().trim().min(1).max(8)).optional(),
 });
 
 const seedScenariosSchema = z.object({
@@ -524,7 +529,7 @@ router.post('/sync', syncAuthMiddleware, async (req: Request, res: Response, nex
       : { matchesUpdated: 0, matchesUnmatched: 0 };
     const scoringResult = processResults
       ? await processFinishedMatches()
-      : { matchesProcessed: 0, predictionsScored: 0, leaguesUpdated: 0 };
+      : { matchesProcessed: 0, predictionsScored: 0, groupPredictionsScored: 0, leaguesUpdated: 0 };
     const oddsResult = doSyncOdds ? await syncOdds({ force: forceOdds }) : { matchesUpdated: 0, requestsRemaining: null };
 
     res.json({
@@ -542,6 +547,34 @@ router.post('/sync', syncAuthMiddleware, async (req: Request, res: Response, nex
   } catch (error) {
     if (error instanceof z.ZodError) {
       res.status(400).json({ error: 'Invalid sync payload', details: error.errors });
+      return;
+    }
+
+    next(error);
+  }
+});
+
+router.post('/score-group-predictions', syncAuthMiddleware, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { groups } = scoreGroupPredictionsSchema.parse(req.body ?? {});
+    const scoringResult = await scoreCompletedGroupPredictions(groups);
+    const usersUpdated = await recalculateUserPoints();
+
+    logger.info(
+      { groups: scoringResult.groups, groupPredictionsScored: scoringResult.predictionsScored, usersUpdated },
+      'Backfilled completed group prediction points'
+    );
+
+    res.json({
+      ok: true,
+      groups: scoringResult.groups,
+      groupPredictionsScored: scoringResult.predictionsScored,
+      usersUpdated,
+      ranAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: 'Invalid group scoring payload', details: error.errors });
       return;
     }
 

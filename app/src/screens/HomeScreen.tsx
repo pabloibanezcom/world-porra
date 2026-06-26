@@ -13,10 +13,10 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../store/authStore';
 import { useDataRefreshStore } from '../store/dataRefreshStore';
 import { fetchMatches } from '../api/matches';
-import { fetchMyPredictions } from '../api/predictions';
+import { fetchMyGroupPredictions, fetchMyPredictions } from '../api/predictions';
 import { fetchMyLeagues } from '../api/leagues';
 import { fetchPollConfig, PollConfig } from '../api/config';
-import { Match, Prediction, League } from '../types';
+import { GroupPrediction, Match, Prediction, League } from '../types';
 import PredictionSheet from '../components/PredictionSheet';
 import MatchPredictionsSheet from '../components/MatchPredictionsSheet';
 import MatchCard, { hasTbdTeam } from '../components/MatchCard';
@@ -81,6 +81,7 @@ export default function HomeScreen() {
   const triggerRef = useRef<() => void>(() => {});
   const [matches, setMatches] = useState<Match[]>([]);
   const [predictions, setPredictions] = useState<Prediction[]>([]);
+  const [groupPredictions, setGroupPredictions] = useState<GroupPrediction[]>([]);
   const [leagues, setLeagues] = useState<League[]>([]);
   const [pollConfig, setPollConfig] = useState<PollConfig | null>(null);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
@@ -93,14 +94,16 @@ export default function HomeScreen() {
 
   const load = useCallback(async (options: { force?: boolean } = {}) => {
     try {
-      const [m, p, leagues, config] = await Promise.all([
+      const [m, p, groups, leagues, config] = await Promise.all([
         fetchMatches({}),
         fetchMyPredictions(),
+        fetchMyGroupPredictions(),
         fetchMyLeagues(),
         fetchPollConfig({ force: options.force }),
       ]);
       setMatches(m);
       setPredictions(p);
+      setGroupPredictions(groups);
       setLeagues(leagues);
       setPollConfig(config);
       setLoadFailed(false);
@@ -154,7 +157,9 @@ export default function HomeScreen() {
   ).filter((match) => !urgentIds.has(match._id));
   const recentFinished = [...finished].reverse().slice(0, 2);
 
-  const totalPoints = predictions.reduce((sum, prediction) => sum + (prediction.points ?? 0), 0);
+  const totalPoints =
+    predictions.reduce((sum, prediction) => sum + (prediction.points ?? 0), 0) +
+    groupPredictions.reduce((sum, prediction) => sum + (prediction.points ?? 0), 0);
   const pointsSummary = loadFailed ? `- ${t('common.points')}` : `${totalPoints} ${t('common.points')}`;
   const livePotentialPoints = liveMatches.reduce((sum, match) => {
     const potentialPoints = calculateLivePotentialPoints(cardMatchForHome(match, now), predMap[match._id] ?? null);

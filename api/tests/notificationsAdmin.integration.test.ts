@@ -18,8 +18,10 @@ const syncMocks = vi.hoisted(() => ({
   processFinishedMatches: vi.fn().mockResolvedValue({
     matchesProcessed: 2,
     predictionsScored: 5,
+    groupPredictionsScored: 1,
     leaguesUpdated: 2,
   }),
+  recalculateUserPoints: vi.fn().mockResolvedValue(2),
 }));
 
 vi.mock('../src/services/pushService', () => pushMocks);
@@ -230,7 +232,7 @@ describe('admin sync route', () => {
     });
     expect(noActions.status).toBe(400);
 
-    const response = await requestJson<{ ok: boolean; matchesProcessed: number; predictionsScored: number; leaguesUpdated: number; fixturesSynced: number }>(
+    const response = await requestJson<{ ok: boolean; matchesProcessed: number; predictionsScored: number; groupPredictionsScored: number; leaguesUpdated: number; fixturesSynced: number }>(
       '/admin/sync',
       {
         headers: { 'x-sync-api-key': 'test-sync-key' },
@@ -246,6 +248,7 @@ describe('admin sync route', () => {
       matchesUpdated: 0,
       matchesProcessed: 2,
       predictionsScored: 5,
+      groupPredictionsScored: 1,
       leaguesUpdated: 2,
     });
     expect(syncMocks.syncMatchResults).not.toHaveBeenCalled();

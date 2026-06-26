@@ -1,7 +1,8 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { clearDatabase, seedTestCountryTeams, startIntegrationServer, stopIntegrationServer } from './helpers/integration';
+import { clearDatabase, requestJson, seedTestCountryTeams, startIntegrationServer, stopIntegrationServer } from './helpers/integration';
 import { Match } from '../src/models/Match';
 import { Prediction } from '../src/models/Prediction';
+import { GroupPrediction } from '../src/models/GroupPrediction';
 import { User } from '../src/models/User';
 import { processFinishedMatches, syncAllFixtures, syncMatchResults } from '../src/services/syncService';
 import * as footballApi from '../src/services/footballApi';
@@ -74,6 +75,7 @@ describe('processFinishedMatches', () => {
     await expect(processFinishedMatches()).resolves.toEqual({
       matchesProcessed: 1,
       predictionsScored: 1,
+      groupPredictionsScored: 0,
       leaguesUpdated: 1,
     });
 
@@ -118,6 +120,169 @@ describe('processFinishedMatches', () => {
     const scoredPrediction = await Prediction.findById(prediction._id).lean();
     // Same prediction scores 5 without a joker; the joker doubles it to 10.
     expect(scoredPrediction?.points).toBe(10);
+  });
+
+  it('scores group predictions as soon as that group is complete', async () => {
+    const user = await User.create({
+      email: 'groups@worldporra.test',
+      name: 'Groups',
+    });
+    await Match.create([
+      {
+        externalId: 204,
+        stage: 'GROUP',
+        group: 'B',
+        matchday: 1,
+        homeTeamCode: 'ARG',
+        awayTeamCode: 'ESP',
+        utcDate: new Date('2026-06-12T19:00:00.000Z'),
+        status: 'FINISHED',
+        result: { homeGoals: 2, awayGoals: 0, winner: 'HOME' },
+        scoresProcessed: false,
+      },
+      {
+        externalId: 205,
+        stage: 'GROUP',
+        group: 'B',
+        matchday: 1,
+        homeTeamCode: 'BRA',
+        awayTeamCode: 'FRA',
+        utcDate: new Date('2026-06-12T22:00:00.000Z'),
+        status: 'FINISHED',
+        result: { homeGoals: 1, awayGoals: 1, winner: 'DRAW' },
+        scoresProcessed: false,
+      },
+    ]);
+    const groupPrediction = await GroupPrediction.create({
+      userId: user._id,
+      group: 'B',
+      orderedTeamCodes: ['ARG', 'BRA', 'FRA', 'ESP'],
+    });
+
+    await expect(processFinishedMatches()).resolves.toEqual({
+      matchesProcessed: 2,
+      predictionsScored: 0,
+      groupPredictionsScored: 1,
+      leaguesUpdated: 1,
+    });
+
+    const scoredGroupPrediction = await GroupPrediction.findById(groupPrediction._id).lean();
+    const updatedUser = await User.findById(user._id).lean();
+
+    expect(scoredGroupPrediction?.points).toBe(25);
+    expect(updatedUser?.totalPoints).toBe(25);
+  });
+
+  it('does not score group predictions while that group still has unfinished matches', async () => {
+    const user = await User.create({
+      email: 'pending-group@worldporra.test',
+      name: 'Pending Group',
+    });
+    await Match.create([
+      {
+        externalId: 206,
+        stage: 'GROUP',
+        group: 'C',
+        matchday: 1,
+        homeTeamCode: 'ARG',
+        awayTeamCode: 'ESP',
+        utcDate: new Date('2026-06-13T19:00:00.000Z'),
+        status: 'FINISHED',
+        result: { homeGoals: 2, awayGoals: 0, winner: 'HOME' },
+        scoresProcessed: false,
+      },
+      {
+        externalId: 207,
+        stage: 'GROUP',
+        group: 'C',
+        matchday: 1,
+        homeTeamCode: 'BRA',
+        awayTeamCode: 'FRA',
+        utcDate: new Date('2026-06-13T22:00:00.000Z'),
+        status: 'SCHEDULED',
+        result: null,
+        scoresProcessed: false,
+      },
+    ]);
+    const groupPrediction = await GroupPrediction.create({
+      userId: user._id,
+      group: 'C',
+      orderedTeamCodes: ['ARG', 'BRA', 'FRA', 'ESP'],
+    });
+
+    await expect(processFinishedMatches()).resolves.toEqual({
+      matchesProcessed: 1,
+      predictionsScored: 0,
+      groupPredictionsScored: 0,
+      leaguesUpdated: 0,
+    });
+
+    const unscoredGroupPrediction = await GroupPrediction.findById(groupPrediction._id).lean();
+    const updatedUser = await User.findById(user._id).lean();
+
+    expect(unscoredGroupPrediction?.points).toBeNull();
+    expect(updatedUser?.totalPoints).toBe(0);
+  });
+
+  it('backfills completed group prediction points through the admin action', async () => {
+    const user = await User.create({
+      email: 'backfill-groups@worldporra.test',
+      name: 'Backfill Groups',
+    });
+    await Match.create([
+      {
+        externalId: 208,
+        stage: 'GROUP',
+        group: 'D',
+        matchday: 1,
+        homeTeamCode: 'ARG',
+        awayTeamCode: 'ESP',
+        utcDate: new Date('2026-06-14T19:00:00.000Z'),
+        status: 'FINISHED',
+        result: { homeGoals: 2, awayGoals: 0, winner: 'HOME' },
+        scoresProcessed: true,
+      },
+      {
+        externalId: 209,
+        stage: 'GROUP',
+        group: 'D',
+        matchday: 1,
+        homeTeamCode: 'BRA',
+        awayTeamCode: 'FRA',
+        utcDate: new Date('2026-06-14T22:00:00.000Z'),
+        status: 'FINISHED',
+        result: { homeGoals: 1, awayGoals: 1, winner: 'DRAW' },
+        scoresProcessed: true,
+      },
+    ]);
+    const groupPrediction = await GroupPrediction.create({
+      userId: user._id,
+      group: 'D',
+      orderedTeamCodes: ['ARG', 'BRA', 'FRA', 'ESP'],
+    });
+
+    const response = await requestJson<{
+      ok: boolean;
+      groupPredictionsScored: number;
+      usersUpdated: number;
+      groups: Array<{ group: string; complete: boolean; predictionsScored: number }>;
+    }>('/admin/score-group-predictions', {
+      headers: { 'x-sync-api-key': 'test-sync-key' },
+      body: { groups: ['D'] },
+    });
+
+    const scoredGroupPrediction = await GroupPrediction.findById(groupPrediction._id).lean();
+    const updatedUser = await User.findById(user._id).lean();
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      groupPredictionsScored: 1,
+      usersUpdated: 1,
+      groups: [{ group: 'D', complete: true, predictionsScored: 1 }],
+    });
+    expect(scoredGroupPrediction?.points).toBe(25);
+    expect(updatedUser?.totalPoints).toBe(25);
   });
 });
 
@@ -187,6 +352,52 @@ describe('syncMatchResults (FotMob)', () => {
     expect(after?.result).toMatchObject({ homeGoals: 3, awayGoals: 1, winner: 'HOME' });
     expect(after?.fotmobMatchId).toBe(4667751);
     expect(after?.scoresProcessed).toBe(false);
+
+    vi.restoreAllMocks();
+  });
+
+  it('maps Curaçao vs Côte d’Ivoire when multiple matches share a kickoff time', async () => {
+    const kickoff = new Date('2026-06-25T22:00:00.000Z');
+    const match = await Match.create({
+      externalId: 537402,
+      stage: 'GROUP',
+      group: 'A',
+      matchday: 3,
+      homeTeamCode: 'CUW',
+      awayTeamCode: 'CIV',
+      utcDate: kickoff,
+      status: 'SCHEDULED',
+      result: null,
+    });
+    await Match.create({
+      externalId: 537403,
+      stage: 'GROUP',
+      group: 'A',
+      matchday: 3,
+      homeTeamCode: 'ARG',
+      awayTeamCode: 'ESP',
+      utcDate: kickoff,
+      status: 'SCHEDULED',
+      result: null,
+    });
+
+    vi.spyOn(fotmobApi, 'fetchWcMatches').mockResolvedValue([
+      fotmobMatch({
+        fotmobId: 4667752,
+        utcTime: kickoff,
+        homeName: 'Curacao',
+        awayName: "Côte d'Ivoire",
+        homeScore: 0,
+        awayScore: 1,
+      }),
+    ]);
+
+    await expect(syncMatchResults()).resolves.toEqual({ matchesUpdated: 1, matchesUnmatched: 0 });
+
+    const after = await Match.findById(match._id).lean();
+    expect(after?.status).toBe('FINISHED');
+    expect(after?.result).toMatchObject({ homeGoals: 0, awayGoals: 1, winner: 'AWAY' });
+    expect(after?.fotmobMatchId).toBe(4667752);
 
     vi.restoreAllMocks();
   });
