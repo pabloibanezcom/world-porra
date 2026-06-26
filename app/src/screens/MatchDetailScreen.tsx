@@ -175,7 +175,7 @@ export default function MatchDetailScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.matchHeader}>
         <Text style={styles.stage}>
-          {match.stage.replace(/_/g, ' ')}{match.group ? ` - ${t('common.group', { group: match.group })}` : ''}
+          {t(`stage.${match.stage}`)}{match.group ? ` - ${t('common.group', { group: match.group })}` : ''}
         </Text>
         <Text style={styles.date}>{format(new Date(match.utcDate), 'EEE, MMM d · HH:mm')}</Text>
         {match.status === 'LIVE' && (

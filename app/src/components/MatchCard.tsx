@@ -342,7 +342,7 @@ export default function MatchCard({ match, prediction, result, locked, lockLabel
         <View style={styles.header}>
           <View style={styles.metaRow}>
             <Text style={styles.meta}>
-              {match.group ? t('common.group', { group: match.group }) : match.stage} · {formatDate(match.utcDate, locale)}
+              {match.group ? t('common.group', { group: match.group }) : t(`stage.${match.stage}`)} · {formatDate(match.utcDate, locale)}
               {' · '}{formatTime(match.utcDate, locale)}
             </Text>
             {isJoker && (

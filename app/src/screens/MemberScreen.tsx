@@ -643,7 +643,7 @@ function FinishedMatchCard({ match }: { match: MemberMatchPrediction }) {
     <View style={styles.matchCard}>
       <View style={styles.matchCardHeader}>
         <Text style={styles.matchMeta}>
-          {match.group ? t('common.group', { group: match.group }) : match.stage.replace(/_/g, ' ')} · {formatMatchDate(match.utcDate, locale)}
+          {match.group ? t('common.group', { group: match.group }) : t(`stage.${match.stage}`)} · {formatMatchDate(match.utcDate, locale)}
         </Text>
         {result ? <ResultBadge result={result} /> : <Text style={styles.noPick}>{match.status === 'LIVE' ? t('common.live') : t('member.noPick')}</Text>}
       </View>
