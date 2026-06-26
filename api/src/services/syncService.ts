@@ -151,9 +151,11 @@ export async function syncMatchResults(
     const awayCode = resolveCode(fm.awayName);
     if (homeCode && match.homeTeamCode === 'TBD') {
       updates.homeTeamCode = homeCode;
+      updates.odds = null;
     }
     if (awayCode && match.awayTeamCode === 'TBD') {
       updates.awayTeamCode = awayCode;
+      updates.odds = null;
     }
 
     // Keep kickoff time in sync (reschedules).
