@@ -14,6 +14,9 @@ const emailMocks = vi.hoisted(() => ({
 }));
 
 const syncMocks = vi.hoisted(() => ({
+  BRACKET_FIXTURE_DAYS_FORWARD: 7,
+  FULL_FIXTURE_DAYS_FORWARD: 40,
+  LIVE_RESULTS_DAYS_BACK: 1,
   syncMatchResults: vi.fn().mockResolvedValue({ matchesUpdated: 3, matchesUnmatched: 0 }),
   processFinishedMatches: vi.fn().mockResolvedValue({
     matchesProcessed: 2,
