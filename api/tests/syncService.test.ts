@@ -4,7 +4,13 @@ import { Match } from '../src/models/Match';
 import { Prediction } from '../src/models/Prediction';
 import { GroupPrediction } from '../src/models/GroupPrediction';
 import { User } from '../src/models/User';
-import { processFinishedMatches, syncAllFixtures, syncMatchResults } from '../src/services/syncService';
+import {
+  BRACKET_FIXTURE_DAYS_FORWARD,
+  LIVE_RESULTS_DAYS_BACK,
+  processFinishedMatches,
+  syncAllFixtures,
+  syncMatchResults,
+} from '../src/services/syncService';
 import * as footballApi from '../src/services/footballApi';
 import * as fotmobApi from '../src/services/fotmobApi';
 
@@ -352,6 +358,45 @@ describe('syncMatchResults (FotMob)', () => {
     expect(after?.result).toMatchObject({ homeGoals: 3, awayGoals: 1, winner: 'HOME' });
     expect(after?.fotmobMatchId).toBe(4667751);
     expect(after?.scoresProcessed).toBe(false);
+
+    vi.restoreAllMocks();
+  });
+
+  it('looks ahead for confirmed knockout fixtures and backfills their teams', async () => {
+    const kickoff = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
+    const match = await Match.create({
+      externalId: 537500,
+      stage: 'ROUND_OF_32',
+      group: null,
+      matchday: 4,
+      homeTeamCode: 'TBD',
+      awayTeamCode: 'TBD',
+      utcDate: kickoff,
+      status: 'SCHEDULED',
+      result: null,
+    });
+
+    const fetchSpy = vi.spyOn(fotmobApi, 'fetchWcMatches').mockResolvedValue([
+      fotmobMatch({
+        fotmobId: 4667800,
+        utcTime: kickoff,
+        homeName: 'Argentina',
+        awayName: 'Spain',
+        homeScore: null,
+        awayScore: null,
+        started: false,
+        finished: false,
+      }),
+    ]);
+
+    await expect(syncMatchResults()).resolves.toEqual({ matchesUpdated: 1, matchesUnmatched: 0 });
+
+    expect(fetchSpy).toHaveBeenCalledWith(LIVE_RESULTS_DAYS_BACK, BRACKET_FIXTURE_DAYS_FORWARD);
+    const after = await Match.findById(match._id).lean();
+    expect(after?.homeTeamCode).toBe('ARG');
+    expect(after?.awayTeamCode).toBe('ESP');
+    expect(after?.status).toBe('SCHEDULED');
+    expect(after?.result).toBeNull();
 
     vi.restoreAllMocks();
   });

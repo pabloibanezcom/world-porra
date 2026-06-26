@@ -2,7 +2,12 @@ import { Router, Request, Response } from 'express';
 import { env } from '../config/env';
 import { logger } from '../config/logger';
 import { syncOdds } from '../services/oddsService';
-import { processFinishedMatches, syncMatchResults } from '../services/syncService';
+import {
+  BRACKET_FIXTURE_DAYS_FORWARD,
+  LIVE_RESULTS_DAYS_BACK,
+  processFinishedMatches,
+  syncMatchResults,
+} from '../services/syncService';
 
 const router = Router();
 
@@ -58,7 +63,10 @@ router.get('/sync-results', async (req: Request, res: Response): Promise<void> =
 
   try {
     logger.info('Results cron started');
-    const fixtureResult = await syncMatchResults({ daysBack: 1, daysForward: 1 });
+    const fixtureResult = await syncMatchResults({
+      daysBack: LIVE_RESULTS_DAYS_BACK,
+      daysForward: BRACKET_FIXTURE_DAYS_FORWARD,
+    });
     const scoringResult = await processFinishedMatches();
     logger.info({ ...fixtureResult, ...scoringResult }, 'Results cron complete');
     res.json({

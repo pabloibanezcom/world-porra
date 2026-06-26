@@ -16,7 +16,13 @@ import { PushSubscription } from '../models/PushSubscription';
 import { TournamentPrediction } from '../models/TournamentPrediction';
 import { User } from '../models/User';
 import { UserDevice } from '../models/UserDevice';
-import { processFinishedMatches, recalculateUserPoints, syncMatchResults } from '../services/syncService';
+import {
+  FULL_FIXTURE_DAYS_FORWARD,
+  LIVE_RESULTS_DAYS_BACK,
+  processFinishedMatches,
+  recalculateUserPoints,
+  syncMatchResults,
+} from '../services/syncService';
 import { scoreCompletedGroupPredictions } from '../services/predictionService';
 import { syncOdds } from '../services/oddsService';
 import { seedTournamentScenarios } from '../jobs/seedScenario';
@@ -525,7 +531,10 @@ router.post('/sync', syncAuthMiddleware, async (req: Request, res: Response, nex
     logger.info({ syncFixtures, processResults, syncOdds: doSyncOdds, forceOdds }, 'Running manual sync');
 
     const fixtureResult = syncFixtures
-      ? await syncMatchResults({ daysBack: 1, daysForward: 40 })
+      ? await syncMatchResults({
+          daysBack: LIVE_RESULTS_DAYS_BACK,
+          daysForward: FULL_FIXTURE_DAYS_FORWARD,
+        })
       : { matchesUpdated: 0, matchesUnmatched: 0 };
     const scoringResult = processResults
       ? await processFinishedMatches()
