@@ -26,6 +26,13 @@ import { useI18n } from '../i18n';
 import { useAuthStore } from '../store/authStore';
 import { getApiErrorMessage } from '../utils/apiError';
 
+interface MemberPointsBreakdown {
+  matches: number;
+  groups: number;
+  tournament: number;
+  total: number;
+}
+
 type RouteParams = {
   MemberScreen: {
     source?: 'league' | 'admin';
@@ -107,6 +114,7 @@ export default function MemberScreen() {
   const [upcomingMatches, setUpcomingMatches] = useState<MemberUpcomingMatch[]>([]);
   const [groupPredictions, setGroupPredictions] = useState<GroupPrediction[]>([]);
   const [tournamentPrediction, setTournamentPrediction] = useState<TournamentPicks | null>(null);
+  const [pointsBreakdown, setPointsBreakdown] = useState<MemberPointsBreakdown | null>(null);
   const [leagueLoading, setLeagueLoading] = useState(hasLeagueContext);
   const [adminDetail, setAdminDetail] = useState<AdminUserDetail | null>(null);
   const [adminLoading, setAdminLoading] = useState(!!currentUser?.isMaster && !!targetUserId);
@@ -129,6 +137,7 @@ export default function MemberScreen() {
       setUpcomingMatches(data.upcomingMatches);
       setGroupPredictions(data.groupPredictions ?? []);
       setTournamentPrediction(data.tournamentPrediction ?? null);
+      setPointsBreakdown(data.pointsBreakdown ?? null);
     } finally {
       setLeagueLoading(false);
     }
@@ -160,6 +169,16 @@ export default function MemberScreen() {
   const picksMade = finishedMatches.filter((m) => m.prediction !== null).length +
     upcomingMatches.filter((m) => m.hasPick).length;
   const pending = upcomingMatches.filter((m) => !m.hasPick).length;
+  const fallbackPointsBreakdown: MemberPointsBreakdown = {
+    matches: finishedMatches.reduce((total, match) => total + (match.prediction?.points ?? 0), 0),
+    groups: groupPredictions.reduce((total, prediction) => total + (prediction.points ?? 0), 0),
+    tournament: 0,
+    total: 0,
+  };
+  fallbackPointsBreakdown.total =
+    fallbackPointsBreakdown.matches + fallbackPointsBreakdown.groups + fallbackPointsBreakdown.tournament;
+  const displayPointsBreakdown = pointsBreakdown ?? fallbackPointsBreakdown;
+  const memberTotalPoints = pointsBreakdown ? pointsBreakdown.total : params.memberPoints ?? fallbackPointsBreakdown.total;
   const canSeePendingPicks = !!params.isAdmin || !!currentUser?.isMaster;
   const displayName = adminDetail?.user.name ?? params.memberName ?? t('adminContact.unknownUser');
   const displayEmail = adminDetail?.user.email;
@@ -229,7 +248,7 @@ export default function MemberScreen() {
             )}
             <View style={[styles.pill, { backgroundColor: 'rgba(255,255,255,0.06)' }]}>
               <Text style={[styles.pillText, { color: colors.text }]}>
-                {(hasLeagueContext ? params.memberPoints : adminDetail?.user.totalPoints ?? params.memberPoints) ?? 0} {t('common.pointsShort')}
+                {(hasLeagueContext ? memberTotalPoints : adminDetail?.user.totalPoints ?? params.memberPoints) ?? 0} {t('common.pointsShort')}
               </Text>
             </View>
           </View>
@@ -269,7 +288,7 @@ export default function MemberScreen() {
               </>
             ) : (
               <>
-                <StatCard label={t('common.points')} value={`${params.memberPoints ?? 0}`} color={colors.text} loading={leagueLoading} />
+                <StatCard label={t('common.points')} value={`${memberTotalPoints}`} color={colors.text} loading={leagueLoading} />
                 <StatCard label={t('member.startedMatches')} value={`${finishedMatches.length}`} color={colors.blue} loading={leagueLoading} />
                 <StatCard
                   label={t('common.rank')}
@@ -287,6 +306,10 @@ export default function MemberScreen() {
             </>
           )}
         </View>
+
+        {showMemberSections && (
+          <PointsBreakdownStrip breakdown={displayPointsBreakdown} loading={leagueLoading} />
+        )}
 
         {pageLoading ? (
           <ActivityIndicator color={colors.accent} style={{ marginTop: 22 }} />
@@ -394,6 +417,7 @@ export default function MemberScreen() {
                           key={prediction._id}
                           group={{ id: prediction.group, teams: prediction.orderedTeams }}
                           order={prediction.orderedTeams}
+                          points={prediction.points}
                           progress={prediction.progress}
                           onDragStateChange={() => {}}
                         />
@@ -566,6 +590,36 @@ function StatCard({ label, value, color, loading }: { label: string; value: stri
   );
 }
 
+function PointsBreakdownStrip({ breakdown, loading }: { breakdown: MemberPointsBreakdown; loading: boolean }) {
+  const { t } = useI18n();
+  const items = [
+    { key: 'matches', label: t('member.matchPoints'), value: breakdown.matches, color: colors.text },
+    { key: 'groups', label: t('member.groupPoints'), value: breakdown.groups, color: colors.accent },
+    { key: 'tournament', label: t('member.tournamentPoints'), value: breakdown.tournament, color: colors.blue },
+  ];
+
+  return (
+    <View style={styles.pointsBreakdownCard}>
+      <View style={styles.pointsBreakdownHeader}>
+        <Text style={styles.pointsBreakdownTitle}>{t('member.pointsBreakdown')}</Text>
+        <Text style={styles.pointsBreakdownTotal}>
+          {loading ? '—' : `${breakdown.total} ${t('common.pointsShort')}`}
+        </Text>
+      </View>
+      <View style={styles.pointsBreakdownGrid}>
+        {items.map((item) => (
+          <View key={item.key} style={styles.pointsBreakdownItem}>
+            <Text style={[styles.pointsBreakdownValue, { color: item.color }]}>
+              {loading ? '—' : item.value}
+            </Text>
+            <Text style={styles.pointsBreakdownLabel}>{item.label}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.infoRow}>
@@ -682,6 +736,57 @@ const styles = StyleSheet.create({
   },
   statValue: { fontFamily: fonts.displayBold, fontSize: 16, fontWeight: '700' },
   statLabel: { color: colors.dim, fontFamily: fonts.body, fontSize: 9, marginTop: 2, textAlign: 'center' },
+
+  pointsBreakdownCard: {
+    backgroundColor: colors.card,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 12,
+    gap: 10,
+  },
+  pointsBreakdownHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  pointsBreakdownTitle: {
+    color: colors.text,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  pointsBreakdownTotal: {
+    color: colors.accent,
+    fontFamily: fonts.displayBold,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  pointsBreakdownGrid: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  pointsBreakdownItem: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 9,
+    alignItems: 'center',
+  },
+  pointsBreakdownValue: {
+    fontFamily: fonts.displayBold,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  pointsBreakdownLabel: {
+    color: colors.dim,
+    fontFamily: fonts.body,
+    fontSize: 9,
+    marginTop: 2,
+    textAlign: 'center',
+  },
 
   sectionLabel: {
     color: colors.dim,

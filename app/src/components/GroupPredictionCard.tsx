@@ -11,6 +11,7 @@ interface GroupPredictionCardProps {
     teams: TeamInfo[];
   };
   order: TeamInfo[];
+  points?: number | null;
   progress?: GroupPrediction['progress'];
   onOrderChange?: (groupId: string, orderedTeams: TeamInfo[]) => void;
   onDragStateChange: (isDragging: boolean) => void;
@@ -19,12 +20,15 @@ interface GroupPredictionCardProps {
 export default function GroupPredictionCard({
   group,
   order,
+  points,
   progress,
   onOrderChange,
   onDragStateChange,
 }: GroupPredictionCardProps) {
   const { t } = useI18n();
   const progressByCode = new Map(progress?.teams.map((team) => [team.code, team]) ?? []);
+  const hasAwardedPoints = points !== null && points !== undefined;
+  const displayedPoints = hasAwardedPoints ? points : progress?.projectedPoints;
   const moveTeam = (index: number, targetIndex: number) => {
     if (targetIndex < 0 || targetIndex >= order.length || targetIndex === index) return;
     if (!onOrderChange) return;
@@ -38,10 +42,13 @@ export default function GroupPredictionCard({
     <View style={styles.groupCard}>
       <View style={styles.groupHeader}>
         <Text style={styles.groupTitle}>{t('common.group', { group: group.id })}</Text>
-        {progress && (
-          <View style={styles.groupPointsPill}>
-            <Text style={styles.groupPointsText}>
-              {progress.projectedPoints} {t('common.pointsShort')}
+        {displayedPoints !== null && displayedPoints !== undefined && (
+          <View style={[styles.groupPointsPill, hasAwardedPoints ? styles.groupPointsPillAwarded : styles.groupPointsPillProjected]}>
+            <Text style={[styles.groupPointsLabel, hasAwardedPoints ? styles.groupPointsLabelAwarded : styles.groupPointsLabelProjected]}>
+              {hasAwardedPoints ? t('groupPrediction.awarded') : t('groupPrediction.projected')}
+            </Text>
+            <Text style={[styles.groupPointsText, hasAwardedPoints ? styles.groupPointsTextAwarded : styles.groupPointsTextProjected]}>
+              {displayedPoints} {t('common.pointsShort')}
             </Text>
           </View>
         )}
@@ -220,16 +227,39 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   groupPointsPill: {
-    backgroundColor: colors.accentDim,
-    borderRadius: 999,
-    paddingHorizontal: 10,
+    borderRadius: 8,
+    paddingHorizontal: 9,
     paddingVertical: 5,
+    alignItems: 'flex-end',
+  },
+  groupPointsPillAwarded: {
+    backgroundColor: colors.accentDim,
+  },
+  groupPointsPillProjected: {
+    backgroundColor: colors.blueDim,
+  },
+  groupPointsLabel: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 8,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  groupPointsLabelAwarded: {
+    color: colors.accent,
+  },
+  groupPointsLabelProjected: {
+    color: colors.blue,
   },
   groupPointsText: {
-    color: colors.accent,
-    fontFamily: fonts.bodyMedium,
-    fontSize: 11,
+    fontFamily: fonts.displayBold,
+    fontSize: 12,
     fontWeight: '700',
+  },
+  groupPointsTextAwarded: {
+    color: colors.accent,
+  },
+  groupPointsTextProjected: {
+    color: colors.blue,
   },
   groupTeamRow: {
     borderLeftWidth: 2,

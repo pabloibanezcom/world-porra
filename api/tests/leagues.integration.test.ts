@@ -809,7 +809,7 @@ describe('league member prediction visibility', () => {
       userId: member.user.id,
       group: 'A',
       orderedTeamCodes: ['ARG', 'ESP', 'URU', 'POR'],
-      points: null,
+      points: 12,
     });
     await TournamentPrediction.create({
       userId: member.user.id,
@@ -835,20 +835,23 @@ describe('league member prediction visibility', () => {
     expect(forbidden.status).toBe(403);
 
     const memberResponse = await requestJson<{
+      pointsBreakdown: { matches: number; groups: number; tournament: number; total: number };
       finishedMatches: Array<{ status: string; prediction: { points: number | null } }>;
       upcomingMatches: Array<{ hasPick: boolean }>;
-      groupPredictions: Array<{ group: string; orderedTeams: Array<{ code: string; name: string }> }>;
+      groupPredictions: Array<{ group: string; points: number | null; orderedTeams: Array<{ code: string; name: string }> }>;
       tournamentPrediction: { champion: { code: string; name: string }; topScorer: { name: string; code: string } } | null;
     }>(
       `/leagues/${league._id}/members/${member.user.id}/predictions`,
       { token: member.token }
     );
     expect(memberResponse.status).toBe(200);
+    expect(memberResponse.body.pointsBreakdown).toEqual({ matches: 10, groups: 12, tournament: 0, total: 22 });
     expect(memberResponse.body.finishedMatches.map((match) => match.status).sort()).toEqual(['FINISHED', 'LIVE']);
     expect(memberResponse.body.finishedMatches.find((match) => match.status === 'FINISHED')?.prediction.points).toBe(10);
     expect(memberResponse.body.upcomingMatches).toHaveLength(0);
     expect(memberResponse.body.groupPredictions).toHaveLength(1);
     expect(memberResponse.body.groupPredictions[0].group).toBe('A');
+    expect(memberResponse.body.groupPredictions[0].points).toBe(12);
     expect(memberResponse.body.groupPredictions[0].orderedTeams.map((team) => team.code)).toEqual(['ARG', 'ESP', 'URU', 'POR']);
     expect(memberResponse.body.groupPredictions[0].orderedTeams.slice(0, 2)).toMatchObject([
       { code: 'ARG', name: 'Argentina' },
