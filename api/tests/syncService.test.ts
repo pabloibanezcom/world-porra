@@ -128,6 +128,31 @@ describe('processFinishedMatches', () => {
     expect(scoredPrediction?.points).toBe(10);
   });
 
+  it('marks legacy finished matches processed without validating unrelated fields', async () => {
+    const match = await Match.create({
+      externalId: 210,
+      stage: 'GROUP',
+      group: 'A',
+      matchday: 1,
+      homeTeamCode: 'ARG',
+      awayTeamCode: 'ESP',
+      utcDate: new Date('2026-06-11T19:00:00.000Z'),
+      status: 'FINISHED',
+      result: { homeGoals: 2, awayGoals: 0, winner: 'HOME' },
+      scoresProcessed: false,
+    });
+    await Match.updateOne({ _id: match._id }, { $set: { matchday: null } });
+
+    await expect(processFinishedMatches()).resolves.toMatchObject({
+      matchesProcessed: 1,
+      predictionsScored: 0,
+    });
+
+    const processedMatch = await Match.findById(match._id).lean();
+    expect(processedMatch?.matchday).toBeNull();
+    expect(processedMatch?.scoresProcessed).toBe(true);
+  });
+
   it('scores group predictions as soon as that group is complete', async () => {
     const user = await User.create({
       email: 'groups@worldporra.test',
@@ -397,6 +422,44 @@ describe('syncMatchResults (FotMob)', () => {
     expect(after?.awayTeamCode).toBe('ESP');
     expect(after?.status).toBe('SCHEDULED');
     expect(after?.result).toBeNull();
+
+    vi.restoreAllMocks();
+  });
+
+  it('backfills fixture fields without validating unrelated legacy match fields', async () => {
+    const kickoff = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
+    const match = await Match.create({
+      externalId: 537501,
+      stage: 'ROUND_OF_32',
+      group: null,
+      matchday: 4,
+      homeTeamCode: 'TBD',
+      awayTeamCode: 'TBD',
+      utcDate: kickoff,
+      status: 'SCHEDULED',
+      result: null,
+    });
+    await Match.updateOne({ _id: match._id }, { $set: { matchday: null } });
+
+    vi.spyOn(fotmobApi, 'fetchWcMatches').mockResolvedValue([
+      fotmobMatch({
+        fotmobId: 4667801,
+        utcTime: kickoff,
+        homeName: 'Argentina',
+        awayName: 'Spain',
+        homeScore: null,
+        awayScore: null,
+        started: false,
+        finished: false,
+      }),
+    ]);
+
+    await expect(syncMatchResults()).resolves.toEqual({ matchesUpdated: 1, matchesUnmatched: 0 });
+
+    const after = await Match.findById(match._id).lean();
+    expect(after?.matchday).toBeNull();
+    expect(after?.homeTeamCode).toBe('ARG');
+    expect(after?.awayTeamCode).toBe('ESP');
 
     vi.restoreAllMocks();
   });
