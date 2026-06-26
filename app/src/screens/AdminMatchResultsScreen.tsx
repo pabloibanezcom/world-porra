@@ -155,7 +155,7 @@ export default function AdminMatchResultsScreen() {
                       {teamLabel(m, 'home')} v {teamLabel(m, 'away')}
                     </Text>
                     <Text style={styles.rowMeta}>
-                      {timeLabel(m.utcDate, locale)} · {m.stage.replace(/_/g, ' ')}
+                      {timeLabel(m.utcDate, locale)} · {t(`stage.${m.stage}`)}
                     </Text>
                   </View>
                   <View style={styles.rowRight}>
