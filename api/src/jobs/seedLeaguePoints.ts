@@ -1,6 +1,7 @@
 import { Types } from 'mongoose';
 import { connectDB } from '../config/db';
 import { League } from '../models/League';
+import { GroupPrediction } from '../models/GroupPrediction';
 import { Prediction } from '../models/Prediction';
 import { User } from '../models/User';
 import { logger } from '../config/logger';
@@ -28,7 +29,15 @@ async function seedUserPoints() {
     { $match: { userId: { $in: userObjectIds }, points: { $ne: null } } },
     { $group: { _id: '$userId', total: { $sum: '$points' } } },
   ]);
-  const totalByUserId = new Map(totals.map(({ _id, total }) => [String(_id), total]));
+  const groupTotals = await GroupPrediction.aggregate<{ _id: unknown; total: number }>([
+    { $match: { userId: { $in: userObjectIds }, points: { $ne: null } } },
+    { $group: { _id: '$userId', total: { $sum: '$points' } } },
+  ]);
+  const totalByUserId = new Map<string, number>();
+  for (const { _id, total } of [...totals, ...groupTotals]) {
+    const userId = String(_id);
+    totalByUserId.set(userId, (totalByUserId.get(userId) ?? 0) + total);
+  }
 
   await Promise.all(
     users.map((userId) => User.findByIdAndUpdate(userId, { totalPoints: totalByUserId.get(userId) ?? 0 }))

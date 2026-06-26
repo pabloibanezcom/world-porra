@@ -166,6 +166,60 @@ function calculateGroupPredictionProgress(predictedCodes: string[], currentCodes
   };
 }
 
+async function isGroupComplete(group: string): Promise<boolean> {
+  const matches = await Match.find({ stage: 'GROUP', group }).select('status result').lean();
+  return matches.length > 0 && matches.every((match) => match.status === 'FINISHED' && !!match.result);
+}
+
+export interface GroupPredictionScoringGroupResult {
+  group: string;
+  complete: boolean;
+  predictionsScored: number;
+}
+
+export interface GroupPredictionScoringResult {
+  groups: GroupPredictionScoringGroupResult[];
+  predictionsScored: number;
+}
+
+export async function scoreCompletedGroupPredictions(groups: string[] = []): Promise<GroupPredictionScoringResult> {
+  const candidateGroups = new Set(groups.map((group) => group.trim().toUpperCase()).filter(Boolean));
+  if (candidateGroups.size === 0) {
+    const pendingGroups = await GroupPrediction.distinct('group', { points: null });
+    pendingGroups.forEach((group) => candidateGroups.add(String(group).trim().toUpperCase()));
+  }
+
+  const results: GroupPredictionScoringGroupResult[] = [];
+  let totalScored = 0;
+  for (const group of candidateGroups) {
+    const complete = await isGroupComplete(group);
+    if (!complete) {
+      results.push({ group, complete: false, predictionsScored: 0 });
+      continue;
+    }
+
+    const currentOrderCodes = (await getCurrentGroupTable(group)).map((row) => row.code);
+    const predictions = await GroupPrediction.find({ group, points: null });
+    let groupScored = 0;
+
+    for (const prediction of predictions) {
+      const points = calculateGroupPredictionProgress(
+        prediction.orderedTeamCodes.map(normalizeCode),
+        currentOrderCodes,
+      ).projectedPoints;
+
+      prediction.points = points;
+      await prediction.save();
+      groupScored += 1;
+    }
+
+    totalScored += groupScored;
+    results.push({ group, complete: true, predictionsScored: groupScored });
+  }
+
+  return { groups: results, predictionsScored: totalScored };
+}
+
 async function getGroupPredictionProgress(orderedTeamCodes: string[], language: ApiLanguage) {
   const normalizedCodes = orderedTeamCodes.map(normalizeCode);
   const firstCode = normalizedCodes[0];

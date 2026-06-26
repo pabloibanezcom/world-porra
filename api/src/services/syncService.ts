@@ -9,6 +9,8 @@ import { logger } from '../config/logger';
 import { MatchStage, MatchWinner } from '../models/Match';
 import { sendToUser } from './pushService';
 import { hydrateMatch, upsertCountryTeamFromSource } from './countryTeamService';
+import { scoreCompletedGroupPredictions } from './predictionService';
+import { GroupPrediction } from '../models/GroupPrediction';
 
 // FotMob team names that differ from the English names we store.
 const FOTMOB_NAME_ALIASES: Record<string, string> = {
@@ -23,8 +25,11 @@ const FOTMOB_NAME_ALIASES: Record<string, string> = {
   'bosnia herzegovina': 'BIH',
   'bosnia and herzegovina': 'BIH',
   'ivory coast': 'CIV',
+  'cote d ivoire': 'CIV',
   'cote divoire': 'CIV',
-  curacao: 'CUR',
+  'cote ivoire': 'CIV',
+  curacao: 'CUW',
+  curazao: 'CUW',
   'cape verde': 'CPV',
   'cabo verde': 'CPV',
   'czech republic': 'CZE',
@@ -230,11 +235,13 @@ export async function syncAllFixtures(): Promise<{ fixturesSynced: number }> {
 export async function processFinishedMatches(): Promise<{
   matchesProcessed: number;
   predictionsScored: number;
+  groupPredictionsScored: number;
   leaguesUpdated: number;
 }> {
   const unprocessed = await Match.find({ status: 'FINISHED', scoresProcessed: false });
   let matchesProcessed = 0;
   let predictionsScored = 0;
+  const processedGroups = new Set<string>();
 
   for (const match of unprocessed) {
     if (!match.result) continue;
@@ -270,25 +277,40 @@ export async function processFinishedMatches(): Promise<{
     matchesProcessed += 1;
     match.scoresProcessed = true;
     await match.save();
+    if (match.stage === 'GROUP' && match.group) processedGroups.add(match.group);
 
     logger.info(`Scored ${predictions.length} predictions for match ${localizedMatch.homeTeam.name} vs ${localizedMatch.awayTeam.name}`);
   }
 
-  // Update total points on each user who had predictions scored
-  const usersUpdated = await updateUserPoints();
+  const groupPredictionResult = await scoreCompletedGroupPredictions([...processedGroups]);
+  const groupPredictionsScored = groupPredictionResult.predictionsScored;
 
-  return { matchesProcessed, predictionsScored, leaguesUpdated: usersUpdated };
+  // Update total points on each user who had predictions scored
+  const usersUpdated = await recalculateUserPoints();
+
+  return { matchesProcessed, predictionsScored, groupPredictionsScored, leaguesUpdated: usersUpdated };
 }
 
-async function updateUserPoints(): Promise<number> {
-  const results = await Prediction.aggregate([
+export async function recalculateUserPoints(): Promise<number> {
+  const predictionTotals = await Prediction.aggregate([
+    { $match: { points: { $ne: null } } },
+    { $group: { _id: '$userId', total: { $sum: '$points' } } },
+  ]);
+  const groupPredictionTotals = await GroupPrediction.aggregate([
     { $match: { points: { $ne: null } } },
     { $group: { _id: '$userId', total: { $sum: '$points' } } },
   ]);
 
-  for (const { _id, total } of results) {
+  const totalsByUserId = new Map<string, number>();
+  for (const { _id, total } of [...predictionTotals, ...groupPredictionTotals]) {
+    const userId = String(_id);
+    totalsByUserId.set(userId, (totalsByUserId.get(userId) ?? 0) + total);
+  }
+
+  for (const [userId, total] of totalsByUserId) {
+    const _id = userId;
     await User.findByIdAndUpdate(_id, { totalPoints: total });
   }
 
-  return results.length;
+  return totalsByUserId.size;
 }
