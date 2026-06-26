@@ -140,29 +140,25 @@ export async function syncMatchResults(
       continue;
     }
 
-    let changed = false;
+    const updates: Record<string, unknown> = {};
 
     if (match.fotmobMatchId !== fm.fotmobId) {
-      match.fotmobMatchId = fm.fotmobId;
-      changed = true;
+      updates.fotmobMatchId = fm.fotmobId;
     }
 
     // Fill knockout bracket teams once FotMob reveals them.
     const homeCode = resolveCode(fm.homeName);
     const awayCode = resolveCode(fm.awayName);
     if (homeCode && match.homeTeamCode === 'TBD') {
-      match.homeTeamCode = homeCode;
-      changed = true;
+      updates.homeTeamCode = homeCode;
     }
     if (awayCode && match.awayTeamCode === 'TBD') {
-      match.awayTeamCode = awayCode;
-      changed = true;
+      updates.awayTeamCode = awayCode;
     }
 
     // Keep kickoff time in sync (reschedules).
     if (fm.utcTime && match.utcDate.getTime() !== fm.utcTime.getTime()) {
-      match.utcDate = fm.utcTime;
-      changed = true;
+      updates.utcDate = fm.utcTime;
     }
 
     // Never touch status/result of an admin-entered result.
@@ -170,8 +166,7 @@ export async function syncMatchResults(
       const hasScore = fm.homeScore != null && fm.awayScore != null;
       if (fm.cancelled) {
         if (match.status !== 'POSTPONED') {
-          match.status = 'POSTPONED';
-          changed = true;
+          updates.status = 'POSTPONED';
         }
       } else if (fm.finished && hasScore) {
         const winner = resolveWinner(fm);
@@ -181,21 +176,19 @@ export async function syncMatchResults(
           match.result?.awayGoals !== fm.awayScore ||
           match.result?.winner !== winner
         ) {
-          match.status = 'FINISHED';
-          match.result = { homeGoals: fm.homeScore!, awayGoals: fm.awayScore!, winner };
-          match.scoresProcessed = false;
-          changed = true;
+          updates.status = 'FINISHED';
+          updates.result = { homeGoals: fm.homeScore!, awayGoals: fm.awayScore!, winner };
+          updates.scoresProcessed = false;
         }
       } else if (fm.started && hasScore) {
         const winner = resolveWinner(fm);
-        match.status = 'LIVE';
-        match.result = { homeGoals: fm.homeScore!, awayGoals: fm.awayScore!, winner };
-        changed = true;
+        updates.status = 'LIVE';
+        updates.result = { homeGoals: fm.homeScore!, awayGoals: fm.awayScore!, winner };
       }
     }
 
-    if (changed) {
-      await match.save();
+    if (Object.keys(updates).length > 0) {
+      await Match.updateOne({ _id: match._id }, { $set: updates }, { runValidators: false });
       matchesUpdated += 1;
     }
   }
@@ -279,8 +272,7 @@ export async function processFinishedMatches(): Promise<{
 
     predictionsScored += predictions.length;
     matchesProcessed += 1;
-    match.scoresProcessed = true;
-    await match.save();
+    await Match.updateOne({ _id: match._id }, { $set: { scoresProcessed: true } }, { runValidators: false });
     if (match.stage === 'GROUP' && match.group) processedGroups.add(match.group);
 
     logger.info(`Scored ${predictions.length} predictions for match ${localizedMatch.homeTeam.name} vs ${localizedMatch.awayTeam.name}`);
