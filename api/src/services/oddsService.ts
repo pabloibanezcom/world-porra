@@ -17,6 +17,7 @@ const KNOCKOUT_STAGES = new Set<MatchStage>([
   'THIRD_PLACE',
   'FINAL',
 ]);
+const KNOCKOUT_STAGE_LIST = Array.from(KNOCKOUT_STAGES);
 
 const ODDS_TEAM_ALIASES: Record<string, string> = {
   'cape verde': 'CPV',
@@ -115,6 +116,22 @@ function hasUsableKnockoutOdds(odds: MatchOdds): boolean {
   return Boolean(odds.home && odds.away && !odds.draw);
 }
 
+function deriveKnockoutOddsFromThreeWay(odds: MatchOdds): MatchOdds | null {
+  if (!odds.home || !odds.away || !odds.draw) return null;
+
+  const homeImplied = 1 / odds.home;
+  const awayImplied = 1 / odds.away;
+  const nonDrawTotal = homeImplied + awayImplied;
+  if (nonDrawTotal <= 0) return null;
+
+  const toDecimal = (probability: number) => Math.round((1 / probability) * 100) / 100;
+  return {
+    home: toDecimal(homeImplied / nonDrawTotal),
+    draw: null,
+    away: toDecimal(awayImplied / nonDrawTotal),
+  };
+}
+
 function oddsForMatch(event: OddsApiEvent, stage: MatchStage): MatchOdds | null {
   const h2h = averageOdds(event, 'h2h');
 
@@ -123,8 +140,10 @@ function oddsForMatch(event: OddsApiEvent, stage: MatchStage): MatchOdds | null 
   }
 
   // Our knockout scoring uses "to qualify" prices. The Odds API's soccer h2h
-  // market is normally regular-time 1X2, so only accept a two-outcome market.
-  return hasUsableKnockoutOdds(h2h) ? h2h : null;
+  // market can be either two-outcome or regular-time 1X2. When only 1X2 exists,
+  // derive an "advances" price by conditioning out the draw probability.
+  if (hasUsableKnockoutOdds(h2h)) return h2h;
+  return deriveKnockoutOddsFromThreeWay(h2h);
 }
 
 function parseRequestsRemaining(value: unknown): number | null {
@@ -176,7 +195,15 @@ export async function syncOdds(options: SyncOddsOptions = {}): Promise<{ matches
   const staleCutoff = new Date(Date.now() - ODDS_STALE_HOURS * 60 * 60 * 1000);
   const matches = await Match.find({
     status: { $in: ['SCHEDULED', 'LIVE'] },
-    ...(options.force ? {} : { $or: [{ odds: null }, { 'odds.fetchedAt': { $lt: staleCutoff } }] }),
+    ...(options.force
+      ? {}
+      : {
+          $or: [
+            { odds: null },
+            { 'odds.fetchedAt': { $lt: staleCutoff } },
+            { stage: { $in: KNOCKOUT_STAGE_LIST }, 'odds.draw': { $ne: null } },
+          ],
+        }),
   });
 
   if (matches.length === 0) {
@@ -270,10 +297,10 @@ export async function syncOdds(options: SyncOddsOptions = {}): Promise<{ matches
       eventsSkipped++;
       continue;
     }
-    match.odds = reverseOdds
+    const odds = reverseOdds
       ? { home: computed.away, draw: computed.draw, away: computed.home, fetchedAt: new Date() }
       : { ...computed, fetchedAt: new Date() };
-    await match.save();
+    await Match.updateOne({ _id: match._id }, { $set: { odds } }, { runValidators: false });
     matchesUpdated++;
   }
 
