@@ -426,6 +426,44 @@ describe('syncMatchResults (FotMob)', () => {
     vi.restoreAllMocks();
   });
 
+  it('clears placeholder odds when knockout teams are confirmed', async () => {
+    const kickoff = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
+    const match = await Match.create({
+      externalId: 537502,
+      stage: 'ROUND_OF_32',
+      group: null,
+      matchday: 4,
+      homeTeamCode: 'TBD',
+      awayTeamCode: 'TBD',
+      utcDate: kickoff,
+      status: 'SCHEDULED',
+      result: null,
+      odds: { home: 2.58, draw: 3.32, away: 2.58, fetchedAt: new Date() },
+    });
+
+    vi.spyOn(fotmobApi, 'fetchWcMatches').mockResolvedValue([
+      fotmobMatch({
+        fotmobId: 4667802,
+        utcTime: kickoff,
+        homeName: 'Argentina',
+        awayName: 'Spain',
+        homeScore: null,
+        awayScore: null,
+        started: false,
+        finished: false,
+      }),
+    ]);
+
+    await expect(syncMatchResults()).resolves.toEqual({ matchesUpdated: 1, matchesUnmatched: 0 });
+
+    const after = await Match.findById(match._id).lean();
+    expect(after?.homeTeamCode).toBe('ARG');
+    expect(after?.awayTeamCode).toBe('ESP');
+    expect(after?.odds).toBeNull();
+
+    vi.restoreAllMocks();
+  });
+
   it('backfills fixture fields without validating unrelated legacy match fields', async () => {
     const kickoff = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
     const match = await Match.create({

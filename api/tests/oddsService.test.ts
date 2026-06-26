@@ -121,4 +121,107 @@ describe('syncOdds', () => {
 
     await expect(syncOdds({ force: true })).resolves.toEqual({ matchesUpdated: 0, requestsRemaining: 500 });
   });
+
+  it('refreshes fresh knockout placeholder odds and derives two-way advancing odds from 1X2 odds', async () => {
+    const kickoff = new Date('2026-06-28T19:00:00.000Z');
+    await Match.create({
+      externalId: 103,
+      stage: 'ROUND_OF_32',
+      group: null,
+      matchday: 4,
+      homeTeamCode: 'ARG',
+      awayTeamCode: 'ESP',
+      utcDate: kickoff,
+      status: 'SCHEDULED',
+      odds: { home: 2.58, draw: 3.32, away: 2.58, fetchedAt: new Date() },
+    });
+
+    vi.mocked(axios.get).mockResolvedValueOnce({
+      data: [
+        {
+          id: 'event-2',
+          commence_time: kickoff.toISOString(),
+          home_team: 'Argentina',
+          away_team: 'Spain',
+          bookmakers: [
+            {
+              key: 'book',
+              markets: [
+                {
+                  key: 'h2h',
+                  outcomes: [
+                    { name: 'Argentina', price: 2.0 },
+                    { name: 'Draw', price: 3.5 },
+                    { name: 'Spain', price: 4.0 },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      headers: { 'x-requests-remaining': '41' },
+    });
+
+    await expect(syncOdds()).resolves.toEqual({ matchesUpdated: 1, requestsRemaining: 41 });
+
+    const match = await Match.findOne({ externalId: 103 }).lean();
+    expect(match?.odds).toMatchObject({
+      home: 1.5,
+      draw: null,
+      away: 3,
+    });
+  });
+
+  it('stores odds without validating unrelated legacy match fields', async () => {
+    const kickoff = new Date('2026-06-28T22:00:00.000Z');
+    const match = await Match.create({
+      externalId: 104,
+      stage: 'ROUND_OF_32',
+      group: null,
+      matchday: 4,
+      homeTeamCode: 'ARG',
+      awayTeamCode: 'ESP',
+      utcDate: kickoff,
+      status: 'SCHEDULED',
+      odds: null,
+    });
+    await Match.updateOne({ _id: match._id }, { $set: { matchday: null } });
+
+    vi.mocked(axios.get).mockResolvedValueOnce({
+      data: [
+        {
+          id: 'event-3',
+          commence_time: kickoff.toISOString(),
+          home_team: 'Argentina',
+          away_team: 'Spain',
+          bookmakers: [
+            {
+              key: 'book',
+              markets: [
+                {
+                  key: 'h2h',
+                  outcomes: [
+                    { name: 'Argentina', price: 1.8 },
+                    { name: 'Spain', price: 2.2 },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      headers: { 'x-requests-remaining': '40' },
+    });
+
+    await expect(syncOdds()).resolves.toEqual({ matchesUpdated: 1, requestsRemaining: 40 });
+
+    const updated = await Match.findOne({ externalId: 104 }).lean();
+    expect(updated?.matchday).toBeNull();
+    expect(updated?.odds).toMatchObject({
+      home: 1.8,
+      draw: null,
+      away: 2.2,
+    });
+  });
 });
