@@ -188,6 +188,7 @@ export default function PicksScreen() {
                 key={group.id}
                 group={group}
                 order={groupPredMap[group.id]?.orderedTeams ?? group.teams}
+                points={groupPredMap[group.id]?.points}
                 progress={groupPredMap[group.id]?.progress}
                 onOrderChange={groupPredictionsLocked ? undefined : handleGroupOrder}
                 onDragStateChange={setIsDraggingGroupTeam}

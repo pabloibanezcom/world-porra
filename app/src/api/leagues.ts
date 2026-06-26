@@ -25,6 +25,12 @@ export interface MemberUpcomingMatch {
 }
 
 export interface MemberPredictionsResponse {
+  pointsBreakdown: {
+    matches: number;
+    groups: number;
+    tournament: number;
+    total: number;
+  };
   finishedMatches: MemberMatchPrediction[];
   upcomingMatches: MemberUpcomingMatch[];
   groupPredictions: GroupPrediction[];

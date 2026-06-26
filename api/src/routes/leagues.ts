@@ -905,8 +905,17 @@ router.get('/:id/members/:userId/predictions', authMiddleware, async (req: AuthR
     ]);
 
     const pickedSet = new Set(upcomingPredictions.map((p) => p.matchId.toString()));
+    const matchPoints = finishedPredictions.reduce((total, prediction) => total + (prediction.points ?? 0), 0);
+    const groupPoints = groupPredictions.reduce((total, prediction) => total + (prediction.points ?? 0), 0);
+    const tournamentPoints = 0;
 
     res.json({
+      pointsBreakdown: {
+        matches: matchPoints,
+        groups: groupPoints,
+        tournament: tournamentPoints,
+        total: matchPoints + groupPoints + tournamentPoints,
+      },
       finishedMatches: finishedMatches.map((m) => {
         const pred = finishedPredictions.find((p) => p.matchId.toString() === m._id.toString());
         return {
