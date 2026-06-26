@@ -107,6 +107,10 @@ export interface SyncMatchResultsOptions {
   daysForward?: number;
 }
 
+export const LIVE_RESULTS_DAYS_BACK = 1;
+export const BRACKET_FIXTURE_DAYS_FORWARD = 7;
+export const FULL_FIXTURE_DAYS_FORWARD = 40;
+
 /**
  * Pull World Cup match data from FotMob and update our stored matches: live and
  * finished scores, knockout bracket teams as they're decided, and reschedules.
@@ -116,7 +120,7 @@ export interface SyncMatchResultsOptions {
 export async function syncMatchResults(
   options: SyncMatchResultsOptions = {}
 ): Promise<{ matchesUpdated: number; matchesUnmatched: number }> {
-  const { daysBack = 1, daysForward = 1 } = options;
+  const { daysBack = LIVE_RESULTS_DAYS_BACK, daysForward = BRACKET_FIXTURE_DAYS_FORWARD } = options;
   logger.info({ daysBack, daysForward }, 'Syncing match results from FotMob...');
 
   const fmMatches = await fetchWcMatches(daysBack, daysForward);

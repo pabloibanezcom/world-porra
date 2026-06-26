@@ -1,5 +1,11 @@
 import cron from 'node-cron';
-import { syncMatchResults, processFinishedMatches } from '../services/syncService';
+import {
+  BRACKET_FIXTURE_DAYS_FORWARD,
+  FULL_FIXTURE_DAYS_FORWARD,
+  LIVE_RESULTS_DAYS_BACK,
+  syncMatchResults,
+  processFinishedMatches,
+} from '../services/syncService';
 import { syncOdds } from '../services/oddsService';
 import { logger } from '../config/logger';
 import { Match } from '../models/Match';
@@ -10,7 +16,10 @@ export function startSyncJobs(): void {
   // Every 5 minutes during tournament — sync results and score
   cron.schedule('*/5 * * * *', async () => {
     try {
-      await syncMatchResults({ daysBack: 1, daysForward: 1 });
+      await syncMatchResults({
+        daysBack: LIVE_RESULTS_DAYS_BACK,
+        daysForward: BRACKET_FIXTURE_DAYS_FORWARD,
+      });
       await processFinishedMatches();
     } catch (error) {
       logger.error({ err: error }, 'Sync job failed');
@@ -20,7 +29,10 @@ export function startSyncJobs(): void {
   // Daily at 6 AM UTC — refresh the full upcoming schedule and knockout bracket
   cron.schedule('0 6 * * *', async () => {
     try {
-      await syncMatchResults({ daysBack: 1, daysForward: 40 });
+      await syncMatchResults({
+        daysBack: LIVE_RESULTS_DAYS_BACK,
+        daysForward: FULL_FIXTURE_DAYS_FORWARD,
+      });
     } catch (error) {
       logger.error({ err: error }, 'Daily sync failed');
     }
