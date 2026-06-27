@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'world-porra-v3';
+const CACHE_VERSION = 'world-porra-v4';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const FONT_CACHE = `${CACHE_VERSION}-fonts`;
 
@@ -19,7 +19,19 @@ self.addEventListener('activate', (event) => {
           .filter((key) => !ALL_CACHES.includes(key))
           .map((key) => caches.delete(key))
       )
-    ).then(() => self.clients.claim())
+    )
+      .then(() => self.clients.claim())
+      .then(() => self.clients.matchAll({ type: 'window', includeUncontrolled: true }))
+      .then((clients) =>
+        Promise.all(
+          clients.map((client) => {
+            if ('navigate' in client && client.url) {
+              return client.navigate(client.url);
+            }
+            return undefined;
+          })
+        )
+      )
   );
 });
 
@@ -88,6 +100,21 @@ self.addEventListener('fetch', (event) => {
             return response;
           })
           .catch(() => cache.match('/index.html'))
+      )
+    );
+    return;
+  }
+
+  // App bundles must update on the first reload after a deploy.
+  if (request.destination === 'script') {
+    event.respondWith(
+      caches.open(STATIC_CACHE).then((cache) =>
+        fetch(request)
+          .then((response) => {
+            if (response.ok) cache.put(request, response.clone());
+            return response;
+          })
+          .catch(() => cache.match(request))
       )
     );
     return;
