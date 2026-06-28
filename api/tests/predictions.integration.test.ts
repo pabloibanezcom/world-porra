@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { clearDatabase, requestJson, seedTestCountryTeams, startIntegrationServer, stopIntegrationServer } from './helpers/integration';
 import { Match } from '../src/models/Match';
 import { Prediction } from '../src/models/Prediction';
@@ -550,5 +550,99 @@ describe('tournament predictions', () => {
     });
     expect(locked.status).toBe(400);
     expect(locked.body).toEqual({ error: 'Tournament predictions are locked.' });
+  });
+
+  it('allows late tournament picks only for knockout-only league members until June 30', async () => {
+    const knockoutPlayer = await registerPlayer('knockout-player@worldporra.test');
+    const mixedPlayer = await registerPlayer('mixed-player@worldporra.test');
+    const outsider = await registerPlayer('outsider@worldporra.test');
+    const master = await registerPlayer('master@worldporra.test');
+
+    await Promise.all([
+      createMatch({
+        externalId: 601,
+        stage: 'GROUP',
+        group: 'A',
+        homeTeamCode: 'ARG',
+        awayTeamCode: 'ESP',
+        utcDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+      }),
+      createMatch({
+        externalId: 673,
+        stage: 'ROUND_OF_32',
+        group: null,
+        homeTeamCode: 'BRA',
+        awayTeamCode: 'FRA',
+        utcDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
+      }),
+    ]);
+
+    await League.create([
+      {
+        name: 'Late Knockouts',
+        inviteCode: 'KNOCKA1',
+        ownerId: knockoutPlayer.user.id,
+        scoringScope: 'KNOCKOUT_ONLY',
+        members: [{ userId: knockoutPlayer.user.id, isAdmin: true }],
+      },
+      {
+        name: 'Mixed Knockouts',
+        inviteCode: 'KNOCKB2',
+        ownerId: mixedPlayer.user.id,
+        scoringScope: 'KNOCKOUT_ONLY',
+        members: [{ userId: mixedPlayer.user.id, isAdmin: true }],
+      },
+      {
+        name: 'Mixed Full',
+        inviteCode: 'FULLB2',
+        ownerId: mixedPlayer.user.id,
+        scoringScope: 'FULL_TOURNAMENT',
+        members: [{ userId: mixedPlayer.user.id, isAdmin: true }],
+      },
+    ]);
+
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      vi.setSystemTime(new Date('2026-06-30T12:00:00.000Z'));
+
+      const update = await requestJson('/config/poll', {
+        method: 'PATCH',
+        token: master.token,
+        body: {
+          tournamentPredictionsDeadline: new Date(Date.now() - 60 * 1000).toISOString(),
+        },
+      });
+      expect(update.status).toBe(200);
+
+      const knockoutOnly = await requestJson('/predictions/tournament', {
+        token: knockoutPlayer.token,
+        body: { champion: { code: 'BRA' } },
+      });
+      expect(knockoutOnly.status).toBe(200);
+
+      const noKnockoutLeague = await requestJson('/predictions/tournament', {
+        token: outsider.token,
+        body: { champion: { code: 'BRA' } },
+      });
+      expect(noKnockoutLeague.status).toBe(400);
+      expect(noKnockoutLeague.body).toEqual({ error: 'Tournament predictions are locked.' });
+
+      const mixedMembership = await requestJson('/predictions/tournament', {
+        token: mixedPlayer.token,
+        body: { champion: { code: 'BRA' } },
+      });
+      expect(mixedMembership.status).toBe(400);
+      expect(mixedMembership.body).toEqual({ error: 'Tournament predictions are locked.' });
+
+      vi.setSystemTime(new Date('2026-07-01T00:00:00.000Z'));
+      const afterFixedDeadline = await requestJson('/predictions/tournament', {
+        token: knockoutPlayer.token,
+        body: { champion: { code: 'FRA' } },
+      });
+      expect(afterFixedDeadline.status).toBe(400);
+      expect(afterFixedDeadline.body).toEqual({ error: 'Tournament predictions are locked.' });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
