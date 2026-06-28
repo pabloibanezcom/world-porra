@@ -140,6 +140,15 @@ describe('API route helpers', () => {
     expect(mockedApiClient.post).toHaveBeenCalledWith('/leagues', { name: 'Friends' });
 
     mockedApiClient.post.mockResolvedValueOnce({ data: { league } });
+    const paymentSettings = { entryFee: 10, payoutSplits: [{ position: 1, amount: 10 }] };
+    await expect(createLeague('Friends', paymentSettings, 'KNOCKOUT_ONLY')).resolves.toBe(league);
+    expect(mockedApiClient.post).toHaveBeenCalledWith('/leagues', {
+      name: 'Friends',
+      paymentSettings,
+      scoringScope: 'KNOCKOUT_ONLY',
+    });
+
+    mockedApiClient.post.mockResolvedValueOnce({ data: { league } });
     await expect(joinLeague('ABC123')).resolves.toBe(league);
     expect(mockedApiClient.post).toHaveBeenCalledWith('/leagues/join', { inviteCode: 'ABC123' });
 

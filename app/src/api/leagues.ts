@@ -47,9 +47,13 @@ export interface MissingPickReminderPreview {
 export async function createLeague(
   name: string,
   paymentSettings?: LeaguePaymentSettings,
-  scoringScope: LeagueScoringScope = 'FULL_TOURNAMENT'
+  scoringScope?: LeagueScoringScope
 ): Promise<League> {
-  const { data } = await apiClient.post<{ league: League }>('/leagues', { name, paymentSettings, scoringScope });
+  const payload: { name: string; paymentSettings?: LeaguePaymentSettings; scoringScope?: LeagueScoringScope } = { name };
+  if (paymentSettings) payload.paymentSettings = paymentSettings;
+  if (scoringScope) payload.scoringScope = scoringScope;
+
+  const { data } = await apiClient.post<{ league: League }>('/leagues', payload);
   markLeaguesChanged();
   return data.league;
 }
