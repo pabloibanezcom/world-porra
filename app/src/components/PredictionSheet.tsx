@@ -222,11 +222,11 @@ export default function PredictionSheet({
     : null;
 
   let advancingPts = 0;
-  if (knockout && qualifier && knockoutPct && match.odds) {
-    const advOdds = qualifier === 'HOME' ? match.odds.home : match.odds.away;
-    if (advOdds && advOdds > 0) {
-      advancingPts = Math.round(advOdds * KNOCKOUT_ROUND_MULTIPLIERS[match.stage]);
-    }
+  if (knockout && qualifier) {
+    const advOdds = qualifier === 'HOME' ? match.odds?.home : match.odds?.away;
+    advancingPts = advOdds && advOdds > 0
+      ? Math.round(advOdds * KNOCKOUT_ROUND_MULTIPLIERS[match.stage])
+      : KNOCKOUT_ROUND_MULTIPLIERS[match.stage];
   }
   const exactBonusKnockout = KNOCKOUT_EXACT_BONUS[match.stage];
 

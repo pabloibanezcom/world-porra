@@ -48,4 +48,32 @@ describe('calculateLivePotentialPoints', () => {
   it('returns null when the live match has no current score', () => {
     expect(calculateLivePotentialPoints({ ...baseMatch, result: null }, basePrediction)).toBeNull();
   });
+
+  it('uses the knockout round multiplier when qualifying odds are missing', () => {
+    expect(
+      calculateLivePotentialPoints(
+        {
+          ...baseMatch,
+          stage: 'ROUND_OF_16',
+          result: { homeGoals: 1, awayGoals: 0, winner: 'HOME' },
+          odds: null,
+        },
+        { ...basePrediction, homeGoals: 0, awayGoals: 0, qualifier: 'HOME' }
+      )
+    ).toBe(3);
+  });
+
+  it('uses the recorded knockout winner for drawn scores', () => {
+    expect(
+      calculateLivePotentialPoints(
+        {
+          ...baseMatch,
+          stage: 'QUARTER_FINAL',
+          result: { homeGoals: 1, awayGoals: 1, winner: 'AWAY' },
+          odds: { home: 1.8, draw: null, away: 2.2 },
+        },
+        { ...basePrediction, homeGoals: 1, awayGoals: 1, qualifier: 'AWAY' }
+      )
+    ).toBe(19);
+  });
 });

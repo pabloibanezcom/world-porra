@@ -159,7 +159,7 @@ describe('calculatePoints — knockout rounds', () => {
     })).toBe(12); // exact bonus only
   });
 
-  it('correct qualifier but no odds → 0 advancing pts, exact bonus still applies', () => {
+  it('correct qualifier but no odds → round multiplier fallback, exact bonus still applies', () => {
     expect(knockoutScore({
       predicted: [1, 0],
       actual: [1, 0],
@@ -167,7 +167,18 @@ describe('calculatePoints — knockout rounds', () => {
       qualifier: 'HOME',
       actualWinner: 'HOME',
       // no odds
-    })).toBe(8); // exact bonus only, no advancing pts
+    })).toBe(11); // R16 fallback 3 + exact bonus 8
+  });
+
+  it('correct qualifier but zero odds → round multiplier fallback', () => {
+    expect(knockoutScore({
+      predicted: [1, 0],
+      actual: [2, 0],
+      stage: 'QUARTER_FINAL',
+      qualifier: 'HOME',
+      actualWinner: 'HOME',
+      odds: { home: 0, away: 2.1 },
+    })).toBe(4);
   });
 
   it('draw prediction, wrong qualifier (wrong penalty pick) → exact bonus only', () => {
