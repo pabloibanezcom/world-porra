@@ -4,7 +4,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { fetchMyLeagues, updateLeagueOrder } from '../api/leagues';
-import { fetchPollConfig, PollConfig } from '../api/config';
 import { League } from '../types';
 import { useAuthStore } from '../store/authStore';
 import LeagueCard from '../components/LeagueCard';
@@ -17,7 +16,6 @@ export default function LeaguesScreen() {
   const { t } = useI18n();
   const user = useAuthStore((s) => s.user);
   const [leagues, setLeagues] = useState<League[]>([]);
-  const [pollConfig, setPollConfig] = useState<PollConfig | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [joinSheetVisible, setJoinSheetVisible] = useState(false);
@@ -29,16 +27,12 @@ export default function LeaguesScreen() {
     const ownerId = typeof owner === 'string' ? owner : owner?.id ?? owner?._id;
     return ownerId === user?.id;
   });
-  const canCreateLeagues = !!user?.id && !ownsLeague && !pollConfig?.leagueCreationLocked;
+  const canCreateLeagues = !!user?.id && !ownsLeague;
 
-  const loadLeagues = async (options: { force?: boolean } = {}) => {
+  const loadLeagues = async () => {
     try {
-      const [data, config] = await Promise.all([
-        fetchMyLeagues(),
-        fetchPollConfig({ force: options.force }),
-      ]);
+      const data = await fetchMyLeagues();
       setLeagues(data);
-      setPollConfig(config);
     } catch {
       // handle error
     } finally {
@@ -54,7 +48,7 @@ export default function LeaguesScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadLeagues({ force: true });
+    await loadLeagues();
     setRefreshing(false);
   };
 

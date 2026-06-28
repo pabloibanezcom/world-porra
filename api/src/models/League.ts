@@ -1,6 +1,8 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
 
 export const LEAGUE_MAX_MEMBERS = 50;
+export const LEAGUE_SCORING_SCOPES = ['FULL_TOURNAMENT', 'KNOCKOUT_ONLY'] as const;
+export type LeagueScoringScope = (typeof LEAGUE_SCORING_SCOPES)[number];
 
 export interface ILeagueMember {
   userId: Types.ObjectId;
@@ -26,6 +28,7 @@ export interface ILeague extends Document {
   ownerId: Types.ObjectId;
   members: ILeagueMember[];
   maxMembers: number;
+  scoringScope: LeagueScoringScope;
   paymentSettings: ILeaguePaymentSettings;
   createdAt: Date;
   updatedAt: Date;
@@ -57,6 +60,7 @@ const leagueSchema = new Schema<ILeague>(
     ownerId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     members: [leagueMemberSchema],
     maxMembers: { type: Number, default: LEAGUE_MAX_MEMBERS, min: 1, max: LEAGUE_MAX_MEMBERS },
+    scoringScope: { type: String, enum: LEAGUE_SCORING_SCOPES, default: 'FULL_TOURNAMENT' },
     paymentSettings: {
       entryFee: { type: Number, default: 0, min: 0, max: 100000 },
       payoutSplits: {

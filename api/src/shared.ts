@@ -64,6 +64,7 @@ export interface TournamentPicks {
   bestPlayer?: PlayerOption;
   topScorer?: PlayerOption;
   bestYoung?: PlayerOption;
+  points?: number | null;
 }
 
 export const matchPredictionInputSchema = z.object({

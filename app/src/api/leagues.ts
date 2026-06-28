@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import { GroupPrediction, League, LeaguePaymentSettings, Match, MatchResult, TournamentPicks } from '../types';
+import { GroupPrediction, League, LeaguePaymentSettings, LeagueScoringScope, Match, MatchResult, TournamentPicks } from '../types';
 import { markLeaguesChanged } from '../store/dataRefreshStore';
 
 export interface MemberMatchPrediction {
@@ -44,8 +44,12 @@ export interface MissingPickReminderPreview {
   members: Array<{ id: string; name: string; avatarUrl: string }>;
 }
 
-export async function createLeague(name: string, paymentSettings?: LeaguePaymentSettings): Promise<League> {
-  const { data } = await apiClient.post<{ league: League }>('/leagues', { name, paymentSettings });
+export async function createLeague(
+  name: string,
+  paymentSettings?: LeaguePaymentSettings,
+  scoringScope: LeagueScoringScope = 'FULL_TOURNAMENT'
+): Promise<League> {
+  const { data } = await apiClient.post<{ league: League }>('/leagues', { name, paymentSettings, scoringScope });
   markLeaguesChanged();
   return data.league;
 }

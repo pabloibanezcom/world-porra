@@ -134,6 +134,8 @@ const translations: Record<Language, TranslationMap> = {
     'leagues.emptyHint': 'Join a league to compete with friends.',
     'leagues.players': ({ count }) => `${count} players`,
     'leagues.playersWithPoints': ({ count, points }) => `${count} players · ${points} pts`,
+    'leagues.playersWithScope': ({ count, scope }) => `${count} players · ${scope}`,
+    'leagues.playersWithPointsAndScope': ({ count, points, scope }) => `${count} players · ${points} pts · ${scope}`,
 
     'picks.title': 'My Picks',
     'picks.subtitle': '2026 FIFA World Cup · Group Stage',
@@ -305,6 +307,9 @@ const translations: Record<Language, TranslationMap> = {
 
     'league.notFound': 'League not found',
     'league.playersGroupStage': ({ count }) => `${count} players · Group Stage`,
+    'league.playersScoringScope': ({ count, scope }) => `${count} players · ${scope}`,
+    'league.scopeFull': 'Full tournament',
+    'league.scopeKnockout': 'Knockouts + final picks',
     'league.yourRank': 'Your rank',
     'league.yourPoints': 'Your points',
     'league.leader': 'Leader',
@@ -380,6 +385,11 @@ const translations: Record<Language, TranslationMap> = {
     'leagueCreationInvite.failed': 'Failed to accept invite. Please try again.',
 
     'createLeague.name': 'League Name',
+    'createLeague.scoring': 'Scoring',
+    'createLeague.fullTournament': 'Full tournament',
+    'createLeague.fullTournamentHint': 'Group matches, standings, knockouts, and final picks.',
+    'createLeague.knockoutOnly': 'Knockouts',
+    'createLeague.knockoutOnlyHint': 'Knockout matches plus final tournament picks.',
     'createLeague.placeholder': 'e.g. Office Champions',
     'createLeague.submit': 'Create League',
     'createLeague.required': 'Please enter a league name',
@@ -697,6 +707,8 @@ const translations: Record<Language, TranslationMap> = {
     'leagues.emptyHint': 'Únete a una liga para competir con amigos.',
     'leagues.players': ({ count }) => `${count} jugadores`,
     'leagues.playersWithPoints': ({ count, points }) => `${count} jugadores · ${points} pts`,
+    'leagues.playersWithScope': ({ count, scope }) => `${count} jugadores · ${scope}`,
+    'leagues.playersWithPointsAndScope': ({ count, points, scope }) => `${count} jugadores · ${points} pts · ${scope}`,
 
     'picks.title': 'Mis pronósticos',
     'picks.subtitle': 'Mundial FIFA 2026 · Fase de grupos',
@@ -868,6 +880,9 @@ const translations: Record<Language, TranslationMap> = {
 
     'league.notFound': 'Liga no encontrada',
     'league.playersGroupStage': ({ count }) => `${count} jugadores · Fase de grupos`,
+    'league.playersScoringScope': ({ count, scope }) => `${count} jugadores · ${scope}`,
+    'league.scopeFull': 'Torneo completo',
+    'league.scopeKnockout': 'Eliminatorias + picks finales',
     'league.yourRank': 'Tu puesto',
     'league.yourPoints': 'Tus puntos',
     'league.leader': 'Líder',
@@ -943,6 +958,11 @@ const translations: Record<Language, TranslationMap> = {
     'leagueCreationInvite.failed': 'No se pudo aceptar la invitación. Inténtalo de nuevo.',
 
     'createLeague.name': 'Nombre de la liga',
+    'createLeague.scoring': 'Puntuación',
+    'createLeague.fullTournament': 'Torneo completo',
+    'createLeague.fullTournamentHint': 'Grupos, clasificación, eliminatorias y picks finales.',
+    'createLeague.knockoutOnly': 'Eliminatorias',
+    'createLeague.knockoutOnlyHint': 'Eliminatorias más picks finales del torneo.',
     'createLeague.placeholder': 'ej. Campeones de la oficina',
     'createLeague.submit': 'Crear liga',
     'createLeague.required': 'Introduce un nombre para la liga',

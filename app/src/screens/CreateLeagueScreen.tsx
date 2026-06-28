@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -13,7 +13,10 @@ import {
   ScrollView,
 } from 'react-native';
 import { StackActions, useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { createLeague } from '../api/leagues';
+import { fetchPollConfig } from '../api/config';
+import { LeagueScoringScope } from '../types';
 import { colors, fonts } from '../theme';
 import { useI18n } from '../i18n';
 
@@ -24,6 +27,8 @@ export default function CreateLeagueScreen() {
   const [firstPrize, setFirstPrize] = useState('');
   const [secondPrize, setSecondPrize] = useState('');
   const [thirdPrize, setThirdPrize] = useState('');
+  const [scoringScope, setScoringScope] = useState<LeagueScoringScope>('FULL_TOURNAMENT');
+  const [fullTournamentLocked, setFullTournamentLocked] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigation = useNavigation<any>();
   const trimmedName = name.trim();
@@ -33,6 +38,17 @@ export default function CreateLeagueScreen() {
   const close = () => {
     if (!loading) navigation.goBack();
   };
+
+  useEffect(() => {
+    fetchPollConfig()
+      .then((config) => {
+        setFullTournamentLocked(config.leagueCreationLocked);
+        if (config.leagueCreationLocked) {
+          setScoringScope('KNOCKOUT_ONLY');
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const handleCreate = async () => {
     if (!trimmedName) {
@@ -58,7 +74,7 @@ export default function CreateLeagueScreen() {
           { position: 2, amount: parsedPrizes[1] },
           { position: 3, amount: parsedPrizes[2] },
         ],
-      });
+      }, scoringScope);
       navigation.dispatch(
         StackActions.replace('Main', {
           screen: 'Leagues',
@@ -97,6 +113,24 @@ export default function CreateLeagueScreen() {
             returnKeyType="done"
             onSubmitEditing={handleCreate}
           />
+          <Text style={styles.label}>{t('createLeague.scoring')}</Text>
+          <View style={styles.scopeRow}>
+            <ScopeOption
+              icon="earth-outline"
+              title={t('createLeague.fullTournament')}
+              subtitle={t('createLeague.fullTournamentHint')}
+              selected={scoringScope === 'FULL_TOURNAMENT'}
+              disabled={fullTournamentLocked}
+              onPress={() => setScoringScope('FULL_TOURNAMENT')}
+            />
+            <ScopeOption
+              icon="trophy-outline"
+              title={t('createLeague.knockoutOnly')}
+              subtitle={t('createLeague.knockoutOnlyHint')}
+              selected={scoringScope === 'KNOCKOUT_ONLY'}
+              onPress={() => setScoringScope('KNOCKOUT_ONLY')}
+            />
+          </View>
           <Text style={styles.label}>{t('payments.entryFee')}</Text>
           <TextInput
             style={styles.input}
@@ -127,6 +161,35 @@ export default function CreateLeagueScreen() {
         </ScrollView>
       </View>
     </KeyboardAvoidingView>
+  );
+}
+
+function ScopeOption({
+  icon,
+  title,
+  subtitle,
+  selected,
+  disabled,
+  onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+  subtitle: string;
+  selected: boolean;
+  disabled?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      style={[styles.scopeOption, selected && styles.scopeOptionSelected, disabled && styles.scopeOptionDisabled]}
+      onPress={onPress}
+      disabled={disabled}
+      activeOpacity={0.8}
+    >
+      <Ionicons name={icon} size={18} color={selected ? colors.accent : colors.muted} />
+      <Text style={[styles.scopeTitle, selected && styles.scopeTitleSelected]} numberOfLines={1}>{title}</Text>
+      <Text style={styles.scopeSubtitle} numberOfLines={2}>{subtitle}</Text>
+    </TouchableOpacity>
   );
 }
 
@@ -211,6 +274,39 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 13,
     marginBottom: 16,
+  },
+  scopeRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
+  scopeOption: {
+    flex: 1,
+    minHeight: 104,
+    backgroundColor: colors.card2,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    padding: 12,
+    gap: 6,
+  },
+  scopeOptionSelected: {
+    borderColor: colors.accent,
+    backgroundColor: colors.accentDim,
+  },
+  scopeOptionDisabled: {
+    opacity: 0.45,
+  },
+  scopeTitle: {
+    color: colors.text,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  scopeTitleSelected: {
+    color: colors.accent,
+  },
+  scopeSubtitle: {
+    color: colors.dim,
+    fontFamily: fonts.body,
+    fontSize: 10,
+    lineHeight: 14,
   },
   splitRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
   splitInputWrap: { flex: 1 },

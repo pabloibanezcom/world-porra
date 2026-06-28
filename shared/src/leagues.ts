@@ -1,5 +1,7 @@
 import type { User } from './users';
 
+export type LeagueScoringScope = 'FULL_TOURNAMENT' | 'KNOCKOUT_ONLY';
+
 export interface LeagueMember {
   userId: User | null;
   joinedAt: string;
@@ -26,5 +28,6 @@ export interface League {
   ownerId: User;
   members: LeagueMember[];
   maxMembers: number;
+  scoringScope?: LeagueScoringScope;
   paymentSettings?: LeaguePaymentSettings;
 }

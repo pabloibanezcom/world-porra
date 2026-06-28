@@ -147,6 +147,7 @@ export default function LeagueDetailScreen() {
       { position: 3, amount: 0 },
     ],
   };
+  const scoringScopeLabel = t(league.scoringScope === 'KNOCKOUT_ONLY' ? 'league.scopeKnockout' : 'league.scopeFull');
   const paidCount = league.members.filter((member) => member.hasPaid).length;
   const totalPot = paymentSettings.entryFee * league.members.length;
 
@@ -279,7 +280,7 @@ export default function LeagueDetailScreen() {
         <View style={styles.titleRow}>
           <View style={styles.titleMain}>
             <Text style={styles.title}>{league.name}</Text>
-            <Text style={styles.subtitle}>{t('league.playersGroupStage', { count: league.members.length })}</Text>
+            <Text style={styles.subtitle}>{t('league.playersScoringScope', { count: league.members.length, scope: scoringScopeLabel })}</Text>
           </View>
           <TouchableOpacity style={styles.shareIconBtn} onPress={() => setInviteSheetVisible(true)} activeOpacity={0.7}>
             <Ionicons name="share-outline" size={20} color={colors.muted} />

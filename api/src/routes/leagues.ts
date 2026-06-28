@@ -1,7 +1,8 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
 import crypto from 'crypto';
-import { League, LEAGUE_MAX_MEMBERS } from '../models/League';
+import { Types } from 'mongoose';
+import { League, LEAGUE_MAX_MEMBERS, type LeagueScoringScope } from '../models/League';
 import { Match } from '../models/Match';
 import { Prediction } from '../models/Prediction';
 import { GroupPrediction } from '../models/GroupPrediction';
@@ -28,6 +29,8 @@ type PaymentSettingsInput = {
 const INVITE_CODE_LENGTH = 8;
 const INVITE_CODE_MIN_LENGTH = 6;
 const INVITE_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const DEFAULT_LEAGUE_SCORING_SCOPE: LeagueScoringScope = 'FULL_TOURNAMENT';
+const KNOCKOUT_LEAGUE_SCORING_SCOPE: LeagueScoringScope = 'KNOCKOUT_ONLY';
 
 function normalizeInviteCode(code: string): string {
   return code.trim().toUpperCase();
@@ -123,8 +126,11 @@ const paymentSettingsSchema = z
   })
   .transform((settings): PaymentSettingsInput => settings as PaymentSettingsInput);
 
+const leagueScoringScopeSchema = z.enum(['FULL_TOURNAMENT', 'KNOCKOUT_ONLY']);
+
 const createLeagueSchema = z.object({
   name: z.string().min(1).max(50),
+  scoringScope: leagueScoringScopeSchema.default(DEFAULT_LEAGUE_SCORING_SCOPE),
   paymentSettings: paymentSettingsSchema.optional(),
 });
 
@@ -196,9 +202,97 @@ async function getVisibleLeagueQuery(userId?: string) {
   return (await isMasterUser(userId)) ? {} : { 'members.userId': userId };
 }
 
+function getLeagueScoringScope(league: { scoringScope?: LeagueScoringScope | null }): LeagueScoringScope {
+  return league.scoringScope ?? DEFAULT_LEAGUE_SCORING_SCOPE;
+}
+
+function memberUserId(member: { userId: unknown }): string {
+  const value = member.userId as any;
+  return String(value?._id ?? value?.id ?? value ?? '');
+}
+
+function addTotalsToMap(totalsByUserId: Map<string, number>, rows: Array<{ _id: unknown; total: number }>) {
+  for (const { _id, total } of rows) {
+    const userId = String(_id);
+    totalsByUserId.set(userId, (totalsByUserId.get(userId) ?? 0) + total);
+  }
+}
+
+async function calculateLeagueMemberTotals(league: {
+  scoringScope?: LeagueScoringScope | null;
+  members: Array<{ userId: unknown }>;
+}) {
+  const memberIds = Array.from(new Set(league.members.map(memberUserId).filter((id) => Types.ObjectId.isValid(id))));
+  const totalsByUserId = new Map(memberIds.map((id) => [id, 0]));
+  if (memberIds.length === 0) return totalsByUserId;
+
+  const userObjectIds = memberIds.map((id) => new Types.ObjectId(id));
+  const scope = getLeagueScoringScope(league);
+  const predictionPipeline: any[] = [
+    { $match: { userId: { $in: userObjectIds }, points: { $ne: null } } },
+  ];
+
+  if (scope === KNOCKOUT_LEAGUE_SCORING_SCOPE) {
+    predictionPipeline.push(
+      { $lookup: { from: 'matches', localField: 'matchId', foreignField: '_id', as: 'match' } },
+      { $unwind: '$match' },
+      { $match: { 'match.stage': { $ne: 'GROUP' } } }
+    );
+  }
+
+  predictionPipeline.push({ $group: { _id: '$userId', total: { $sum: '$points' } } });
+
+  const [predictionTotals, groupPredictionTotals, tournamentPredictionTotals] = await Promise.all([
+    Prediction.aggregate<{ _id: unknown; total: number }>(predictionPipeline),
+    scope === DEFAULT_LEAGUE_SCORING_SCOPE
+      ? GroupPrediction.aggregate<{ _id: unknown; total: number }>([
+        { $match: { userId: { $in: userObjectIds }, points: { $ne: null } } },
+        { $group: { _id: '$userId', total: { $sum: '$points' } } },
+      ])
+      : Promise.resolve([]),
+    TournamentPrediction.aggregate<{ _id: unknown; total: number }>([
+      { $match: { userId: { $in: userObjectIds }, points: { $ne: null } } },
+      { $group: { _id: '$userId', total: { $sum: '$points' } } },
+    ]),
+  ]);
+
+  addTotalsToMap(totalsByUserId, predictionTotals);
+  addTotalsToMap(totalsByUserId, groupPredictionTotals);
+  addTotalsToMap(totalsByUserId, tournamentPredictionTotals);
+
+  return totalsByUserId;
+}
+
+async function attachLeagueMemberTotals<T extends { scoringScope?: LeagueScoringScope | null; members: Array<{ userId: unknown; totalPoints?: number }> }>(
+  league: T | null
+): Promise<T | null> {
+  if (!league) return league;
+
+  const totalsByUserId = await calculateLeagueMemberTotals(league);
+  for (const member of league.members) {
+    const id = memberUserId(member);
+    const totalPoints = totalsByUserId.get(id) ?? 0;
+    member.totalPoints = totalPoints;
+    if (member.userId && typeof member.userId === 'object') {
+      (member.userId as any).totalPoints = totalPoints;
+    }
+  }
+
+  return league;
+}
+
+async function isKnockoutLeagueCreationLocked(): Promise<boolean> {
+  const firstKnockoutMatch = await Match.findOne({ stage: { $ne: 'GROUP' } })
+    .sort({ utcDate: 1 })
+    .select('utcDate')
+    .lean();
+
+  return !!firstKnockoutMatch?.utcDate && currentDate() >= firstKnockoutMatch.utcDate;
+}
+
 router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { name, paymentSettings } = createLeagueSchema.parse(req.body);
+    const { name, paymentSettings, scoringScope } = createLeagueSchema.parse(req.body);
     if (paymentSettings) {
       validatePayoutSplits(paymentSettings.payoutSplits, paymentSettings.entryFee, 1);
     }
@@ -215,7 +309,10 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
       return;
     }
 
-    if (await isLeagueCreationLocked()) {
+    const leagueCreationClosed =
+      (await isLeagueCreationLocked()) &&
+      (scoringScope !== KNOCKOUT_LEAGUE_SCORING_SCOPE || await isKnockoutLeagueCreationLocked());
+    if (leagueCreationClosed) {
       res.status(400).json({ error: 'League creation is closed.' });
       return;
     }
@@ -225,6 +322,7 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
       inviteCode: await generateUniqueInviteCode(),
       ownerId: req.userId,
       maxMembers: LEAGUE_MAX_MEMBERS,
+      scoringScope,
       members: [{ userId: req.userId, isAdmin: true, hasPaid: false }],
       ...(paymentSettings ? { paymentSettings } : {}),
     });
@@ -305,6 +403,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response): Promise
     .populate('ownerId', 'name avatarUrl')
     .populate('members.userId', 'name avatarUrl totalPoints')
     .lean();
+  await Promise.all(leagues.map((league) => attachLeagueMemberTotals(league)));
 
   res.json({ leagues: sortLeaguesForUser(leagues, user?.leagueOrder ?? []) });
 });
@@ -348,6 +447,7 @@ router.patch('/order', authMiddleware, async (req: AuthRequest, res: Response): 
       .populate('ownerId', 'name avatarUrl')
       .populate('members.userId', 'name avatarUrl totalPoints')
       .lean();
+    await Promise.all(leagues.map((league) => attachLeagueMemberTotals(league)));
 
     res.json({ leagues: sortLeaguesForUser(leagues, user.leagueOrder) });
   } catch (error) {
@@ -375,6 +475,8 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response): Prom
     res.status(403).json({ error: 'You are not a member of this league' });
     return;
   }
+
+  await attachLeagueMemberTotals(league);
 
   // Sort members by points descending for leaderboard
   league.members.sort((a, b) => {
@@ -430,6 +532,7 @@ router.patch('/:id/payments', authMiddleware, async (req: AuthRequest, res: Resp
       .populate('members.userId', 'name avatarUrl totalPoints')
       .populate('ownerId', 'name avatarUrl')
       .lean();
+    await attachLeagueMemberTotals(updatedLeague);
 
     res.json({ league: updatedLeague });
   } catch (error) {
@@ -469,6 +572,7 @@ router.patch('/:id/members/:userId/payment', authMiddleware, async (req: AuthReq
       .populate('members.userId', 'name avatarUrl totalPoints')
       .populate('ownerId', 'name avatarUrl')
       .lean();
+    await attachLeagueMemberTotals(updatedLeague);
 
     res.json({ league: updatedLeague });
   } catch (error) {
@@ -875,9 +979,12 @@ router.get('/:id/members/:userId/predictions', authMiddleware, async (req: AuthR
     }
 
     const canViewPending = await canManageLeague(league, req.userId);
+    const matchScopeQuery = getLeagueScoringScope(league) === KNOCKOUT_LEAGUE_SCORING_SCOPE
+      ? { stage: { $ne: 'GROUP' } }
+      : {};
     const [rawFinishedMatches, rawUpcomingMatches] = await Promise.all([
-      Match.find({ status: { $in: ['LIVE', 'FINISHED'] } }).sort({ utcDate: -1 }).lean(),
-      canViewPending ? Match.find({ status: 'SCHEDULED' }).sort({ utcDate: 1 }).lean() : Promise.resolve([]),
+      Match.find({ ...matchScopeQuery, status: { $in: ['LIVE', 'FINISHED'] } }).sort({ utcDate: -1 }).lean(),
+      canViewPending ? Match.find({ ...matchScopeQuery, status: 'SCHEDULED' }).sort({ utcDate: 1 }).lean() : Promise.resolve([]),
     ]);
     const language = getRequestLanguage(req);
     const [finishedMatches, upcomingMatches] = await Promise.all([
@@ -896,7 +1003,7 @@ router.get('/:id/members/:userId/predictions', authMiddleware, async (req: AuthR
     ]);
 
     const [groupPredictions, tournamentPrediction] = await Promise.all([
-      groupPredictionsLocked
+      groupPredictionsLocked && getLeagueScoringScope(league) === DEFAULT_LEAGUE_SCORING_SCOPE
         ? GroupPrediction.find({ userId: targetUserId }).sort({ group: 1 }).lean()
         : Promise.resolve([]),
       tournamentPredictionsLocked
@@ -907,7 +1014,7 @@ router.get('/:id/members/:userId/predictions', authMiddleware, async (req: AuthR
     const pickedSet = new Set(upcomingPredictions.map((p) => p.matchId.toString()));
     const matchPoints = finishedPredictions.reduce((total, prediction) => total + (prediction.points ?? 0), 0);
     const groupPoints = groupPredictions.reduce((total, prediction) => total + (prediction.points ?? 0), 0);
-    const tournamentPoints = 0;
+    const tournamentPoints = tournamentPrediction?.points ?? 0;
 
     res.json({
       pointsBreakdown: {

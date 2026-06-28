@@ -18,6 +18,7 @@ export interface ITournamentPrediction extends Document {
   bestPlayer?: PlayerPick;
   topScorer?: PlayerPick;
   bestYoung?: PlayerPick;
+  points: number | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -37,6 +38,7 @@ const tournamentPredictionSchema = new Schema<ITournamentPrediction>(
     bestPlayer: { type: playerPickSchema, default: undefined },
     topScorer: { type: playerPickSchema, default: undefined },
     bestYoung: { type: playerPickSchema, default: undefined },
+    points: { type: Number, default: null },
   },
   { timestamps: true }
 );
