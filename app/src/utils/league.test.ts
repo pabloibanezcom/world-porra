@@ -49,6 +49,15 @@ describe('league utilities', () => {
     expect(memberPoints(fullMember)).toBe(42);
   });
 
+  it('prefers league-scoped member points over the populated user total', () => {
+    const scopedMember: LeagueMember = {
+      ...member({ id: 'user-1', totalPoints: 0 }),
+      totalPoints: 27,
+    };
+
+    expect(memberPoints(scopedMember)).toBe(27);
+  });
+
   it('handles league members whose user record is missing', () => {
     const missingUserMember: LeagueMember = {
       userId: null,
