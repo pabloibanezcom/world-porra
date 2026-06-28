@@ -17,7 +17,7 @@ import { useAuthStore } from '../store/authStore';
 import { useI18n } from '../i18n';
 import Avatar from './ui/Avatar';
 import Flag from './ui/Flag';
-import { getTeamLabel } from './MatchCard';
+import { getTeamLabel, isKnockoutStage } from './MatchCard';
 import LiveBadge from './LiveBadge';
 import PointsBreakdown from './PointsBreakdown';
 import { calculateLivePotentialPoints } from '../utils/livePoints';
@@ -142,6 +142,7 @@ export default function MatchPredictionsSheet({ match, leagues, prediction, onCl
   const selectedLeague = memberLeagues.find((league) => league._id === selectedLeagueId);
   const matchStarted = isStarted(match);
   const isFinished = match.status === 'FINISHED';
+  const knockout = isKnockoutStage(match.stage);
   const scoreText = match.result
     ? `${match.result.homeGoals} - ${match.result.awayGoals}`
     : t('matchCard.scorePending');
@@ -243,6 +244,7 @@ export default function MatchPredictionsSheet({ match, leagues, prediction, onCl
                     const user = predictionUser(item);
                     const isMe = user.id === currentUser?.id;
                     const outcome = outcomeFor(item.homeGoals, item.awayGoals);
+                    const qualifierCode = item.qualifier === 'HOME' ? homeCode : awayCode;
                     const potentialPoints = calculateLivePotentialPoints(match, item);
                     const earnedPoints = item.points ?? 0;
                     return (
@@ -251,7 +253,9 @@ export default function MatchPredictionsSheet({ match, leagues, prediction, onCl
                         <View style={styles.friendTextBlock}>
                           <Text style={styles.friendName}>{isMe ? t('common.you') : user.name ?? 'Player'}</Text>
                           <Text style={styles.friendOutcome}>
-                            {outcome === 'DRAW'
+                            {outcome === 'DRAW' && knockout && item.qualifier
+                              ? t('match.friendPickDrawQualifier', { code: qualifierCode })
+                              : outcome === 'DRAW'
                               ? t('match.friendPickDraw')
                               : t('match.friendPickWinner', { code: outcome === 'HOME' ? homeCode : awayCode })}
                           </Text>

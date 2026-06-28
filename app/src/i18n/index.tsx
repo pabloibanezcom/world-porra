@@ -418,6 +418,7 @@ const translations: Record<Language, TranslationMap> = {
     'match.friendPicksNoLeague': 'Join a league to see friends’ picks once the match starts.',
     'match.friendPicksEmpty': 'No visible picks in this league yet.',
     'match.friendPickDraw': 'Picked a draw',
+    'match.friendPickDrawQualifier': ({ code }) => `Picked a draw · ${code} advances`,
     'match.friendPickWinner': ({ code }) => `Picked ${code}`,
 
     'matchCard.predict': 'Predict ->',
@@ -991,6 +992,7 @@ const translations: Record<Language, TranslationMap> = {
     'match.friendPicksNoLeague': 'Únete a una liga para ver los pronósticos de tus amigos cuando empiece el partido.',
     'match.friendPicksEmpty': 'Todavía no hay pronósticos visibles en esta liga.',
     'match.friendPickDraw': 'Pronosticó empate',
+    'match.friendPickDrawQualifier': ({ code }) => `Pronosticó empate · ${code} pasa`,
     'match.friendPickWinner': ({ code }) => `Pronosticó ${code}`,
 
     'matchCard.predict': 'Pronosticar ->',

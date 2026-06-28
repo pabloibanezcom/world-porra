@@ -7,7 +7,7 @@ import { fetchMyLeagues } from '../api/leagues';
 import { League, Match, Prediction, User } from '../types';
 import { colors, spacing, fontSize, borderRadius, fonts } from '../theme';
 import { format } from 'date-fns';
-import { hasTbdTeam } from '../components/MatchCard';
+import { hasTbdTeam, isKnockoutStage } from '../components/MatchCard';
 import { useI18n } from '../i18n';
 import { getPredictionLockTime, isPredictionLocked } from '../utils/prediction';
 import { formatLockStatus } from '../utils/deadline';
@@ -357,6 +357,9 @@ export default function MatchDetailScreen() {
                   {sortedVisiblePredictions.map((item) => {
                     const user = predictionUser(item);
                     const isMe = user.id === currentUser?.id;
+                    const outcome = outcomeFor(item.homeGoals, item.awayGoals);
+                    const knockout = isKnockoutStage(match.stage);
+                    const qualifierCode = item.qualifier === 'HOME' ? match.homeTeam.code : match.awayTeam.code;
                     return (
                       <View key={item._id} style={styles.friendRow}>
                         <Avatar name={user.name ?? 'Player'} imageUrl={user.avatarUrl} size={34} color={isMe ? colors.accent : colors.blue} />
@@ -365,10 +368,12 @@ export default function MatchDetailScreen() {
                             {isMe ? t('common.you') : user.name ?? 'Player'}
                           </Text>
                           <Text style={styles.friendOutcome}>
-                            {outcomeFor(item.homeGoals, item.awayGoals) === 'DRAW'
+                            {outcome === 'DRAW' && knockout && item.qualifier
+                              ? t('match.friendPickDrawQualifier', { code: qualifierCode })
+                              : outcome === 'DRAW'
                               ? t('match.friendPickDraw')
                               : t('match.friendPickWinner', {
-                                  code: outcomeFor(item.homeGoals, item.awayGoals) === 'HOME'
+                                  code: outcome === 'HOME'
                                     ? match.homeTeam.code
                                     : match.awayTeam.code,
                                 })}
