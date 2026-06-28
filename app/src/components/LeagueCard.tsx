@@ -37,8 +37,15 @@ export default function LeagueCard({ league, userId, compact = false, onPress }:
           {!compact && (
             <Text style={styles.sub}>
               {myPoints !== null
-                ? t('leagues.playersWithPoints', { count: league.members.length, points: myPoints })
-                : t('leagues.players', { count: league.members.length })}
+                ? t('leagues.playersWithPointsAndScope', {
+                  count: league.members.length,
+                  points: myPoints,
+                  scope: t(league.scoringScope === 'KNOCKOUT_ONLY' ? 'league.scopeKnockout' : 'league.scopeFull'),
+                })
+                : t('leagues.playersWithScope', {
+                  count: league.members.length,
+                  scope: t(league.scoringScope === 'KNOCKOUT_ONLY' ? 'league.scopeKnockout' : 'league.scopeFull'),
+                })}
             </Text>
           )}
         </View>

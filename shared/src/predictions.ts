@@ -24,6 +24,7 @@ export interface TournamentPicks {
   bestPlayer?: PlayerOption;
   topScorer?: PlayerOption;
   bestYoung?: PlayerOption;
+  points?: number | null;
 }
 
 export const TOURNAMENT_SLOT_KEYS: (keyof TournamentPicks)[] = [

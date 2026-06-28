@@ -11,6 +11,7 @@ import { sendToUser } from './pushService';
 import { hydrateMatch, upsertCountryTeamFromSource } from './countryTeamService';
 import { scoreCompletedGroupPredictions } from './predictionService';
 import { GroupPrediction } from '../models/GroupPrediction';
+import { TournamentPrediction } from '../models/TournamentPrediction';
 
 // FotMob team names that differ from the English names we store.
 const FOTMOB_NAME_ALIASES: Record<string, string> = {
@@ -298,9 +299,13 @@ export async function recalculateUserPoints(): Promise<number> {
     { $match: { points: { $ne: null } } },
     { $group: { _id: '$userId', total: { $sum: '$points' } } },
   ]);
+  const tournamentPredictionTotals = await TournamentPrediction.aggregate([
+    { $match: { points: { $ne: null } } },
+    { $group: { _id: '$userId', total: { $sum: '$points' } } },
+  ]);
 
   const totalsByUserId = new Map<string, number>();
-  for (const { _id, total } of [...predictionTotals, ...groupPredictionTotals]) {
+  for (const { _id, total } of [...predictionTotals, ...groupPredictionTotals, ...tournamentPredictionTotals]) {
     const userId = String(_id);
     totalsByUserId.set(userId, (totalsByUserId.get(userId) ?? 0) + total);
   }

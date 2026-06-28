@@ -8,6 +8,7 @@ import { GroupPrediction } from '../src/models/GroupPrediction';
 import { TournamentPrediction } from '../src/models/TournamentPrediction';
 import { PushSubscription } from '../src/models/PushSubscription';
 import { UserDevice } from '../src/models/UserDevice';
+import { User } from '../src/models/User';
 
 const pushMocks = vi.hoisted(() => ({
   sendToUsers: vi.fn().mockResolvedValue(undefined),
@@ -50,21 +51,22 @@ async function registerPlayer(email: string, name = 'Player') {
   return response.body;
 }
 
-async function createLeague(token: string, name = 'Friends League') {
+async function createLeague(token: string, name = 'Friends League', body: Record<string, unknown> = {}) {
   const response = await requestJson<{ league: { _id: string; inviteCode: string } }>('/leagues', {
     token,
-    body: { name },
+    body: { name, ...body },
   });
   expect(response.status).toBe(201);
   return response.body.league;
 }
 
-async function createStoredLeague(ownerId: string, name: string, inviteCode: string) {
+async function createStoredLeague(ownerId: string, name: string, inviteCode: string, scoringScope = 'FULL_TOURNAMENT') {
   return League.create({
     name,
     inviteCode,
     ownerId,
     maxMembers: 50,
+    scoringScope,
     members: [{ userId: ownerId, isAdmin: true, hasPaid: false }],
   });
 }
@@ -155,6 +157,101 @@ describe('league membership', () => {
     expect(duplicate.body).toEqual({ error: 'League order cannot contain duplicates' });
   });
 
+  it('computes leaderboard points from each league scoring scope', async () => {
+    const owner = await registerPlayer('owner@worldporra.test', 'Owner');
+    const member = await registerPlayer('member@worldporra.test', 'Member');
+    const fullLeague = await createStoredLeague(owner.user.id, 'Full League', 'FULL1234');
+    const knockoutLeague = await createStoredLeague(owner.user.id, 'Knockout League', 'KNOCK123', 'KNOCKOUT_ONLY');
+    fullLeague.members.push({ userId: member.user.id as any, joinedAt: new Date(), isAdmin: false, hasPaid: false });
+    knockoutLeague.members.push({ userId: member.user.id as any, joinedAt: new Date(), isAdmin: false, hasPaid: false });
+    await Promise.all([fullLeague.save(), knockoutLeague.save()]);
+
+    const groupMatch = await Match.create({
+      externalId: 602,
+      stage: 'GROUP',
+      group: 'A',
+      matchday: 1,
+      homeTeamCode: 'ARG',
+      awayTeamCode: 'ESP',
+      utcDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+      status: 'FINISHED',
+      result: { homeGoals: 1, awayGoals: 0, winner: 'HOME' },
+    });
+    const knockoutMatch = await Match.create({
+      externalId: 674,
+      stage: 'ROUND_OF_32',
+      group: null,
+      matchday: 4,
+      homeTeamCode: 'BRA',
+      awayTeamCode: 'FRA',
+      utcDate: new Date(Date.now() - 24 * 60 * 60 * 1000),
+      status: 'FINISHED',
+      result: { homeGoals: 2, awayGoals: 1, winner: 'HOME' },
+    });
+
+    await Promise.all([
+      Prediction.create({
+        userId: owner.user.id,
+        matchId: groupMatch._id,
+        homeGoals: 1,
+        awayGoals: 0,
+        predictedWinner: 'HOME',
+        points: 8,
+      }),
+      Prediction.create({
+        userId: owner.user.id,
+        matchId: knockoutMatch._id,
+        homeGoals: 2,
+        awayGoals: 1,
+        predictedWinner: 'HOME',
+        qualifier: 'HOME',
+        points: 13,
+      }),
+      Prediction.create({
+        userId: member.user.id,
+        matchId: knockoutMatch._id,
+        homeGoals: 1,
+        awayGoals: 1,
+        predictedWinner: 'DRAW',
+        qualifier: 'AWAY',
+        points: 3,
+      }),
+      GroupPrediction.create({
+        userId: owner.user.id,
+        group: 'A',
+        orderedTeamCodes: ['ARG', 'ESP'],
+        points: 11,
+      }),
+      TournamentPrediction.create({
+        userId: owner.user.id,
+        championCode: 'BRA',
+        points: 17,
+      }),
+      TournamentPrediction.create({
+        userId: member.user.id,
+        championCode: 'FRA',
+        points: 19,
+      }),
+      User.updateMany({ _id: { $in: [owner.user.id, member.user.id] } }, { totalPoints: 999 }),
+    ]);
+
+    const fullDetail = await requestJson<{ league: { members: Array<{ userId: { _id: string; totalPoints: number } }> } }>(
+      `/leagues/${fullLeague._id}`,
+      { token: owner.token }
+    );
+    expect(fullDetail.status).toBe(200);
+    expect(fullDetail.body.league.members.find((entry) => String(entry.userId._id) === owner.user.id)?.userId.totalPoints).toBe(49);
+    expect(fullDetail.body.league.members.find((entry) => String(entry.userId._id) === member.user.id)?.userId.totalPoints).toBe(22);
+
+    const knockoutDetail = await requestJson<{ league: { members: Array<{ userId: { _id: string; totalPoints: number } }> } }>(
+      `/leagues/${knockoutLeague._id}`,
+      { token: owner.token }
+    );
+    expect(knockoutDetail.status).toBe(200);
+    expect(knockoutDetail.body.league.members.find((entry) => String(entry.userId._id) === owner.user.id)?.userId.totalPoints).toBe(30);
+    expect(knockoutDetail.body.league.members.find((entry) => String(entry.userId._id) === member.user.id)?.userId.totalPoints).toBe(22);
+  });
+
   it('lets master users silently manage leagues without being members', async () => {
     const master = await registerPlayer('master@worldporra.test', 'Master');
     const owner = await registerPlayer('owner@worldporra.test', 'Owner');
@@ -240,6 +337,51 @@ describe('league membership', () => {
       body: { name: 'Too Late' },
     });
 
+    expect(closed.status).toBe(400);
+    expect(closed.body).toEqual({ error: 'League creation is closed.' });
+  });
+
+  it('allows knockout-only league creation after the normal lock until knockouts start', async () => {
+    const early = await registerPlayer('early@worldporra.test', 'Early');
+    const late = await registerPlayer('late@worldporra.test', 'Late');
+    const tooLate = await registerPlayer('too-late@worldporra.test', 'Too Late');
+    await Match.create({
+      externalId: 601,
+      stage: 'GROUP',
+      group: 'A',
+      matchday: 1,
+      homeTeamCode: 'ARG',
+      awayTeamCode: 'ESP',
+      utcDate: new Date(Date.now() + 12 * 60 * 60 * 1000),
+      status: 'SCHEDULED',
+    });
+    const knockoutMatch = await Match.create({
+      externalId: 673,
+      stage: 'ROUND_OF_32',
+      group: null,
+      matchday: 4,
+      homeTeamCode: 'BRA',
+      awayTeamCode: 'FRA',
+      utcDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
+      status: 'SCHEDULED',
+    });
+
+    const fullTournament = await requestJson('/leagues', {
+      token: early.token,
+      body: { name: 'Too Late Full', scoringScope: 'FULL_TOURNAMENT' },
+    });
+    expect(fullTournament.status).toBe(400);
+
+    const knockoutOnly = await createLeague(late.token, 'Late Knockouts', { scoringScope: 'KNOCKOUT_ONLY' });
+    expect((knockoutOnly as any).scoringScope).toBe('KNOCKOUT_ONLY');
+
+    knockoutMatch.utcDate = new Date(Date.now() - 60 * 1000);
+    await knockoutMatch.save();
+
+    const closed = await requestJson('/leagues', {
+      token: tooLate.token,
+      body: { name: 'Too Late Knockouts', scoringScope: 'KNOCKOUT_ONLY' },
+    });
     expect(closed.status).toBe(400);
     expect(closed.body).toEqual({ error: 'League creation is closed.' });
   });

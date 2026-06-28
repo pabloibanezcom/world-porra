@@ -7,7 +7,7 @@ export function memberId(member: LeagueMember): string {
 }
 
 export function memberPoints(member: LeagueMember): number {
-  return member.userId?.totalPoints ?? 0;
+  return member.userId?.totalPoints ?? member.totalPoints ?? 0;
 }
 
 export function memberName(member: LeagueMember): string {

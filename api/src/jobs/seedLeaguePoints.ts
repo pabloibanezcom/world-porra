@@ -3,6 +3,7 @@ import { connectDB } from '../config/db';
 import { League } from '../models/League';
 import { GroupPrediction } from '../models/GroupPrediction';
 import { Prediction } from '../models/Prediction';
+import { TournamentPrediction } from '../models/TournamentPrediction';
 import { User } from '../models/User';
 import { logger } from '../config/logger';
 
@@ -33,8 +34,12 @@ async function seedUserPoints() {
     { $match: { userId: { $in: userObjectIds }, points: { $ne: null } } },
     { $group: { _id: '$userId', total: { $sum: '$points' } } },
   ]);
+  const tournamentTotals = await TournamentPrediction.aggregate<{ _id: unknown; total: number }>([
+    { $match: { userId: { $in: userObjectIds }, points: { $ne: null } } },
+    { $group: { _id: '$userId', total: { $sum: '$points' } } },
+  ]);
   const totalByUserId = new Map<string, number>();
-  for (const { _id, total } of [...totals, ...groupTotals]) {
+  for (const { _id, total } of [...totals, ...groupTotals, ...tournamentTotals]) {
     const userId = String(_id);
     totalByUserId.set(userId, (totalByUserId.get(userId) ?? 0) + total);
   }

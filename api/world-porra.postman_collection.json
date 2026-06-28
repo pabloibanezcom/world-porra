@@ -786,7 +786,7 @@
       "item": [
         {
           "name": "Create League",
-          "description": "Allows any authenticated user to create one league they own/administer, before the league-creation lock.",
+          "description": "Allows any authenticated user to create one league they own/administer. Use KNOCKOUT_ONLY after the normal league-creation lock and before the knockout stage starts.",
           "request": {
             "method": "POST",
             "header": [
@@ -810,7 +810,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"My League\",\n  \"paymentSettings\": {\n    \"entryFee\": 10,\n    \"payoutSplits\": [\n      {\n        \"position\": 1,\n        \"amount\": 10\n      }\n    ]\n  }\n}"
+              "raw": "{\n  \"name\": \"My League\",\n  \"scoringScope\": \"FULL_TOURNAMENT\",\n  \"paymentSettings\": {\n    \"entryFee\": 10,\n    \"payoutSplits\": [\n      {\n        \"position\": 1,\n        \"amount\": 10\n      }\n    ]\n  }\n}"
             }
           }
         },
@@ -1758,6 +1758,39 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"syncFixtures\": true,\n  \"processResults\": true,\n  \"syncOdds\": false,\n  \"forceOdds\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "Set Manual Match Result (Master only)",
+          "description": "Manually set a match result and immediately re-score predictions. Use when the data feed lags or returns a finished match with no score. Sets status=FINISHED and flags the match as manualResult so the periodic sync won't overwrite it. `winner` is optional and is derived from the scoreline; provide it only for a knockout tie decided on penalties, where the advancing side can't be inferred from the goals.",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/matches/{{matchId}}/result",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "matches",
+                "{{matchId}}",
+                "result"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"homeGoals\": 0,\n  \"awayGoals\": 1\n}"
             }
           }
         },
