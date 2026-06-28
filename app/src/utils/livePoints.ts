@@ -50,14 +50,14 @@ export function calculateLivePotentialPoints(match: Match, prediction?: LivePoin
   const actualAway = match.result.awayGoals;
 
   if (KNOCKOUT_STAGES.has(match.stage)) {
-    const actualWinner = getOutcome(actualHome, actualAway);
+    const actualWinner = match.result.winner;
     let advancingPts = 0;
 
     if (prediction.qualifier && prediction.qualifier === actualWinner) {
       const advancingOdds = prediction.qualifier === 'HOME' ? match.odds?.home : match.odds?.away;
-      if (advancingOdds && advancingOdds > 0) {
-        advancingPts = Math.round(advancingOdds * KNOCKOUT_ROUND_MULTIPLIERS[match.stage]);
-      }
+      advancingPts = advancingOdds && advancingOdds > 0
+        ? Math.round(advancingOdds * KNOCKOUT_ROUND_MULTIPLIERS[match.stage])
+        : KNOCKOUT_ROUND_MULTIPLIERS[match.stage];
     }
 
     const exactBonus = predictedHome === actualHome && predictedAway === actualAway
