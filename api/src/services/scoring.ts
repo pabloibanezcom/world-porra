@@ -75,9 +75,9 @@ function calculateKnockoutPoints(input: ScoreInput): number {
   let advancingPts = 0;
   if (qualifier && actualWinner && qualifier === actualWinner) {
     const advancingOdds = qualifier === 'HOME' ? odds?.home : odds?.away;
-    if (advancingOdds && advancingOdds > 0) {
-      advancingPts = Math.round(advancingOdds * KNOCKOUT_ROUND_MULTIPLIERS[stage]);
-    }
+    advancingPts = advancingOdds && advancingOdds > 0
+      ? Math.round(advancingOdds * KNOCKOUT_ROUND_MULTIPLIERS[stage])
+      : KNOCKOUT_ROUND_MULTIPLIERS[stage];
   }
 
   const isExact = predictedHome === actualHome && predictedAway === actualAway;

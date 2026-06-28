@@ -38,11 +38,11 @@ function calcBreakdown(match: Match, prediction: Prediction): Breakdown {
   if (knockout) {
     const qualifierCorrect = !!prediction.qualifier && prediction.qualifier === result.winner;
     let advancingPts = 0;
-    if (qualifierCorrect && match.odds) {
-      const advOdds = prediction.qualifier === 'HOME' ? match.odds.home : match.odds.away;
-      if (advOdds && advOdds > 0) {
-        advancingPts = Math.round(advOdds * KNOCKOUT_MULTIPLIERS[match.stage]);
-      }
+    if (qualifierCorrect) {
+      const advOdds = prediction.qualifier === 'HOME' ? match.odds?.home : match.odds?.away;
+      advancingPts = advOdds && advOdds > 0
+        ? Math.round(advOdds * KNOCKOUT_MULTIPLIERS[match.stage])
+        : KNOCKOUT_MULTIPLIERS[match.stage];
     }
     const exactBonus = isExact ? KNOCKOUT_EXACT_BONUS[match.stage] : 0;
     return {
