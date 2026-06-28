@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { ScrollTriggerProvider } from '../contexts/ScrollTrigger';
 import {
   View,
@@ -23,6 +24,7 @@ import { formatLockStatus } from '../utils/deadline';
 import { getJokerCategory, usePicksData } from '../hooks/usePicksData';
 import { calculateLivePotentialPoints } from '../utils/livePoints';
 import { fetchMyLeagues } from '../api/leagues';
+import { canEditTournamentPicksAfterGlobalLock, KNOCKOUT_TOURNAMENT_PICKS_DEADLINE } from '../utils/tournamentPicks';
 
 function getResult(pred: Prediction, match: Match): 'exact' | 'correct' | 'wrong' | null {
   if (!match.result) return null;
@@ -105,11 +107,13 @@ export default function PicksScreen() {
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
+  const loadLeagues = useCallback(() => {
     fetchMyLeagues()
       .then(setLeagues)
       .catch(() => setLeagues([]));
   }, []);
+
+  useFocusEffect(loadLeagues);
 
   const upcoming = useMemo(
     () => matches.filter((m) => m.status === 'SCHEDULED'),
@@ -133,7 +137,12 @@ export default function PicksScreen() {
   const selectedJokerActive = !!selectedMatch && jokerHolderId === selectedMatch._id;
   const selectedJokerLockedByOther = !!jokerHolderId && !selectedJokerActive;
   const groupLockStatus = formatLockStatus(groupPredictionsDeadline, now, t);
-  const tournamentLockStatus = formatLockStatus(tournamentPredictionsDeadline, now, t);
+  const lateKnockoutTournamentPicksOpen = tournamentPredictionsLocked && canEditTournamentPicksAfterGlobalLock(leagues, now);
+  const effectiveTournamentPredictionsLocked = tournamentPredictionsLocked && !lateKnockoutTournamentPicksOpen;
+  const tournamentDeadline = lateKnockoutTournamentPicksOpen
+    ? KNOCKOUT_TOURNAMENT_PICKS_DEADLINE
+    : tournamentPredictionsDeadline;
+  const tournamentLockStatus = formatLockStatus(tournamentDeadline, now, t);
   if (loading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
@@ -168,12 +177,12 @@ export default function PicksScreen() {
             <DeadlineNotice
               title={t('deadline.tournamentPicks')}
               status={tournamentLockStatus}
-              locked={tournamentPredictionsLocked}
+              locked={effectiveTournamentPredictionsLocked}
             />
             <TournamentPicksSection
               picks={tournamentPicks}
               teams={tournamentTeams}
-              onPickChange={tournamentPredictionsLocked ? undefined : handleTournamentPick}
+              onPickChange={effectiveTournamentPredictionsLocked ? undefined : handleTournamentPick}
             />
           </>
         ) : tab === 'groups' ? (

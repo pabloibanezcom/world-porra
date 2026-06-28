@@ -30,6 +30,9 @@ const BEST_YOUNG_MAX_AGE = 21;
 
 const KNOCKOUT_STAGES = new Set(['ROUND_OF_32', 'ROUND_OF_16', 'QUARTER_FINAL', 'SEMI_FINAL', 'THIRD_PLACE', 'FINAL']);
 const GROUP_POSITION_POINTS = [8, 6, 3, 3];
+const DEFAULT_LEAGUE_SCORING_SCOPE = 'FULL_TOURNAMENT';
+const KNOCKOUT_LEAGUE_SCORING_SCOPE = 'KNOCKOUT_ONLY';
+const KNOCKOUT_TOURNAMENT_PICKS_DEADLINE = new Date('2026-06-30T23:59:59.999Z');
 
 export const predictionSchema = matchPredictionInputSchema;
 export const groupPredictionSchema = groupPredictionInputSchema;
@@ -569,8 +572,25 @@ export async function getTournamentPrediction(userId: string, language: ApiLangu
   return serializeTournamentPrediction(doc, language);
 }
 
+async function hasOnlyKnockoutLeagueMembership(userId: string): Promise<boolean> {
+  const leagues = await League.find({ 'members.userId': userId })
+    .select('scoringScope')
+    .lean();
+
+  return leagues.length > 0 && leagues.every((league) => (
+    (league.scoringScope ?? DEFAULT_LEAGUE_SCORING_SCOPE) === KNOCKOUT_LEAGUE_SCORING_SCOPE
+  ));
+}
+
+async function canSaveTournamentPrediction(userId: string): Promise<boolean> {
+  if (!(await isTournamentPredictionsLocked())) return true;
+  if (!(await hasOnlyKnockoutLeagueMembership(userId))) return false;
+
+  return currentDate() <= KNOCKOUT_TOURNAMENT_PICKS_DEADLINE;
+}
+
 export async function saveTournamentPrediction(userId: string, input: TournamentPredictionInput, language: ApiLanguage) {
-  if (await isTournamentPredictionsLocked()) {
+  if (!(await canSaveTournamentPrediction(userId))) {
     throw new PredictionServiceError(400, 'Tournament predictions are locked.');
   }
 
