@@ -304,7 +304,7 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
     }
 
     const existingLeague = await League.exists({ ownerId: req.userId });
-    if (existingLeague) {
+    if (existingLeague && scoringScope === DEFAULT_LEAGUE_SCORING_SCOPE) {
       res.status(403).json({ error: 'You can only create one league' });
       return;
     }

@@ -91,12 +91,19 @@ describe('league membership', () => {
       url: '/',
     });
 
-    const duplicateOwnedLeague = await requestJson('/leagues', {
+    const duplicateOwnedFullLeague = await requestJson('/leagues', {
       token: member.token,
       body: { name: 'Another Member League' },
     });
-    expect(duplicateOwnedLeague.status).toBe(403);
-    expect(duplicateOwnedLeague.body).toEqual({ error: 'You can only create one league' });
+    expect(duplicateOwnedFullLeague.status).toBe(403);
+    expect(duplicateOwnedFullLeague.body).toEqual({ error: 'You can only create one league' });
+
+    const duplicateOwnedKnockoutLeague = await requestJson<{ league: { scoringScope: string } }>('/leagues', {
+      token: member.token,
+      body: { name: 'Member Knockouts', scoringScope: 'KNOCKOUT_ONLY' },
+    });
+    expect(duplicateOwnedKnockoutLeague.status).toBe(201);
+    expect(duplicateOwnedKnockoutLeague.body.league.scoringScope).toBe('KNOCKOUT_ONLY');
 
     const league = await createLeague(master.token);
     expect(league.inviteCode).toHaveLength(8);
@@ -118,7 +125,7 @@ describe('league membership', () => {
 
     const list = await requestJson<{ leagues: unknown[] }>('/leagues', { token: member.token });
     expect(list.status).toBe(200);
-    expect(list.body.leagues).toHaveLength(2);
+    expect(list.body.leagues).toHaveLength(3);
 
     const detail = await requestJson<{ league: { _id: string; members: unknown[] } }>(`/leagues/${league._id}`, {
       token: member.token,
