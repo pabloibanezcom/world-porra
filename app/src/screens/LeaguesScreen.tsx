@@ -22,12 +22,7 @@ export default function LeaguesScreen() {
   const [sortMode, setSortMode] = useState(false);
   const [savingOrder, setSavingOrder] = useState(false);
   const navigation = useNavigation<any>();
-  const ownsLeague = leagues.some((league) => {
-    const owner = league.ownerId as League['ownerId'] | string | null | undefined;
-    const ownerId = typeof owner === 'string' ? owner : owner?.id ?? owner?._id;
-    return ownerId === user?.id;
-  });
-  const canCreateLeagues = !!user?.id && !ownsLeague;
+  const canCreateLeagues = !!user?.id;
 
   const loadLeagues = async () => {
     try {
