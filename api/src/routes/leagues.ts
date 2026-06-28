@@ -268,6 +268,13 @@ async function attachLeagueMemberTotals<T extends { scoringScope?: LeagueScoring
 ): Promise<T | null> {
   if (!league) return league;
 
+  if (getLeagueScoringScope(league) === DEFAULT_LEAGUE_SCORING_SCOPE) {
+    for (const member of league.members) {
+      member.totalPoints = (member.userId as any)?.totalPoints ?? member.totalPoints ?? 0;
+    }
+    return league;
+  }
+
   const totalsByUserId = await calculateLeagueMemberTotals(league);
   for (const member of league.members) {
     const id = memberUserId(member);

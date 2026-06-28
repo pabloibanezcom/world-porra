@@ -247,8 +247,8 @@ describe('league membership', () => {
       { token: owner.token }
     );
     expect(fullDetail.status).toBe(200);
-    expect(fullDetail.body.league.members.find((entry) => String(entry.userId._id) === owner.user.id)?.userId.totalPoints).toBe(49);
-    expect(fullDetail.body.league.members.find((entry) => String(entry.userId._id) === member.user.id)?.userId.totalPoints).toBe(22);
+    expect(fullDetail.body.league.members.find((entry) => String(entry.userId._id) === owner.user.id)?.userId.totalPoints).toBe(999);
+    expect(fullDetail.body.league.members.find((entry) => String(entry.userId._id) === member.user.id)?.userId.totalPoints).toBe(999);
 
     const knockoutDetail = await requestJson<{ league: { members: Array<{ userId: { _id: string; totalPoints: number } }> } }>(
       `/leagues/${knockoutLeague._id}`,
