@@ -98,7 +98,9 @@ export default function PointsBreakdown({ match, prediction }: Props) {
   const awayCode = getTeamLabel(match.awayTeam.name, match.awayTeam.code);
 
   const breakdown = prediction ? calcBreakdown(match, prediction) : null;
-  const totalPts = prediction?.points ?? breakdown?.total ?? 0;
+  const basePts = breakdown?.total ?? 0;
+  const calculatedTotalPts = prediction?.joker ? basePts * 2 : basePts;
+  const totalPts = prediction?.points ?? calculatedTotalPts;
 
   return (
     <View>
@@ -166,6 +168,13 @@ export default function PointsBreakdown({ match, prediction }: Props) {
                 />
               )}
             </>
+          )}
+
+          {prediction?.joker && (
+            <View style={styles.jokerMultiplierRow}>
+              <Text style={styles.jokerMultiplierLabel}>{t('matchCard.joker')}</Text>
+              <Text style={styles.jokerMultiplierPts}>{basePts} × 2</Text>
+            </View>
           )}
 
           <View style={styles.totalRow}>
@@ -266,6 +275,29 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     fontFamily: fonts.display,
+  },
+  jokerMultiplierRow: {
+    alignItems: 'center',
+    borderColor: 'rgba(236,126,0,0.35)',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  jokerMultiplierLabel: {
+    color: colors.warning,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  jokerMultiplierPts: {
+    color: colors.warning,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 12,
+    fontWeight: '900',
   },
   earned: {
     color: colors.accent,
