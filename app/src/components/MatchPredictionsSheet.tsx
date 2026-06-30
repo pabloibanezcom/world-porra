@@ -252,6 +252,11 @@ export default function MatchPredictionsSheet({ match, leagues, prediction, onCl
                         <Avatar name={user.name ?? 'Player'} imageUrl={user.avatarUrl} size={34} color={isMe ? colors.accent : colors.blue} />
                         <View style={styles.friendTextBlock}>
                           <Text style={styles.friendName}>{isMe ? t('common.you') : user.name ?? 'Player'}</Text>
+                          {item.joker && (
+                            <View style={styles.friendJokerBadge}>
+                              <Text style={styles.friendJokerBadgeText}>{t('matchCard.joker')}</Text>
+                            </View>
+                          )}
                           <Text style={styles.friendOutcome}>
                             {outcome === 'DRAW' && knockout && item.qualifier
                               ? t('match.friendPickDrawQualifier', { code: qualifierCode })
@@ -468,6 +473,22 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyMedium,
     fontSize: 14,
     fontWeight: '800',
+  },
+  friendJokerBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(236,126,0,0.14)',
+    borderColor: colors.warning,
+    borderRadius: 6,
+    borderWidth: 1,
+    marginTop: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  friendJokerBadgeText: {
+    color: colors.warning,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 9,
+    fontWeight: '900',
   },
   friendOutcome: {
     color: colors.textSecondary,
